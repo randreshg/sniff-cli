@@ -92,7 +92,7 @@ def print_success(msg: str) -> None:
     Args:
         msg: The message to display.
     """
-    icon = f"[{Colors.SUCCESS}]{Symbols.PASS}[/{Colors.SUCCESS}]"
+    icon = f"[bold green]{Symbols.PASS}[/]"
     console.print(f"  {icon} {msg}")
 
 
@@ -102,7 +102,7 @@ def print_error(msg: str) -> None:
     Args:
         msg: The error message to display.
     """
-    icon = f"[{Colors.ERROR}]{Symbols.FAIL}[/{Colors.ERROR}]"
+    icon = f"[bold red]{Symbols.FAIL}[/]"
     err_console.print(f"  {icon} {msg}")
 
 
@@ -112,7 +112,7 @@ def print_warning(msg: str) -> None:
     Args:
         msg: The warning message to display.
     """
-    icon = f"[{Colors.WARNING}]{Symbols.WARNING}[/{Colors.WARNING}]"
+    icon = f"[bold yellow]{Symbols.WARNING}[/]"
     err_console.print(f"  {icon} {msg}")
 
 
@@ -122,7 +122,7 @@ def print_info(msg: str) -> None:
     Args:
         msg: The informational message to display.
     """
-    icon = f"[{Colors.INFO}]{Symbols.INFO}[/{Colors.INFO}]"
+    icon = f"[cyan]{Symbols.INFO}[/]"
     console.print(f"  {icon} {msg}")
 
 
@@ -132,7 +132,7 @@ def print_debug(msg: str) -> None:
     Args:
         msg: The debug message to display.
     """
-    console.print(f"  [{Colors.DEBUG}]{Symbols.SKIP} {msg}[/{Colors.DEBUG}]")
+    console.print(f"  [dim]{Symbols.SKIP} {msg}[/]")
 
 # ---------------------------------------------------------------------------
 # Structural Elements
@@ -147,10 +147,10 @@ def print_header(title: str, subtitle: str | None = None) -> None:
         subtitle: Optional subtitle displayed below the title in dim style.
     """
     console.print()
-    console.print(f"[{Colors.HEADER}]{title}[/{Colors.HEADER}]")
+    console.print(f"[bold cyan]{title}[/]")
     if subtitle:
-        console.print(f"[dim]{subtitle}[/dim]")
-    console.print(f"[dim]{'─' * 40}[/dim]")
+        console.print(f"[dim]{subtitle}[/]")
+    console.print(f"[dim]{'─' * 40}[/]")
 
 
 def print_step(msg: str, step_num: int | None = None, total: int | None = None) -> None:
@@ -163,8 +163,8 @@ def print_step(msg: str, step_num: int | None = None, total: int | None = None) 
     """
     prefix = ""
     if step_num is not None and total is not None:
-        prefix = f"[{Colors.STEP}][{step_num}/{total}][/{Colors.STEP}] "
-    console.print(f"{prefix}[{Colors.STEP}]\u25b6[/{Colors.STEP}] {msg}")
+        prefix = f"[bold blue][{step_num}/{total}][/] "
+    console.print(f"{prefix}[bold blue]\u25b6[/] {msg}")
 
 
 def print_section(title: str) -> None:
