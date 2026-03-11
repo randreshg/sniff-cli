@@ -119,7 +119,6 @@ _SOURCE_DIRS: tuple[str, ...] = (
 # Common config directories.
 _CONFIG_DIRS: tuple[str, ...] = (
     ".sniff",
-    ".apxm",
     ".config",
     ".vscode",
     ".idea",

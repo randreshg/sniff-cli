@@ -73,6 +73,8 @@ class Typer(base_typer.Typer if _TYPER_AVAILABLE else object):  # type: ignore[m
         tully_db_path: Path | None = None,
         tully_experiment_name: str | None = None,
         auto_capture_env: bool = True,
+        auto_activate: bool = False,
+        fail_fast: bool = True,
         add_doctor_command: bool = False,
         add_version_command: bool = False,
         add_env_command: bool = False,
@@ -87,6 +89,8 @@ class Typer(base_typer.Typer if _TYPER_AVAILABLE else object):  # type: ignore[m
         self._tully_db_path = tully_db_path
         self._tully_experiment_name = tully_experiment_name
         self._auto_capture_env = auto_capture_env
+        self._auto_activate = auto_activate
+        self._fail_fast = fail_fast
         self._project_version = project_version
 
         # Lazy-loaded state
@@ -97,6 +101,10 @@ class Typer(base_typer.Typer if _TYPER_AVAILABLE else object):  # type: ignore[m
         # Session hooks
         self._before_hooks: list[Callable[..., Any]] = []
         self._after_hooks: list[Callable[..., Any]] = []
+
+        # Register auto-activation hook if enabled
+        if auto_activate:
+            self._before_hooks.append(self._auto_activation_hook)
 
         # Built-in commands
         if add_doctor_command:
@@ -146,6 +154,41 @@ class Typer(base_typer.Typer if _TYPER_AVAILABLE else object):  # type: ignore[m
     def after_command(self, hook: Callable[..., Any]) -> None:
         """Register a hook to run after each command execution."""
         self._after_hooks.append(hook)
+
+    def _auto_activation_hook(self, ctx: Any) -> None:
+        """Auto-activate environment from .sniff.toml before each command."""
+        import os
+        from sniff.activation import EnvironmentActivator
+        from sniff.envspec import find_envspec
+        from sniff.cli.errors import NotFoundError, DependencyError
+        from sniff.cli.styles import print_error
+
+        # Find .sniff.toml
+        spec_file = find_envspec()
+        if not spec_file:
+            if self._fail_fast:
+                raise NotFoundError(
+                    "No .sniff.toml found for auto-activation",
+                    hint="Run 'sniff init' or set auto_activate=False"
+                )
+            return
+
+        # Activate and validate
+        activator = EnvironmentActivator.from_cwd()
+        result = activator.activate()
+
+        # Fail fast if required tools missing
+        if result.missing_tools:
+            error_msg = f"Missing required dependencies: {', '.join(result.missing_tools)}"
+            if self._fail_fast:
+                hint = f"Run '{self._name or 'app'} doctor' to diagnose or '{self._name or 'app'} install' to set up"
+                raise DependencyError(error_msg, hint=hint)
+            else:
+                print_error(error_msg)
+
+        # Update environment for current process (this is key!)
+        if result.env_vars:
+            os.environ.update(result.env_vars)
 
     # -- Enhanced command decorator -------------------------------------------
 
