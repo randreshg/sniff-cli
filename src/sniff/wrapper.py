@@ -101,6 +101,7 @@ class WrapperGenerator:
         path_prepends: list[str],
         project_name: str,
         *,
+        prepend_vars: Optional[dict[str, str]] = None,
         python: Optional[Path] = None,
     ) -> str:
         """Generate a self-contained ``#!/bin/sh`` wrapper script.
@@ -108,15 +109,13 @@ class WrapperGenerator:
         Args:
             target: Absolute path to the binary (or Python script) to run.
             env_vars: Mapping of environment-variable names to their values.
-                Values are embedded literally.  For variables that should be
-                *prepended* to an existing value (e.g. ``LD_LIBRARY_PATH``),
-                the caller must include the ``"$VAR"`` suffix in the value
-                or -- preferably -- use :meth:`from_spec` / :meth:`from_activation`
-                which handle this automatically via the ``EnvVar.prepend_path``
-                flag.
+                Values are embedded literally (hard set).
             path_prepends: Directories to prepend to ``$PATH`` (in order).
             project_name: Human-readable project label (used in the header
                 comment only).
+            prepend_vars: Mapping of variable names to values that should be
+                *prepended* to existing values (e.g. ``LD_LIBRARY_PATH``).
+                Each is rendered as ``export VAR="value:$VAR"``.
             python: If provided, the wrapper will ``exec python target "$@"``
                 instead of ``exec target "$@"``.
 
@@ -166,16 +165,16 @@ class WrapperGenerator:
                 lines.append(f"export {name}={_sh_quote(value)}")
             lines.append("")
 
+        # -- Prepend variables (LD_LIBRARY_PATH, etc.) -----------------------
+        if prepend_vars:
+            for name, value in prepend_vars.items():
+                escaped = _sh_escape_double(value)
+                lines.append(f'export {name}="{escaped}:${name}"')
+            lines.append("")
+
         # -- PATH prepends ---------------------------------------------------
         if path_prepends:
             lines.append("# --- PATH ---")
-            # Build a single prepend: /a:/b:/c:$PATH
-            joined = ":".join(_sh_quote(p) for p in path_prepends)
-            # Because the individual segments are single-quoted we can safely
-            # concatenate them with colons and append :$PATH.
-            # However, the single-quoting already wraps each segment.  For
-            # the full export we need a double-quoted string so that $PATH
-            # expands.  Re-escape properly:
             raw_joined = ":".join(path_prepends)
             lines.append(f'export PATH="{_sh_escape_double(raw_joined)}:$PATH"')
             lines.append("")
@@ -439,6 +438,10 @@ class WrapperGenerator:
         """
         env_vars = dict(activation.env_vars)
         path_prepends: list[str] = []
+        prepend_vars: dict[str, str] = {}
+
+        # Variables that should be prepended to existing values, not hard-set.
+        _PREPEND_KEYS = {"PATH", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PYTHONPATH", "PKG_CONFIG_PATH"}
 
         # Extract PATH entries from the env dict (the activator merges them
         # into a single colon-separated value under the "PATH" key).
@@ -453,11 +456,17 @@ class WrapperGenerator:
                     path_prepends.append(p)
                     seen.add(p)
 
+        # Extract other prepend-style vars (LD_LIBRARY_PATH, etc.)
+        for key in list(env_vars):
+            if key in _PREPEND_KEYS:
+                prepend_vars[key] = env_vars.pop(key)
+
         return cls.generate(
             target=target,
             env_vars=env_vars,
             path_prepends=path_prepends,
             project_name=project_name,
+            prepend_vars=prepend_vars,
             python=python,
         )
 
