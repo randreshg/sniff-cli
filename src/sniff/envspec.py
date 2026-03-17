@@ -27,6 +27,14 @@ class ToolSpec:
     optional: bool = False
 
 
+@dataclass(frozen=True)
+class PythonSpec:
+    """Python environment specification."""
+
+    pyproject: Optional[str] = None
+    script: Optional[str] = None
+
+
 @dataclass
 class EnvironmentSpec:
     """Environment specification from .sniff.toml."""
@@ -36,6 +44,7 @@ class EnvironmentSpec:
     tools: dict[str, ToolSpec] = field(default_factory=dict)
     env_vars: dict[str, str] = field(default_factory=dict)
     paths: dict[str, list[str]] = field(default_factory=dict)
+    python: Optional[PythonSpec] = None
 
     @classmethod
     def from_file(cls, path: Path) -> EnvironmentSpec:
@@ -104,12 +113,21 @@ class EnvironmentSpec:
         for key, value in data.get("paths", {}).items():
             paths[key] = [value] if isinstance(value, str) else value
 
+        # Python environment (optional)
+        python = None
+        if python_data := data.get("python"):
+            python = PythonSpec(
+                pyproject=python_data.get("pyproject"),
+                script=python_data.get("script"),
+            )
+
         return cls(
             project_name=project["name"],
             conda=conda,
             tools=tools,
             env_vars=env_vars or {},
             paths=paths,
+            python=python,
         )
 
     def expand_placeholders(self, project_root: Path, conda_prefix: Optional[Path] = None) -> dict[str, str]:

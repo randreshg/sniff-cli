@@ -106,6 +106,8 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "sniff.cli.progress": ["progress_bar", "spinner"],
     # -- CLI Runner --
     "sniff.cli.runner": ["RunResult", "run_logged"],
+    # -- Script Runner --
+    "sniff.runner": ["run_script"],
 }
 
 # Renamed/aliased exports: alias -> (module_path, real_name)

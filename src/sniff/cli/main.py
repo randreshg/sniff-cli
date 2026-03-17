@@ -91,6 +91,14 @@ _app = None
 
 def main() -> None:
     """Entry point for sniff CLI."""
+    import sys
+
+    # If first arg is a .py script, run it with auto-bootstrapped venv
+    if len(sys.argv) > 1 and sys.argv[1].endswith('.py'):
+        from sniff.runner import run_script
+        run_script(sys.argv[1], sys.argv[2:])
+        return
+
     global _app
     if _app is None:
         _app = _make_app()
