@@ -2,7 +2,7 @@
 
 import pytest
 
-from sniff.deps import DependencyChecker, DependencySpec, DependencyResult
+from sniff_cli.deps import DependencyChecker, DependencySpec, DependencyResult
 
 
 def test_dependency_spec_creation():

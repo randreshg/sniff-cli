@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.build import (
+from sniff_cli.build import (
     BuildSystem,
     BuildSystemDetector,
     BuildSystemInfo,

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.workspace import (
+from sniff_cli.workspace import (
     SubProject,
     WorkspaceDetector,
     WorkspaceInfo,

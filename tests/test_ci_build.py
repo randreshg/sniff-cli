@@ -2,7 +2,7 @@
 
 import pytest
 
-from sniff.ci import CIInfo, CIProvider, CIRunnerInfo, CIBuildAdvisor, CIBuildHints
+from sniff_cli.ci import CIInfo, CIProvider, CIRunnerInfo, CIBuildAdvisor, CIBuildHints
 
 
 # ── Helpers ──────────────────────────────────────────────────────────

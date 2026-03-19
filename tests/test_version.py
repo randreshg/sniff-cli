@@ -2,7 +2,7 @@
 
 import pytest
 
-from sniff.version import (
+from sniff_cli.version import (
     Version,
     VersionConstraint,
     VersionSpec,

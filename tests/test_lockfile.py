@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.lockfile import (
+from sniff_cli.lockfile import (
     LockfileKind,
     LockfileParser,
     LockfileInfo,

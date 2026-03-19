@@ -1,6 +1,6 @@
-"""Shared fixtures for sniff CLI tests.
+"""Shared fixtures for sniff-cli CLI tests.
 
-Provides console capture helpers that patch sniff.cli.styles internals
+Provides console capture helpers that patch sniff_cli.cli.styles internals
 so Rich output can be captured into StringIO buffers for assertions.
 """
 
@@ -12,16 +12,16 @@ from contextlib import contextmanager
 import pytest
 from rich.console import Console
 
-from sniff.cli.styles import CLI_THEME
+from sniff_cli.cli.styles import CLI_THEME
 
 
 @contextmanager
 def _patch_console(*, stderr: bool = False, highlight: bool = True, extra_targets=None):
-    """Context manager that patches sniff.cli.styles console singletons.
+    """Context manager that patches sniff_cli.cli.styles console singletons.
 
     Yields the StringIO buffer containing captured output.
     """
-    import sniff.cli.styles as _mod
+    import sniff_cli.cli.styles as _mod
 
     buf = io.StringIO()
     capture = Console(
@@ -39,7 +39,7 @@ def _patch_console(*, stderr: bool = False, highlight: bool = True, extra_target
         _mod.console = capture
         _mod._console = capture
 
-    # Patch any extra module targets (e.g., sniff.cli.output.console)
+    # Patch any extra module targets (e.g., sniff_cli.cli.output.console)
     extra_originals = []
     for mod, attr in (extra_targets or []):
         extra_originals.append((mod, attr, getattr(mod, attr, None)))
@@ -91,7 +91,7 @@ def capture_both_consoles():
     """Fixture returning a context manager that captures both stdout and stderr."""
     @contextmanager
     def _capture(*, highlight=True):
-        import sniff.cli.styles as _mod
+        import sniff_cli.cli.styles as _mod
         stdout_buf = io.StringIO()
         stderr_buf = io.StringIO()
         stdout_console = Console(

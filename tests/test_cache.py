@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.cache import BuildCacheDetector, BuildCacheInfo, CacheKind
+from sniff_cli.cache import BuildCacheDetector, BuildCacheInfo, CacheKind
 
 
 @pytest.fixture

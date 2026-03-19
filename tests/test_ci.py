@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from sniff.ci import (
+from sniff_cli.ci import (
     CIBuildInfo,
     CIDetector,
     CIGitInfo,

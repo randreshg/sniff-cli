@@ -1,0 +1,15 @@
+# Quickstart example - a good starting point for most single-tool projects.
+
+[project]
+name = "myproject"
+
+[tools]
+python = { command = "python", version = ">=3.10", optional = true }
+
+[env]
+# Example:
+# PYTHONPATH = "{project}/src"
+
+[paths]
+# Example:
+# bin = ["{project}/bin"]

@@ -1,4 +1,4 @@
-"""Tests for sniff.validate -- EnvironmentValidator, CheckResult, ValidationReport."""
+"""Tests for sniff_cli.validate -- EnvironmentValidator, CheckResult, ValidationReport."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff.remediate import DetectedIssue, IssueSeverity
-from sniff.validate import (
+from sniff_cli.remediate import DetectedIssue, IssueSeverity
+from sniff_cli.validate import (
     CheckResult,
     CheckStatus,
     EnvironmentValidator,
@@ -513,8 +513,8 @@ class TestValidationPipeline:
         assert report.issues() == []
 
     def test_top_level_import(self):
-        """ValidationReport and EnvironmentValidator are importable from sniff."""
-        from sniff import ValidationReport as VR, EnvironmentValidator as EV
+        """ValidationReport and EnvironmentValidator are importable from sniff_cli."""
+        from sniff_cli import ValidationReport as VR, EnvironmentValidator as EV
         assert VR is ValidationReport
         assert EV is EnvironmentValidator
 
@@ -529,7 +529,7 @@ class TestValidateToolchainIntegration:
 
     def test_validate_cmake_directories(self, tmp_path):
         """Validate that CMakeToolchain paths exist using EnvironmentValidator."""
-        from sniff.toolchain import CMakeToolchain
+        from sniff_cli.toolchain import CMakeToolchain
 
         prefix = tmp_path / "envs" / "apxm"
         (prefix / "lib" / "cmake" / "mlir").mkdir(parents=True)
@@ -550,7 +550,7 @@ class TestValidateToolchainIntegration:
 
     def test_validate_missing_cmake_directories(self, tmp_path):
         """Report failures for missing CMakeToolchain directories."""
-        from sniff.toolchain import CMakeToolchain
+        from sniff_cli.toolchain import CMakeToolchain
 
         prefix = tmp_path / "nonexistent" / "envs" / "apxm"
         tc = CMakeToolchain(prefix=prefix)
@@ -565,7 +565,7 @@ class TestValidateToolchainIntegration:
 
     def test_validate_conda_env_var(self, tmp_path):
         """After CondaToolchain configures env vars, validate they're set."""
-        from sniff.toolchain import CondaToolchain, EnvVarBuilder as TcBuilder
+        from sniff_cli.toolchain import CondaToolchain, EnvVarBuilder as TcBuilder
 
         prefix = tmp_path / "miniforge3" / "envs" / "apxm"
         prefix.mkdir(parents=True)
@@ -599,7 +599,7 @@ class TestValidateEnvIntegration:
 
     def test_validate_env_snapshot_vars(self):
         """Build an env from EnvVarBuilder, then validate with EnvironmentValidator."""
-        from sniff.env import EnvVarBuilder as EnvBuilder
+        from sniff_cli.env import EnvVarBuilder as EnvBuilder
 
         snap = (
             EnvBuilder()
@@ -632,7 +632,7 @@ class TestValidateLibpathIntegration:
 
     def test_validate_library_path_after_apply(self):
         """After LibraryPathResolver.apply(), validate the env var is set."""
-        from sniff.libpath import LibraryPathResolver
+        from sniff_cli.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/test/lib")

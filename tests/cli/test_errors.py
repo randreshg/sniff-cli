@@ -1,10 +1,10 @@
-"""Tests for sniff.cli.errors -- exception hierarchy and exit codes."""
+"""Tests for sniff_cli.cli.errors -- exception hierarchy and exit codes."""
 
 from __future__ import annotations
 
 import pytest
 
-from sniff.cli.errors import (
+from sniff_cli.cli.errors import (
     ConfigError,
     DependencyError,
     ExitCodes,

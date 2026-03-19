@@ -1,0 +1,7 @@
+# Minimal example - just project name and required tools
+
+[project]
+name = "myproject"
+
+[tools]
+python = { command = "python", version = ">=3.10" }

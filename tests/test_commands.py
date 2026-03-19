@@ -1,6 +1,6 @@
 """Tests for the command registry."""
 
-from sniff.commands import (
+from sniff_cli.commands import (
     CommandMeta,
     CommandProvider,
     CommandRegistry,

@@ -1,4 +1,4 @@
-"""Tests for sniff.wrapper -- self-contained wrapper script generation."""
+"""Tests for sniff_cli.wrapper -- self-contained wrapper script generation."""
 
 from __future__ import annotations
 
@@ -10,9 +10,17 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff.wrapper import WrapperGenerator, _sh_quote, _sh_escape_double, _dir_in_path
-from sniff.activation import ActivationResult
-from sniff.install import InstallResult
+from sniff_cli.wrapper import (
+    WrapperGenerator,
+    _cmd_escape_value,
+    _generate_cmd_script,
+    _dir_in_path,
+    _sh_escape_double,
+    _sh_quote,
+)
+from sniff_cli.activation import ActivationResult
+from sniff_cli.install import InstallResult
+from sniff_cli.sniff_os import PosixSniffOS, WindowsSniffOS
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +85,14 @@ class TestShEscapeDouble:
 
     def test_combined_special_chars(self):
         assert _sh_escape_double('$`"\\') == '\\$\\`\\"\\\\'
+
+
+class TestCmdEscapeValue:
+    def test_percent_escaped(self):
+        assert _cmd_escape_value("%APPDATA%") == "%%APPDATA%%"
+
+    def test_quotes_escaped(self):
+        assert _cmd_escape_value('say "hi"') == 'say ""hi""'
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +191,7 @@ class TestGenerate:
         assert exec_line.count("'") == 2  # opening and closing quote around target
 
     def test_target_not_found_raises(self, tmp_path: Path):
-        from sniff.cli.errors import NotFoundError
+        from sniff_cli.cli.errors import NotFoundError
 
         nonexistent = tmp_path / "does_not_exist"
         with pytest.raises(NotFoundError, match="Target does not exist"):
@@ -187,7 +203,7 @@ class TestGenerate:
             )
 
     def test_python_not_found_raises(self, dummy_target: Path, tmp_path: Path):
-        from sniff.cli.errors import NotFoundError
+        from sniff_cli.cli.errors import NotFoundError
 
         nonexistent_python = tmp_path / "no_such_python"
         with pytest.raises(NotFoundError, match="Python interpreter does not exist"):
@@ -260,6 +276,22 @@ class TestGenerate:
         # Inside the double-quoted PATH export, $ must be escaped.
         assert "\\$pecial" in script
         assert "path with spaces" in script
+
+    def test_windows_cmd_script_helper(self, dummy_target: Path, dummy_python: Path):
+        script = _generate_cmd_script(
+            target=dummy_target.resolve(),
+            env_vars={"FOO": "%USERPROFILE%"},
+            path_prepends=[r"C:\tools\bin", r"C:\Program Files\MyApp"],
+            project_name="proj",
+            prepend_vars={"PATHLIKE": r"C:\libs"},
+            python=dummy_python.resolve(),
+            timestamp="2026-03-19T00:00:00Z",
+        )
+        assert script.startswith("@echo off")
+        assert 'set "FOO=%%USERPROFILE%%"' in script
+        assert 'set "PATH=C:\\tools\\bin;C:\\Program Files\\MyApp;%PATH%"' in script
+        assert 'set "PATHLIKE=C:\\libs;%PATHLIKE%"' in script
+        assert "%*" in script
 
 
 # ---------------------------------------------------------------------------
@@ -365,15 +397,23 @@ class TestInstall:
         assert content == self.SAMPLE_SCRIPT
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        # Redirect HOME so ~/.local/bin is under tmp_path.
-        fake_home = tmp_path / "fakehome"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        # Also patch Path.home() directly for robustness.
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+        fake_userbase = tmp_path / "userbase"
+        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: PosixSniffOS())
+        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
 
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
-        expected = fake_home / ".local" / "bin" / "myapp"
+        expected = fake_userbase / "bin" / "myapp"
+        assert result.bin_path == expected
+        assert result.bin_path.exists()
+
+    def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        fake_userbase = tmp_path / "userbase"
+        scripts_dir = fake_userbase / "Scripts"
+        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
+        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+
+        result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
+        expected = scripts_dir / "myapp.cmd"
         assert result.bin_path == expected
         assert result.bin_path.exists()
 
@@ -383,6 +423,17 @@ class TestInstall:
             self.SAMPLE_SCRIPT, "myapp", install_dir=custom,
         )
         assert result.bin_path == custom / "myapp"
+        assert result.bin_path.exists()
+
+    def test_custom_install_dir_windows_uses_cmd_suffix(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ):
+        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
+        custom = tmp_path / "custom_bin"
+        result = WrapperGenerator.install(
+            self.SAMPLE_SCRIPT, "myapp", install_dir=custom,
+        )
+        assert result.bin_path == custom / "myapp.cmd"
         assert result.bin_path.exists()
 
     def test_creates_install_dir(self, tmp_path: Path):
@@ -423,7 +474,7 @@ class TestInstall:
         assert "PATH" in result.message
 
     def test_name_with_separator_raises(self, tmp_path: Path):
-        from sniff.cli.errors import ValidationError
+        from sniff_cli.cli.errors import ValidationError
 
         with pytest.raises(ValidationError, match="path separator"):
             WrapperGenerator.install(
@@ -470,7 +521,7 @@ class TestInstallFromSpec:
             [project]
             name = "testproject"
         """)
-        spec_path = tmp_path / ".sniff.toml"
+        spec_path = tmp_path / ".sniff-cli.toml"
         spec_path.write_text(toml_content)
         return spec_path
 
@@ -480,7 +531,7 @@ class TestInstallFromSpec:
         install_dir = tmp_path / "install_bin"
         # Mock the EnvironmentActivator.activate to avoid needing a real conda env.
         with patch(
-            "sniff.wrapper.EnvironmentActivator.activate",
+            "sniff_cli.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={"MY_VAR": "val"}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -495,12 +546,12 @@ class TestInstallFromSpec:
         assert "MY_VAR" in content
 
     def test_with_environment_spec(self, tmp_path: Path, dummy_target: Path):
-        from sniff.envspec import EnvironmentSpec
+        from sniff_cli.envspec import EnvironmentSpec
 
         spec = EnvironmentSpec(project_name="direct-spec")
         install_dir = tmp_path / "install_bin"
         with patch(
-            "sniff.wrapper.EnvironmentActivator.activate",
+            "sniff_cli.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -520,11 +571,11 @@ class TestInstallFromSpec:
         # When project_root is not given, it should be inferred from spec_file's parent.
         install_dir = tmp_path / "install_bin"
         with patch(
-            "sniff.wrapper.EnvironmentActivator.activate",
+            "sniff_cli.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ) as mock_activate:
             with patch(
-                "sniff.wrapper.EnvironmentActivator.__init__",
+                "sniff_cli.wrapper.EnvironmentActivator.__init__",
                 return_value=None,
             ) as mock_init:
                 mock_init.return_value = None
@@ -536,7 +587,7 @@ class TestInstallFromSpec:
 
         # Simpler approach: verify the root matches spec_file.parent.
         with patch(
-            "sniff.wrapper.EnvironmentActivator",
+            "sniff_cli.wrapper.EnvironmentActivator",
         ) as MockActivator:
             mock_instance = MockActivator.return_value
             mock_instance.activate.return_value = ActivationResult(env_vars={})
@@ -584,10 +635,10 @@ class TestUninstall:
         assert result.bin_path == tmp_path / "myapp"
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        fake_home = tmp_path / "fakehome"
-        fake_home.mkdir()
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
-        local_bin = fake_home / ".local" / "bin"
+        fake_userbase = tmp_path / "userbase"
+        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: PosixSniffOS())
+        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        local_bin = fake_userbase / "bin"
         local_bin.mkdir(parents=True)
 
         # Install to the default location, then uninstall.
@@ -597,6 +648,20 @@ class TestUninstall:
         result = WrapperGenerator.uninstall("myapp")
         assert not (local_bin / "myapp").exists()
         assert result.bin_path == local_bin / "myapp"
+
+    def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        fake_userbase = tmp_path / "userbase"
+        scripts_dir = fake_userbase / "Scripts"
+        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
+        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        scripts_dir.mkdir(parents=True)
+
+        WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
+        assert (scripts_dir / "myapp.cmd").exists()
+
+        result = WrapperGenerator.uninstall("myapp")
+        assert not (scripts_dir / "myapp.cmd").exists()
+        assert result.bin_path == scripts_dir / "myapp.cmd"
 
     def test_in_path_reported(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("PATH", str(tmp_path))

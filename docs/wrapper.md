@@ -2,20 +2,39 @@
 
 ## Overview
 
-sniff can generate self-contained wrapper scripts that bake your entire
-project environment into a single executable. The wrapper sets conda paths,
-environment variables, and PATH entries, then execs your target binary.
+`sniff` can generate self-contained wrapper launchers that bake your entire
+project environment into a single executable command. The wrapper sets conda
+paths, environment variables, and PATH entries, then launches your target
+binary.
 
 No `conda activate`. No `source ~/.bashrc`. No manual PATH setup.
 
+## Smallest Working Flow
+
+If you are new to `sniff-cli`, use this sequence first:
+
+```bash
+sniff init --example quickstart
+```
+
+Edit `.sniff-cli.toml` so it matches your project, build your target, then:
+
+```bash
+sniff install ./bin/myapp --name myapp
+myapp --help
+```
+
+That is the intended end state: users run the generated wrapper directly,
+without activating anything first.
+
 ## How It Works
 
-1. sniff reads your `.sniff.toml`
-2. Resolves conda prefix, env vars, paths via `EnvironmentSpec.expand_placeholders()`
-3. Generates a `#!/bin/sh` script with hardcoded absolute paths
-4. Installs it to `~/.local/bin` (or a custom directory)
+1. `sniff` reads your `.sniff-cli.toml`
+2. Resolves conda prefix, env vars, and paths via `EnvironmentSpec.expand_placeholders()`
+3. Generates a platform-appropriate launcher with hardcoded absolute paths
+4. Installs it to the user scripts directory, or to a custom directory you choose
 
-The generated wrapper looks like this:
+The generated wrapper looks like this on POSIX:
 
 ```sh
 #!/bin/sh
@@ -26,13 +45,18 @@ exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```
 
+On Windows, `sniff-cli` installs a `.cmd` launcher in Python's user scripts
+directory by default. That is the `Scripts` directory under
+`python -m site --user-base`. It matches the standard user-level scripts
+directory used by Python packaging tools and avoids relying on `Activate.ps1`.
+
 Every environment detail is resolved once at generation time and written as
-literal strings. At runtime the wrapper is a trivial shell script that sets
-variables and calls `exec` -- sub-millisecond overhead.
+literal strings. At runtime the launcher is trivial: set variables, prepend
+paths, then run the target.
 
 ## CLI Usage
 
-```
+```text
 sniff wrap <name> <target> [OPTIONS]
 ```
 
@@ -48,8 +72,8 @@ sniff wrap <name> <target> [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--python PATH` | Python interpreter for script targets |
-| `--install-dir PATH`, `-d` | Installation directory (default: `~/.local/bin`) |
-| `--spec PATH`, `-s` | Path to `.sniff.toml` (default: auto-detect from cwd) |
+| `--install-dir PATH`, `-d` | Installation directory (default: user scripts directory) |
+| `--spec PATH`, `-s` | Path to `.sniff-cli.toml` (default: auto-detect from cwd) |
 
 **Examples:**
 
@@ -63,8 +87,16 @@ sniff wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
 # Install to a custom directory
 sniff wrap myapp ./bin/myapp --install-dir /usr/local/bin
 
-# Use a specific .sniff.toml
-sniff wrap myapp ./bin/myapp --spec /path/to/.sniff.toml
+# Use a specific .sniff-cli.toml
+sniff wrap myapp ./bin/myapp --spec /path/to/.sniff-cli.toml
+```
+
+```powershell
+# Windows executable target
+sniff wrap myapp .\dist\myapp.exe
+
+# Windows Python script target
+sniff wrap myapp .\tools\cli.py --python C:\miniforge3\envs\myapp\python.exe
 ```
 
 After running, the wrapper is executable and ready to use:
@@ -82,19 +114,19 @@ The primary API for programmatic wrapper generation:
 
 ```python
 from pathlib import Path
-from sniff import WrapperGenerator
+from sniff_cli import WrapperGenerator
 
 result = WrapperGenerator.install_from_spec(
-    spec_file=Path(".sniff.toml"),
+    spec_file=Path(".sniff-cli.toml"),
     target=Path("tools/cli.py"),
     python=Path("/opt/conda/envs/myapp/bin/python3"),
     name="myapp",
-    install_dir=Path("~/.local/bin"),  # optional
+    install_dir=Path("/custom/install/dir"),  # optional
 )
 
-print(result.message)    # "Installed wrapper myapp -> ~/.local/bin"
-print(result.bin_path)   # Path("~/.local/bin/myapp")
-print(result.in_path)    # True if ~/.local/bin is in PATH
+print(result.message)    # "Installed wrapper myapp -> /custom/install/dir/myapp"
+print(result.bin_path)   # Path("/custom/install/dir/myapp")
+print(result.in_path)    # True if the install dir is in PATH
 ```
 
 ### BinaryInstaller.install_wrapper
@@ -103,7 +135,7 @@ Lower-level API available via `BinaryInstaller`:
 
 ```python
 from pathlib import Path
-from sniff import BinaryInstaller
+from sniff_cli import BinaryInstaller
 
 installer = BinaryInstaller(project_root=Path("."))
 result = installer.install_wrapper(
@@ -119,7 +151,7 @@ A typical project install command generates the wrapper as part of setup:
 ```python
 # In your project's install command
 from pathlib import Path
-from sniff import WrapperGenerator
+from sniff_cli import WrapperGenerator
 
 def install():
     """Build and install the project."""
@@ -127,7 +159,7 @@ def install():
 
     # Generate wrapper that bakes in the full environment
     WrapperGenerator.install_from_spec(
-        spec_file=Path(".sniff.toml"),
+        spec_file=Path(".sniff-cli.toml"),
         target=Path("target/release/myapp"),
         name="myapp",
     )
@@ -143,21 +175,21 @@ $ myapp build     # full environment is set up by the wrapper
 ## Regeneration
 
 When your environment changes (conda update, new dependencies, new env vars
-in `.sniff.toml`), re-run your project's install command or `sniff wrap` to
+in `.sniff-cli.toml`), re-run your project's install command or `sniff wrap` to
 regenerate the wrapper. The old wrapper is overwritten in place.
 
 ```bash
-# After updating conda or .sniff.toml
+# After updating conda or .sniff-cli.toml
 sniff wrap myapp ./bin/myapp
 ```
 
 ## Technical Details
 
-- Uses `#!/bin/sh` for maximum portability across all shells (bash, zsh, fish, tcsh, dash)
+- Uses `#!/bin/sh` on POSIX and `.cmd` launchers on Windows
 - Hardcoded absolute paths -- no runtime detection overhead
 - `exec` replaces the wrapper process (clean PID, proper signal handling)
 - `"$@"` passes all arguments through to the target unchanged
 - Proper shell escaping for values with special characters
-- Wrapper is marked executable (`chmod 755`) automatically
-- Default install directory `~/.local/bin` follows the XDG convention
-- If the install directory is not in `PATH`, sniff reports this and suggests adding it
+- POSIX wrappers are marked executable (`chmod 755`) automatically
+- Default install directory follows Python's user scripts convention
+- If the install directory is not in `PATH`, `sniff-cli` reports this and suggests adding it

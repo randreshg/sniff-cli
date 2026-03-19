@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from sniff.conda import (
+from sniff_cli.conda import (
     COMMON_INSTALL_PATHS,
     CondaDetector,
     CondaEnvironment,
@@ -370,7 +370,7 @@ class TestBackwardCompatibility:
         assert result is None
 
     def test_importable_from_top_level(self):
-        from sniff import CondaDetector, CondaEnvironment, CondaValidation, COMMON_INSTALL_PATHS
+        from sniff_cli import CondaDetector, CondaEnvironment, CondaValidation, COMMON_INSTALL_PATHS
         assert CondaDetector is not None
         assert CondaEnvironment is not None
         assert CondaValidation is not None

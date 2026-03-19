@@ -1,4 +1,4 @@
-"""Tests for sniff.cli.output -- OutputFormat, OutputFormatter, print_dep_results."""
+"""Tests for sniff_cli.cli.output -- OutputFormat, OutputFormatter, print_dep_results."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ import pytest
 from rich.console import Console
 from rich.theme import Theme
 
-from sniff.cli.output import OutputFormat, OutputFormatter, print_dep_results
-from sniff.cli.styles import CLI_THEME
+from sniff_cli.cli.output import OutputFormat, OutputFormatter, print_dep_results
+from sniff_cli.cli.styles import CLI_THEME
 
 
 # ---------------------------------------------------------------------------
-# Minimal DependencyResult stub (avoids importing sniff.deps to keep tests fast)
+# Minimal DependencyResult stub (avoids importing sniff_cli.deps to keep tests fast)
 # ---------------------------------------------------------------------------
 
 
@@ -100,9 +100,9 @@ class TestPrintResultJSON:
 
     def test_valid_json(self):
         fmt = OutputFormatter(format=OutputFormat.JSON)
-        out = _capture_stdout(fmt.print_result, {"name": "sniff", "version": "3.0.0"})
+        out = _capture_stdout(fmt.print_result, {"name": "sniff-cli", "version": "3.0.0"})
         parsed = json.loads(out)
-        assert parsed == {"name": "sniff", "version": "3.0.0"}
+        assert parsed == {"name": "sniff-cli", "version": "3.0.0"}
 
     def test_json_indent(self):
         fmt = OutputFormatter(format=OutputFormat.JSON)
@@ -136,9 +136,9 @@ class TestPrintResultYAML:
         import yaml
 
         fmt = OutputFormatter(format=OutputFormat.YAML)
-        out = _capture_stdout(fmt.print_result, {"name": "sniff"})
+        out = _capture_stdout(fmt.print_result, {"name": "sniff-cli"})
         parsed = yaml.safe_load(out)
-        assert parsed == {"name": "sniff"}
+        assert parsed == {"name": "sniff-cli"}
 
     def test_yaml_nested(self):
         import yaml
@@ -160,8 +160,8 @@ class TestPrintResultText:
 
     def test_text_key_value(self):
         fmt = OutputFormatter(format=OutputFormat.TEXT)
-        out = _capture_stdout(fmt.print_result, {"name": "sniff", "version": "3.0.0"})
-        assert "name: sniff" in out
+        out = _capture_stdout(fmt.print_result, {"name": "sniff-cli", "version": "3.0.0"})
+        assert "name: sniff-cli" in out
         assert "version: 3.0.0" in out
 
     def test_text_empty_dict(self):
@@ -181,10 +181,10 @@ class TestPrintResultTable:
     def test_table_contains_values(self, capture_console):
         fmt = OutputFormatter(format=OutputFormat.TABLE)
         with capture_console() as buf:
-            fmt.print_result({"name": "sniff"})
+            fmt.print_result({"name": "sniff-cli"})
         out = buf.getvalue()
         assert "name" in out
-        assert "sniff" in out
+        assert "sniff-cli" in out
 
     def test_table_with_title(self, capture_console):
         fmt = OutputFormatter(format=OutputFormat.TABLE)
@@ -348,20 +348,20 @@ class TestPrintDepResults:
 
     def test_success_prints_to_stdout(self):
         results = [_DepResult(name="git", command="git", found=True, version="2.44.0")]
-        with patch("sniff.cli.output.print_success") as mock_ok:
+        with patch("sniff_cli.cli.output.print_success") as mock_ok:
             print_dep_results(results)
         mock_ok.assert_called_once()
         assert "git" in mock_ok.call_args[0][0]
 
     def test_missing_required_prints_error(self):
         results = [_DepResult(name="cmake", command="cmake", found=False, required=True)]
-        with patch("sniff.cli.output.print_error") as mock_err:
+        with patch("sniff_cli.cli.output.print_error") as mock_err:
             print_dep_results(results)
         mock_err.assert_called_once()
 
     def test_missing_optional_prints_warning(self):
         results = [_DepResult(name="ninja", command="ninja", found=False, required=False)]
-        with patch("sniff.cli.output.print_warning") as mock_warn:
+        with patch("sniff_cli.cli.output.print_warning") as mock_warn:
             print_dep_results(results)
         mock_warn.assert_called_once()
 
@@ -370,13 +370,13 @@ class TestPrintDepResults:
             _DepResult(name="cmake", command="cmake", found=True,
                        version="3.10.0", meets_minimum=False)
         ]
-        with patch("sniff.cli.output.print_warning") as mock_warn:
+        with patch("sniff_cli.cli.output.print_warning") as mock_warn:
             print_dep_results(results)
         mock_warn.assert_called_once()
 
     def test_version_shown_when_present(self):
         results = [_DepResult(name="git", command="git", found=True, version="2.44.0")]
-        with patch("sniff.cli.output.print_success") as mock_ok:
+        with patch("sniff_cli.cli.output.print_success") as mock_ok:
             print_dep_results(results)
         assert "2.44.0" in mock_ok.call_args[0][0]
 

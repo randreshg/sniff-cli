@@ -1,4 +1,4 @@
-"""Tests for sniff.cli.runner -- run_logged and RunResult."""
+"""Tests for sniff_cli.cli.runner -- run_logged and RunResult."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from sniff.cli.runner import RunResult, run_logged, _BUILD_OUTPUT_LABEL
+from sniff_cli.cli.runner import RunResult, run_logged, _BUILD_OUTPUT_LABEL
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ class TestRunLogged:
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="error\n")
         with patch("subprocess.run", return_value=proc), \
-             patch("sniff.cli.styles.print_info") as mock_print:
+             patch("sniff_cli.cli.styles.print_info") as mock_print:
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -163,7 +163,7 @@ class TestRunLogged:
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=0, stdout="fine\n")
         with patch("subprocess.run", return_value=proc), \
-             patch("sniff.cli.styles.print_info") as mock_print:
+             patch("sniff_cli.cli.styles.print_info") as mock_print:
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -177,7 +177,7 @@ class TestRunLogged:
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="line1\nline2\nerror line\n")
         with patch("subprocess.run", return_value=proc), \
-             patch("sniff.cli.styles.print_info") as mock_print:
+             patch("sniff_cli.cli.styles.print_info") as mock_print:
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -192,7 +192,7 @@ class TestRunLogged:
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=0, stdout="fine\n")
         with patch("subprocess.run", return_value=proc), \
-             patch("sniff.cli.styles.print_info") as mock_print:
+             patch("sniff_cli.cli.styles.print_info") as mock_print:
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -206,7 +206,7 @@ class TestRunLogged:
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="error line\n")
         with patch("subprocess.run", return_value=proc), \
-             patch("sniff.cli.styles.print_info") as mock_print:
+             patch("sniff_cli.cli.styles.print_info") as mock_print:
             run_logged(
                 ["cmd"],
                 log_path=log_path,

@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff.detect import PlatformInfo
-from sniff.libpath import LibraryPathInfo, LibraryPathResolver
+from sniff_cli.detect import PlatformInfo
+from sniff_cli.libpath import LibraryPathInfo, LibraryPathResolver
 
 
 # ---------------------------------------------------------------------------
@@ -291,8 +291,8 @@ class TestToEnvVar:
         assert value == "/opt/lib"
 
     def test_works_with_env_var_dataclass(self):
-        """Verify the tuple integrates with sniff.shell.EnvVar."""
-        from sniff.shell import EnvVar
+        """Verify the tuple integrates with sniff_cli.shell.EnvVar."""
+        from sniff_cli.shell import EnvVar
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib")
@@ -343,12 +343,16 @@ class TestApxmIntegration:
         assert f"{prefix}/lib" in info.paths
 
     def test_linux_current_platform(self):
-        """Verify for_current_platform works on this Linux machine."""
+        """Verify for_current_platform matches the actual runtime platform."""
         resolver = LibraryPathResolver.for_current_platform()
 
-        # On this Linux machine, should use LD_LIBRARY_PATH
-        assert resolver.env_var == "LD_LIBRARY_PATH"
-        assert resolver.platform_info.is_linux
+        expected_var = {
+            "Linux": "LD_LIBRARY_PATH",
+            "Darwin": "DYLD_LIBRARY_PATH",
+            "Windows": "PATH",
+        }.get(resolver.platform_info.os, "LD_LIBRARY_PATH")
+
+        assert resolver.env_var == expected_var
 
 
 # ---------------------------------------------------------------------------
@@ -360,8 +364,8 @@ class TestConfigureBuilder:
     """Test LibraryPathResolver.configure_builder with both builder types."""
 
     def test_configure_env_builder(self):
-        """configure_builder with sniff.env.EnvVarBuilder (has set_from_path)."""
-        from sniff.env import EnvVarBuilder
+        """configure_builder with sniff_cli.env.EnvVarBuilder (has set_from_path)."""
+        from sniff_cli.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib", "/usr/local/lib")
@@ -377,8 +381,8 @@ class TestConfigureBuilder:
         assert "/usr/local/lib" in value
 
     def test_configure_toolchain_builder(self):
-        """configure_builder with sniff.toolchain.EnvVarBuilder (has prepend_var)."""
-        from sniff.toolchain import EnvVarBuilder as TcBuilder
+        """configure_builder with sniff_cli.toolchain.EnvVarBuilder (has prepend_var)."""
+        from sniff_cli.toolchain import EnvVarBuilder as TcBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib")
@@ -403,7 +407,7 @@ class TestConfigureBuilder:
 
     def test_configure_builder_empty_resolves_noop(self):
         """configure_builder with no paths does nothing."""
-        from sniff.env import EnvVarBuilder
+        from sniff_cli.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         builder = EnvVarBuilder()
@@ -416,7 +420,7 @@ class TestConfigureBuilder:
 
     def test_configure_macos_builder(self):
         """configure_builder sets DYLD_LIBRARY_PATH for macOS."""
-        from sniff.env import EnvVarBuilder
+        from sniff_cli.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Darwin")
         resolver.prepend("/opt/lib")
@@ -441,7 +445,7 @@ class TestLibpathToolchainIntegration:
     def test_libpath_then_cmake_toolchain(self):
         """LibraryPathResolver and CMakeToolchain can both contribute to the same builder."""
         from pathlib import Path as P
-        from sniff.toolchain import CMakeToolchain, EnvVarBuilder as TcBuilder
+        from sniff_cli.toolchain import CMakeToolchain, EnvVarBuilder as TcBuilder
 
         prefix = "/opt/conda/envs/apxm"
         resolver = LibraryPathResolver.for_platform("Linux")
@@ -454,7 +458,7 @@ class TestLibpathToolchainIntegration:
             resolver.configure_builder(builder)
             # Then, CMakeToolchain contributes
             from unittest.mock import patch as mpatch
-            with mpatch("sniff.toolchain.platform.system", return_value="Linux"):
+            with mpatch("sniff_cli.toolchain.platform.system", return_value="Linux"):
                 cmake = CMakeToolchain(prefix=P(prefix))
                 cmake.configure(builder)
 

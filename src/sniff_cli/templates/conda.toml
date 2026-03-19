@@ -1,0 +1,18 @@
+# Conda environment example
+
+[project]
+name = "ml-project"
+
+[conda]
+name = "ml-project"
+file = "environment.yaml"
+
+[tools]
+python = { command = "python", version = ">=3.10" }
+jupyter = { command = "jupyter" }
+
+[env]
+PYTHONPATH = "{project}/src"
+
+[paths]
+bin = ["{project}/bin"]

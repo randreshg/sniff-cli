@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.version_managers import (
+from sniff_cli.version_managers import (
     ManagedVersion,
     VersionManagerDetector,
     VersionManagerInfo,

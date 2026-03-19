@@ -1,19 +1,33 @@
-# Contributing to sniff
+# Contributing to sniff-cli
 
-Thank you for your interest in contributing to sniff!
+Thank you for your interest in contributing to sniff-cli!
 
 ## Development Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/randreshg/sniff.git
-cd sniff
+git clone https://github.com/randreshg/sniff-cli.git
+cd sniff-cli
 ```
 
 2. Create a virtual environment:
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m venv .venv
+```
+
+macOS/Linux activation:
+```bash
+source .venv/bin/activate
+```
+
+PowerShell:
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Command Prompt:
+```bat
+.venv\Scripts\activate.bat
 ```
 
 3. Install in development mode:
@@ -25,13 +39,13 @@ pip install -e ".[dev]"
 
 ```bash
 # Run all tests
-pytest
+sniff test
 
 # Run with coverage
-pytest --cov=sniff --cov-report=html
+sniff test -- --cov=sniff_cli --cov-report=html
 
 # Run specific test file
-pytest tests/test_detect.py
+sniff test tests/test_detect.py
 ```
 
 ## Code Quality
@@ -46,7 +60,7 @@ ruff format .
 ruff check .
 
 # Type check
-mypy src/sniff
+mypy src/sniff_cli
 ```
 
 ## Pull Request Process

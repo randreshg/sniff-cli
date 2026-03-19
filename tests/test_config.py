@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff.config import ConfigManager, ConfigReconciler, ConfigSource
+from sniff_cli.config import ConfigManager, ConfigReconciler, ConfigSource
 
 
 # ===========================================================================

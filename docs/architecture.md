@@ -1,17 +1,17 @@
-# Sniff Architecture
+# sniff-cli Architecture
 
 ## Overview
 
-Sniff is a development environment detection library and CLI framework.
+sniff-cli is a development environment detection library and CLI framework.
 It detects platforms, conda environments, build systems, compilers, CI providers,
 shells, and workspaces -- then provides activation and wrapper generation via
-`.sniff.toml` configuration files.
+`.sniff-cli.toml` configuration files.
 
 ---
 
 ## Core Principles
 
-1. **Lazy by default** -- `import sniff` takes <1ms. All modules use PEP 562
+1. **Lazy by default** -- `import sniff_cli` takes <1ms. All modules use PEP 562
    `__getattr__` for deferred loading. Rich and Typer are only imported when
    CLI features are actually used.
 
@@ -30,7 +30,7 @@ shells, and workspaces -- then provides activation and wrapper generation via
 ## Module Organization
 
 ```
-src/sniff/
+src/sniff_cli/
 ├── __init__.py          # PEP 562 lazy re-exports (auto-generated __all__)
 ├── _compat.py           # TOML compat, load_toml, load_json, deep_merge, walk_up
 │
@@ -50,6 +50,7 @@ src/sniff/
 ├── version_managers.py  # VersionManagerDetector, VersionManagerInfo
 ├── lockfile.py          # LockfileParser, LockfileInfo, LockfileKind
 ├── shell.py             # ShellDetector, ShellInfo, ActivationScriptBuilder
+├── sniff_os.py          # Host OS interface: wrapper/venv/conda path behavior
 ├── libpath.py           # LibraryPathInfo, LibraryPathResolver
 │
 │   # ── Environment Setup ─────────────────────────────────
@@ -69,7 +70,7 @@ src/sniff/
 ├── scaffold.py          # ProjectTypeDetector, TemplateRegistry, SetupScriptBuilder
 ├── commands.py          # CommandRegistry, CommandProvider
 │
-│   # ── CLI Framework (requires sniff[cli]) ───────────────
+│   # ── CLI Framework ──────────────────────────────────────────
 ├── typer_app.py         # Typer wrapper with auto-activation
 ├── cli_commands.py      # run_doctor, run_version, run_env
 ├── cli/
@@ -93,8 +94,8 @@ and loaded on first access via PEP 562 `__getattr__`:
 
 ```python
 _MODULE_ATTRS = {
-    "sniff.detect": ["PlatformDetector", "PlatformInfo"],
-    "sniff.deps": ["DependencyChecker", "DependencySpec", ...],
+    "sniff_cli.detect": ["PlatformDetector", "PlatformInfo"],
+    "sniff_cli.deps": ["DependencyChecker", "DependencySpec", ...],
     ...
 }
 
@@ -122,31 +123,56 @@ Consolidated compatibility layer used by 6+ modules:
 
 ---
 
+## OS Abstraction (`sniff_os.py`)
+
+Windows-specific behavior used to be scattered across wrapper generation,
+toolchain setup, runner bootstrap, and install-path defaults. `sniff_os.py`
+centralizes those decisions behind a small interface:
+
+- `PosixSniffOS` owns POSIX wrapper generation, `bin/` venv layout, and
+  Unix conda/runtime path conventions.
+- `WindowsSniffOS` owns `.cmd` wrapper generation, `Scripts/` venv layout,
+  Windows conda runtime path layout, and user scripts installation defaults.
+- `get_sniff_os()` selects the host implementation once, so higher-level
+  modules do not duplicate platform checks.
+
+Modules that rely on this layer:
+
+- `wrapper.py` delegates launcher format, filename suffixes, and default
+  installation directories to `sniff_os`.
+- `runner.py` uses `sniff_os` to find `python` and `pip` inside a venv.
+- `toolchain.py` uses `sniff_os` for conda runtime paths and CMake layout.
+
+The design rule is: platform-sensitive filesystem and launcher behavior lives
+in `sniff_os.py`; higher-level modules stay focused on environment semantics.
+
+---
+
 ## CLI Framework
 
-The CLI layer (`sniff[cli]`) provides:
+The CLI layer (included in the base `sniff-cli` install) provides:
 
-- **`sniff.cli.styles`** -- 12 semantic output functions (`print_success`,
+- **`sniff_cli.cli.styles`** -- 12 semantic output functions (`print_success`,
   `print_error`, etc.) covering 89% of CLI output patterns. Colors and Symbols
   enums for consistent styling.
 
-- **`sniff.cli.output`** -- `OutputFormatter` with TABLE/JSON/YAML/TEXT modes,
+- **`sniff_cli.cli.output`** -- `OutputFormatter` with TABLE/JSON/YAML/TEXT modes,
   quiet/verbose support, and `print_dep_results` for dependency checks.
 
-- **`sniff.cli.progress`** -- `progress_bar` and `spinner` context managers
+- **`sniff_cli.cli.progress`** -- `progress_bar` and `spinner` context managers
   wrapping Rich progress indicators.
 
-- **`sniff.cli.errors`** -- `SniffError` base class with typed subclasses
+- **`sniff_cli.cli.errors`** -- `SniffError` base class with typed subclasses
   (`NotFoundError`, `ValidationError`, `ConfigError`, `DependencyError`).
 
-- **`sniff.typer_app`** -- `Typer` wrapper that adds auto-activation from
-  `.sniff.toml` as a pre-command hook.
+- **`sniff_cli.typer_app`** -- `Typer` wrapper that adds auto-activation from
+  `.sniff-cli.toml` as a pre-command hook.
 
 ---
 
 ## Extension Points
 
-Sniff uses the **provider pattern**: sniff defines Protocol interfaces,
+sniff-cli uses the **provider pattern**: sniff-cli defines Protocol interfaces,
 consumers register implementations.
 
 | Extension Point | Protocol | Registry | Use Case |
@@ -162,7 +188,7 @@ consumers register implementations.
 
 | Metric | Target | Actual |
 |--------|--------|--------|
-| `import sniff` | < 5ms | 0.4ms |
+| `import sniff_cli` | < 5ms | 0.4ms |
 | `PlatformDetector().detect()` | < 5ms | ~2ms |
 | `CIDetector().detect()` | < 1ms | ~0.5ms |
 | `sniff --help` | < 500ms | ~200ms |
@@ -178,6 +204,6 @@ Strategies:
 ## See Also
 
 - [Getting Started](getting-started.md) -- Installation and quick start
-- [.sniff.toml Specification](spec.md) -- Config file format reference
+- [.sniff-cli.toml Specification](spec.md) -- Config file format reference
 - [Wrapper Generation](wrapper.md) -- How `sniff wrap` works
 - [Contributing](contributing.md) -- Development setup and code style

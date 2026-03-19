@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff.shell import (
+from sniff_cli.shell import (
     ActivationConfig,
     ActivationScriptBuilder,
     AliasSuggestor,

@@ -1,6 +1,8 @@
-# .sniff.toml Examples by Language
+# .sniff-cli.toml Examples by Language
 
-Ready-to-use `.sniff.toml` configurations for common project types, each with a wrapper generation example.
+Ready-to-use `.sniff-cli.toml` configurations for common project types, each
+with a wrapper generation example. Use `sniff` as the canonical command in the
+examples below. `sniff-cli` remains available as a compatibility alias.
 
 ---
 
@@ -29,7 +31,7 @@ bin = ["{conda}/bin"]
 
 ```bash
 sniff wrap ml-pipeline ./tools/cli.py \
-  --python "{conda}/bin/python3"
+  --python /path/to/conda/envs/ml-pipeline/bin/python3
 ```
 
 ---
@@ -235,7 +237,7 @@ bin = [
 ```bash
 # Wrap the Python CLI that drives the Rust-built compiler
 sniff wrap compiler-toolkit ./tools/cli.py \
-  --python "{conda}/bin/python3"
+  --python /path/to/conda/envs/compiler-toolkit/bin/python3
 ```
 
 ---
@@ -244,7 +246,7 @@ sniff wrap compiler-toolkit ./tools/cli.py \
 
 ### Minimal (any language)
 
-The smallest valid `.sniff.toml`:
+The smallest valid `.sniff-cli.toml`:
 
 ```toml
 [project]
@@ -291,12 +293,12 @@ sniff wrap myapp-cli    ./target/release/cli
 sniff wrap myapp-worker ./target/release/worker
 ```
 
-All three wrappers share the same environment from `.sniff.toml`.
+All three wrappers share the same environment from `.sniff-cli.toml`.
 
 ---
 
 ## See Also
 
-- [.sniff.toml Specification](spec.md) -- full field reference
+- [.sniff-cli.toml Specification](spec.md) -- full field reference
 - [Wrapper Generation](wrapper.md) -- how wrappers work
 - [Quick Reference](cheatsheet.md) -- one-page cheat sheet

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from rich.console import Console
 
-from sniff.context import (
+from sniff_cli.context import (
     CPUInfo,
     ContextWorkspaceInfo,
     ExecutionContext,
@@ -19,10 +19,10 @@ from sniff.context import (
     GPUInfo,
     MemoryInfo,
 )
-from sniff.ci import CIBuildInfo, CIInfo, CIProvider
-from sniff.detect import PlatformInfo
-from sniff.conda import CondaEnvironment
-from sniff.cli_commands import (
+from sniff_cli.ci import CIBuildInfo, CIInfo, CIProvider
+from sniff_cli.detect import PlatformInfo
+from sniff_cli.conda import CondaEnvironment
+from sniff_cli.cli_commands import (
     run_doctor,
     run_env,
     run_version,
@@ -109,13 +109,13 @@ def _capture_output(func, *args, **kwargs) -> str:
     """Call func while patching the styles module console, return the output."""
     buf = StringIO()
     test_console = Console(file=buf, no_color=True, highlight=False, width=200)
-    import sniff.cli.styles as _styles_mod
+    import sniff_cli.cli.styles as _styles_mod
     orig_console = _styles_mod.console
     orig_internal = _styles_mod._console
     _styles_mod.console = test_console
     _styles_mod._console = test_console
     try:
-        with patch("sniff.cli_commands.console", test_console):
+        with patch("sniff_cli.cli_commands.console", test_console):
             func(*args, **kwargs)
     finally:
         _styles_mod.console = orig_console
