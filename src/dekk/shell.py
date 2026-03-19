@@ -177,6 +177,62 @@ class ShellDetector:
             config_files=self._find_config_files(kind),
         )
 
+    def config_candidates(self, kind: ShellKind) -> tuple[Path, ...]:
+        """Return candidate config files for a shell, whether or not they exist."""
+        try:
+            home = Path.home()
+        except RuntimeError:
+            return ()
+
+        candidates: list[Path] = []
+
+        if kind == ShellKind.BASH:
+            candidates = [
+                home / ".bashrc",
+                home / ".bash_profile",
+                home / ".profile",
+                home / ".bash_login",
+            ]
+        elif kind == ShellKind.ZSH:
+            candidates = [
+                home / ".zshrc",
+                home / ".zprofile",
+                home / ".zshenv",
+                home / ".zlogin",
+            ]
+        elif kind == ShellKind.FISH:
+            config_dir = _user_config_home(home)
+            candidates = [
+                config_dir / "fish" / "config.fish",
+                config_dir / "fish" / "fish_variables",
+            ]
+        elif kind == ShellKind.TCSH:
+            candidates = [
+                home / ".tcshrc",
+                home / ".cshrc",
+                home / ".login",
+            ]
+        elif kind in (ShellKind.POWERSHELL, ShellKind.PWSH):
+            if platform.system() == "Windows":
+                from platformdirs import user_documents_path
+
+                docs = user_documents_path()
+                candidates = [
+                    docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1",
+                    docs / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1",
+                ]
+            else:
+                config_dir = _user_config_home(home)
+                candidates = [
+                    config_dir / "powershell" / "Microsoft.PowerShell_profile.ps1",
+                ]
+        elif kind in (ShellKind.SH, ShellKind.DASH, ShellKind.KSH):
+            candidates = [
+                home / ".profile",
+            ]
+
+        return tuple(candidates)
+
     def _parse_shell_name(self, shell_str: str) -> ShellKind:
         """Extract ShellKind from a path or name string."""
         name = Path(shell_str).stem.lower()
@@ -221,57 +277,11 @@ class ShellDetector:
 
     def _find_config_files(self, kind: ShellKind) -> tuple[str, ...]:
         """Find existing shell config files for the given shell."""
-        try:
-            home = Path.home()
-        except RuntimeError:
-            return ()
+        return tuple(str(p) for p in self.config_candidates(kind) if p.exists())
 
-        candidates: list[Path] = []
 
-        if kind == ShellKind.BASH:
-            candidates = [
-                home / ".bashrc",
-                home / ".bash_profile",
-                home / ".profile",
-                home / ".bash_login",
-            ]
-        elif kind == ShellKind.ZSH:
-            candidates = [
-                home / ".zshrc",
-                home / ".zprofile",
-                home / ".zshenv",
-                home / ".zlogin",
-            ]
-        elif kind == ShellKind.FISH:
-            config_dir = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
-            candidates = [
-                config_dir / "fish" / "config.fish",
-                config_dir / "fish" / "fish_variables",
-            ]
-        elif kind == ShellKind.TCSH:
-            candidates = [
-                home / ".tcshrc",
-                home / ".cshrc",
-                home / ".login",
-            ]
-        elif kind in (ShellKind.POWERSHELL, ShellKind.PWSH):
-            if platform.system() == "Windows":
-                docs = Path(os.environ.get("USERPROFILE", home)) / "Documents"
-                candidates = [
-                    docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1",
-                    docs / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1",
-                ]
-            else:
-                config_dir = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
-                candidates = [
-                    config_dir / "powershell" / "Microsoft.PowerShell_profile.ps1",
-                ]
-        elif kind in (ShellKind.SH, ShellKind.DASH, ShellKind.KSH):
-            candidates = [
-                home / ".profile",
-            ]
-
-        return tuple(str(p) for p in candidates if p.exists())
+def _user_config_home(home: Path) -> Path:
+    return Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
 
 
 # ---------------------------------------------------------------------------

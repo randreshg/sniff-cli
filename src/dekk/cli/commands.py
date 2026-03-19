@@ -184,19 +184,29 @@ def example(
 def uninstall(
     name: str = typer.Argument(..., help="Name of the wrapper to remove"),
     install_dir: Optional[Path] = typer.Option(
-        None, "--install-dir", "-d", help="Directory to look in (default: user scripts directory)"
+        None, "--install-dir", "-d", help="Directory to look in (default: ./.install)"
+    ),
+    remove_path: bool = typer.Option(
+        False,
+        "--remove-path",
+        help="Also remove this project's PATH export from the shell config",
     ),
 ) -> None:
     """Remove an installed wrapper script.
 
     Examples:
         dekk uninstall myapp
-        dekk uninstall myapp --install-dir /usr/local/bin
-        dekk uninstall myapp --install-dir "$env:APPDATA\\Python\\Scripts"
+        dekk uninstall myapp --install-dir ./.install
+        dekk uninstall myapp --remove-path
     """
-    from dekk.wrapper import WrapperGenerator
+    from dekk.install import BinaryInstaller
 
-    result = WrapperGenerator.uninstall(name, install_dir=install_dir)
+    project_root = Path.cwd().resolve()
+    result = BinaryInstaller(project_root=project_root).uninstall_wrapper(
+        name,
+        install_dir=install_dir,
+        clean_shell=remove_path,
+    )
     print_success(result.message)
 
 
@@ -209,7 +219,7 @@ def install(
     target: Path = typer.Argument(..., help="Script or binary to install"),
     name: Optional[str] = typer.Option(None, "--name", "-n", help="Installed command name"),
     python: Optional[Path] = typer.Option(None, "--python", help="Python interpreter for script targets"),
-    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: user scripts directory)"),
+    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: ./.install)"),
     spec_file: Optional[Path] = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml (default: auto-detect near the target)"),
 ) -> None:
     """Install a runnable project command with the right environment behavior.
@@ -314,7 +324,7 @@ def wrap(
     name: str = typer.Argument(..., help="Name for the wrapper binary"),
     target: Path = typer.Argument(..., help="Binary or script to wrap"),
     python: Optional[Path] = typer.Option(None, "--python", help="Python interpreter for script targets"),
-    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: user scripts directory)"),
+    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: ./.install)"),
     spec_file: Optional[Path] = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml (default: auto-detect)"),
 ) -> None:
     """Generate a self-contained wrapper that activates your environment automatically.
@@ -325,7 +335,7 @@ def wrap(
     Examples:
         dekk wrap myapp ./bin/myapp
         dekk wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
-        dekk wrap myapp .\\dist\\myapp.exe --install-dir "$env:APPDATA\\Python\\Scripts"
+        dekk wrap myapp .\\dist\\myapp.exe --install-dir .\\.install
     """
     from dekk.wrapper import WrapperGenerator
     from dekk.envspec import EnvironmentSpec, find_envspec

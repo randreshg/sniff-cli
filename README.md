@@ -115,7 +115,7 @@ Generate a self-contained launcher that bakes in the full environment.
 
 ```
 $ dekk wrap myapp ./bin/myapp
-  Generated myapp -> ~/.local/bin/myapp
+  Generated myapp -> /path/to/project/.install/myapp
 
 $ myapp doctor    # just works -- no activation needed
 ```
@@ -130,10 +130,9 @@ exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```
 
-On Windows, dekk installs a `.cmd` launcher in Python's user scripts
-directory (the `Scripts` directory under `python -m site --user-base`) so the
-command works from both Command Prompt and PowerShell without requiring
-`Activate.ps1`.
+On Windows, dekk installs a `.cmd` launcher in the project's `.install`
+directory so the command works from both Command Prompt and PowerShell
+without requiring `Activate.ps1`.
 
 From Python:
 ```python
@@ -169,9 +168,7 @@ dekk init --example quickstart
 That gives you a working CLI immediately, a system check, and a starter
 `.dekk.toml` in the current directory.
 
-If `dekk` is not found yet, your scripts directory is probably not on `PATH`.
-Use `python -m dekk --help` immediately, then add the user scripts
-directory reported by `python -m site --user-base` to `PATH`.
+If `dekk` is not found yet, use `python -m dekk --help` immediately.
 
 If you want a built-in starter without writing files yet:
 
@@ -196,12 +193,21 @@ eval "$(dekk activate --shell bash)"
 
 # Install a launcher after your project builds a target
 dekk install ./bin/myapp --name myapp
+
+# Remove a launcher again
+dekk uninstall myapp
 ```
 
 For Python scripts, `dekk install ./tools/cli.py` uses `pyproject.toml` to
 create or refresh `.venv` automatically on first run. For binaries and
 conda-backed projects, `dekk install` uses `.dekk.toml` to bake the
-required environment into the installed command.
+required environment into the installed command. When the install directory is
+not already on `PATH`, dekk also appends the project's `.install` directory to
+the active shell config when it can, then asks for a shell restart once.
+
+Use `dekk uninstall <name>` to remove an installed launcher. Pass
+`--remove-path` when you also want dekk to remove that project's PATH export
+from the shell config.
 
 ```powershell
 # PowerShell
@@ -217,7 +223,7 @@ dekk uses one name per surface area:
 - **Python import**: `dekk`
 - **CLI command**: `dekk`
 - **Project config file**: `.dekk.toml`
-- **Default wrapper location**: the Python user scripts directory on the current platform
+- **Default wrapper location**: `.install/` in the current project
 
 That keeps installation, imports, command usage, and project setup distinct and predictable.
 

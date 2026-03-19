@@ -397,23 +397,17 @@ class TestInstall:
         assert content == self.SAMPLE_SCRIPT
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        fake_userbase = tmp_path / "userbase"
-        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: PosixDekkOS())
-        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
-
+        monkeypatch.chdir(tmp_path)
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
-        expected = fake_userbase / "bin" / "myapp"
+        expected = tmp_path / ".install" / "myapp"
         assert result.bin_path == expected
         assert result.bin_path.exists()
 
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        fake_userbase = tmp_path / "userbase"
-        scripts_dir = fake_userbase / "Scripts"
         monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
-        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
-
+        monkeypatch.chdir(tmp_path)
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
-        expected = scripts_dir / "myapp.cmd"
+        expected = tmp_path / ".install" / "myapp.cmd"
         assert result.bin_path == expected
         assert result.bin_path.exists()
 
@@ -635,33 +629,26 @@ class TestUninstall:
         assert result.bin_path == tmp_path / "myapp"
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        fake_userbase = tmp_path / "userbase"
-        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: PosixDekkOS())
-        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
-        local_bin = fake_userbase / "bin"
-        local_bin.mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
 
         # Install to the default location, then uninstall.
         WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
-        assert (local_bin / "myapp").exists()
+        assert (tmp_path / ".install" / "myapp").exists()
 
         result = WrapperGenerator.uninstall("myapp")
-        assert not (local_bin / "myapp").exists()
-        assert result.bin_path == local_bin / "myapp"
+        assert not (tmp_path / ".install" / "myapp").exists()
+        assert result.bin_path == tmp_path / ".install" / "myapp"
 
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        fake_userbase = tmp_path / "userbase"
-        scripts_dir = fake_userbase / "Scripts"
         monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
-        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
-        scripts_dir.mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
 
         WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
-        assert (scripts_dir / "myapp.cmd").exists()
+        assert (tmp_path / ".install" / "myapp.cmd").exists()
 
         result = WrapperGenerator.uninstall("myapp")
-        assert not (scripts_dir / "myapp.cmd").exists()
-        assert result.bin_path == scripts_dir / "myapp.cmd"
+        assert not (tmp_path / ".install" / "myapp.cmd").exists()
+        assert result.bin_path == tmp_path / ".install" / "myapp.cmd"
 
     def test_in_path_reported(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("PATH", str(tmp_path))

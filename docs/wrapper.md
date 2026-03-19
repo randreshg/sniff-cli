@@ -32,7 +32,7 @@ without activating anything first.
 1. `dekk` reads your `.dekk.toml`
 2. Resolves conda prefix, env vars, and paths via `EnvironmentSpec.expand_placeholders()`
 3. Generates a platform-appropriate launcher with hardcoded absolute paths
-4. Installs it to the user scripts directory, or to a custom directory you choose
+4. Installs it to the project's `.install` directory, or to a custom directory you choose
 
 The generated wrapper looks like this on POSIX:
 
@@ -45,10 +45,9 @@ exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```
 
-On Windows, `dekk` installs a `.cmd` launcher in Python's user scripts
-directory by default. That is the `Scripts` directory under
-`python -m site --user-base`. It matches the standard user-level scripts
-directory used by Python packaging tools and avoids relying on `Activate.ps1`.
+On Windows, `dekk` installs a `.cmd` launcher in the project's `.install`
+directory by default. That keeps the install location consistent with POSIX
+and avoids relying on `Activate.ps1`.
 
 Every environment detail is resolved once at generation time and written as
 literal strings. At runtime the launcher is trivial: set variables, prepend
@@ -72,7 +71,7 @@ dekk wrap <name> <target> [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--python PATH` | Python interpreter for script targets |
-| `--install-dir PATH`, `-d` | Installation directory (default: user scripts directory) |
+| `--install-dir PATH`, `-d` | Installation directory (default: `./.install`) |
 | `--spec PATH`, `-s` | Path to `.dekk.toml` (default: auto-detect from cwd) |
 
 **Examples:**
@@ -191,5 +190,5 @@ dekk wrap myapp ./bin/myapp
 - `"$@"` passes all arguments through to the target unchanged
 - Proper shell escaping for values with special characters
 - POSIX wrappers are marked executable (`chmod 755`) automatically
-- Default install directory follows Python's user scripts convention
+- Default install directory is `./.install`
 - If the install directory is not in `PATH`, `dekk` reports this and suggests adding it

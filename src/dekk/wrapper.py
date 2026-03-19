@@ -33,7 +33,7 @@ from typing import Optional
 from .activation import ActivationResult, EnvironmentActivator
 from .cli.errors import NotFoundError, ValidationError
 from .envspec import EnvironmentSpec, find_envspec
-from .install import InstallResult
+from .install import DEFAULT_INSTALL_DIRNAME, InstallResult
 from .dekk_os import get_dekk_os
 
 
@@ -246,9 +246,7 @@ class WrapperGenerator:
             name: File name for the wrapper (e.g. ``"myapp"``).  Must not
                 contain path separators.
             install_dir: Directory in which to place the wrapper. Defaults to
-                the user scripts directory (for example ``~/.local/bin`` on
-                POSIX and ``Scripts`` under ``python -m site --user-base`` on
-                Windows).
+                ``.install`` in the current working directory.
 
         Returns:
             An :class:`~dekk.install.InstallResult` with the written path,
@@ -268,7 +266,7 @@ class WrapperGenerator:
         wrapper_name = dekk_os.wrapper_filename(name)
 
         if install_dir is None:
-            install_dir = dekk_os.default_wrapper_install_dir()
+            install_dir = _default_install_dir()
 
         install_dir = Path(install_dir).resolve()
         install_dir.mkdir(parents=True, exist_ok=True)
@@ -302,8 +300,8 @@ class WrapperGenerator:
 
         Args:
             name: Wrapper file name (e.g. ``"myapp"``).
-            install_dir: Directory the wrapper lives in. Defaults to the user
-                scripts directory for the current platform.
+            install_dir: Directory the wrapper lives in. Defaults to
+                ``.install`` in the current working directory.
 
         Returns:
             :class:`~dekk.install.InstallResult` describing what was removed.
@@ -312,7 +310,7 @@ class WrapperGenerator:
         wrapper_name = dekk_os.wrapper_filename(name)
 
         if install_dir is None:
-            install_dir = dekk_os.default_wrapper_install_dir()
+            install_dir = _default_install_dir()
 
         install_dir = Path(install_dir).resolve()
         wrapper_path = install_dir / wrapper_name
@@ -351,7 +349,7 @@ class WrapperGenerator:
             target: Path to the binary or Python script to wrap.
             name: Wrapper file name (e.g. ``"myapp"``).
             python: Optional Python interpreter.
-            install_dir: Where to install (default user scripts directory).
+            install_dir: Where to install (default: the project's ``.install`` directory).
             project_root: Project root directory.  If *None*, inferred from
                 *spec_file*'s parent directory (when a path is given) or the
                 current working directory (when an ``EnvironmentSpec`` is
@@ -374,7 +372,7 @@ class WrapperGenerator:
             python=python,
         )
 
-        return cls.install(script, name, install_dir=install_dir)
+        return cls.install(script, name, install_dir=install_dir or (root / DEFAULT_INSTALL_DIRNAME))
 
     # ------------------------------------------------------------------ #
     # Internal helpers
@@ -526,9 +524,10 @@ def _generate_cmd_script(
     return "\r\n".join(lines)
 
 
-def _default_install_dir() -> Path:
-    """Return the platform-appropriate user scripts directory."""
-    return get_dekk_os().default_wrapper_install_dir()
+def _default_install_dir(project_root: Path | None = None) -> Path:
+    """Return the default project-local install directory."""
+    root = project_root.resolve() if project_root is not None else Path.cwd().resolve()
+    return root / DEFAULT_INSTALL_DIRNAME
 
 
 def _wrapper_filename(name: str) -> str:

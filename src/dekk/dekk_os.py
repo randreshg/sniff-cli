@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import platform
-import site
 import stat
 import subprocess
 from dataclasses import dataclass
@@ -44,7 +43,6 @@ class DekkOS(Protocol):
     name: str
     path_separator: str
 
-    def default_wrapper_install_dir(self) -> Path: ...
     def wrapper_filename(self, name: str) -> str: ...
     def conda_runtime_paths(self, prefix: Path) -> tuple[Path, ...]: ...
     def cmake_package_dir(self, prefix: Path, package: str) -> Path: ...
@@ -69,9 +67,6 @@ class DekkOS(Protocol):
 class PosixDekkOS:
     name: str = "posix"
     path_separator: str = ":"
-
-    def default_wrapper_install_dir(self) -> Path:
-        return Path(site.getuserbase()) / "bin"
 
     def wrapper_filename(self, name: str) -> str:
         return name
@@ -160,9 +155,6 @@ class PosixDekkOS:
 class WindowsDekkOS:
     name: str = "windows"
     path_separator: str = ";"
-
-    def default_wrapper_install_dir(self) -> Path:
-        return Path(site.getuserbase()) / "Scripts"
 
     def wrapper_filename(self, name: str) -> str:
         suffix = Path(name).suffix.lower()

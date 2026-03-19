@@ -116,7 +116,7 @@ dekk install ./bin/myapp --name myapp  # Install a wrapped binary command
 eval "$(dekk activate --shell bash)"      # Activate environment in the current POSIX shell
 dekk activate --shell powershell          # Emit PowerShell activation script
 
-dekk wrap myapp ./bin/myapp               # Generate wrapper in the default user scripts dir
+dekk wrap myapp ./bin/myapp               # Generate wrapper in ./.install
 dekk wrap myapp ./cli.py \
   --python /path/to/python3        # Wrap a Python script
 dekk wrap myapp ./bin/myapp \

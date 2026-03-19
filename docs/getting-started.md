@@ -21,7 +21,7 @@ dekk --help
 dekk doctor
 ```
 
-If your scripts directory is not on `PATH` yet, use:
+If `dekk` is not on `PATH` yet, use:
 
 ```bash
 python -m dekk --help
@@ -91,7 +91,9 @@ myapp --help
 For Python scripts, `dekk install ./tools/cli.py` expects a nearby
 `pyproject.toml` and bootstraps `.venv` automatically on first run.
 For binaries and conda-backed projects, prefer `.dekk.toml` plus
-`dekk install <target>`.
+`dekk install <target>`. In both cases, the launcher is written to
+`./.install` by default and `dekk` can add that directory to your shell
+config automatically.
 
 ## Using The Library APIs
 

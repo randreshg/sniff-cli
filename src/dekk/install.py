@@ -9,11 +9,22 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Final, Literal, Optional, Sequence
 
 from .cli.errors import NotFoundError
 from .shell import ShellDetector, ShellKind
 from .dekk_os import get_dekk_os
+
+DEFAULT_INSTALL_DIRNAME: Final = ".install"
+DEKK_MODULE_NAME: Final = "dekk"
+PROJECT_SPEC_FILENAME: Final = ".dekk.toml"
+SHELL_CONFIG_STATE_ADDED: Final = "added"
+SHELL_CONFIG_STATE_ALREADY_CONFIGURED: Final = "already_configured"
+SHELL_CONFIG_STATE_FAILED: Final = "failed"
+SHELL_CONFIG_ENTRY_SUFFIX: Final = "install dir"
+MESSAGE_ADDED_TO_SHELL_CONFIG: Final = " (added to shell config - restart shell)"
+MESSAGE_ALREADY_IN_SHELL_CONFIG: Final = " (already in shell config - restart shell if needed)"
+MESSAGE_REMOVED_SHELL_CONFIG_ENTRY: Final = " (removed shell config entry)"
 
 
 @dataclass
@@ -34,15 +45,15 @@ class BinaryInstaller:
     def install_binary(
         self,
         source: Path,
-        bin_dir: Optional[Path] = None,
+        install_dir: Optional[Path] = None,
         update_shell: bool = True,
     ) -> InstallResult:
-        """Install a binary to bin directory and optionally update PATH.
+        """Install a binary to the project install directory and optionally update PATH.
 
         Args:
             source: Binary to install
-            bin_dir: Target directory (default: {project}/bin)
-            update_shell: Update shell config if bin not in PATH
+            install_dir: Target directory (default: ``{project}/.install``)
+            update_shell: Update shell config if install dir is not in PATH
 
         Returns:
             InstallResult with details
@@ -50,10 +61,10 @@ class BinaryInstaller:
         if not source.exists():
             raise NotFoundError(f"Binary not found: {source}", hint="Build it first")
 
-        if bin_dir is None:
-            bin_dir = self.project_root / "bin"
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        target = bin_dir / source.name
+        if install_dir is None:
+            install_dir = self.default_install_dir()
+        install_dir.mkdir(parents=True, exist_ok=True)
+        target = install_dir / source.name
 
         # Install: try symlink first, fall back to copy
         try:
@@ -63,18 +74,12 @@ class BinaryInstaller:
         except (OSError, NotImplementedError):
             shutil.copy2(source, target)
             target.chmod(0o755)
-        message = f"Installed {source.name} → {bin_dir}"
-
-        in_path = self._is_in_path(bin_dir)
-
-        if not in_path and update_shell:
-            if self._add_to_shell_config(bin_dir):
-                message += " (added to shell config - restart shell)"
-                in_path = True
-            else:
-                message += f" (add {bin_dir} to PATH manually)"
-
-        return InstallResult(bin_path=target, in_path=in_path, message=message)
+        result = InstallResult(
+            bin_path=target,
+            in_path=self._is_in_path(install_dir),
+            message=f"Installed {source.name} → {install_dir}",
+        )
+        return self._with_shell_path_update(result, update_shell=update_shell)
 
     def install_wrapper(
         self,
@@ -84,6 +89,7 @@ class BinaryInstaller:
         python: Optional[Path] = None,
         name: Optional[str] = None,
         install_dir: Optional[Path] = None,
+        update_shell: bool = True,
     ) -> InstallResult:
         """Generate and install a self-contained wrapper script.
 
@@ -96,7 +102,7 @@ class BinaryInstaller:
             spec_file: Path to .dekk.toml (mutually exclusive with spec)
             python: Python interpreter to use (for wrapping Python scripts)
             name: Name for the wrapper binary (default: target filename)
-            install_dir: Where to install (default: user scripts directory)
+            install_dir: Where to install (default: ``{project}/.install``)
 
         Returns:
             InstallResult with details
@@ -111,14 +117,14 @@ class BinaryInstaller:
                 found = find_envspec(self.project_root)
                 if found is None:
                     raise NotFoundError(
-                        "No .dekk.toml found",
-                        hint="Provide spec or spec_file, or create .dekk.toml",
+                        f"No {PROJECT_SPEC_FILENAME} found",
+                        hint=f"Provide spec or spec_file, or create {PROJECT_SPEC_FILENAME}",
                     )
                 spec = EnvironmentSpec.from_file(found)
 
         wrapper_name = name or target.stem
 
-        return WrapperGenerator.install_from_spec(
+        result = WrapperGenerator.install_from_spec(
             spec_file=spec,
             target=target,
             name=wrapper_name,
@@ -126,6 +132,7 @@ class BinaryInstaller:
             install_dir=install_dir,
             project_root=self.project_root,
         )
+        return self._with_shell_path_update(result, update_shell=update_shell)
 
     def install_python_shim(
         self,
@@ -133,6 +140,7 @@ class BinaryInstaller:
         *,
         name: Optional[str] = None,
         install_dir: Optional[Path] = None,
+        update_shell: bool = True,
     ) -> InstallResult:
         """Install a wrapper that runs a Python script through ``python -m dekk``.
 
@@ -152,45 +160,75 @@ class BinaryInstaller:
                 hint="Add a pyproject.toml near the script or use --python with a .dekk.toml config",
             )
 
-        command = [sys.executable, "-m", "dekk", str(script)]
+        command = [sys.executable, "-m", DEKK_MODULE_NAME, str(script)]
         wrapper_name = name or script.stem
         project_name = self.project_root.name or wrapper_name
         wrapper = _render_command_wrapper(command, project_name=project_name)
-        return WrapperGenerator.install(wrapper, wrapper_name, install_dir=install_dir)
+        result = WrapperGenerator.install(
+            wrapper,
+            wrapper_name,
+            install_dir=install_dir or self.default_install_dir(),
+        )
+        return self._with_shell_path_update(result, update_shell=update_shell)
 
     def uninstall(
         self,
         name: str,
-        bin_dir: Optional[Path] = None,
+        install_dir: Optional[Path] = None,
         clean_shell: bool = True,
     ) -> InstallResult:
         """Remove an installed binary and optionally clean shell config.
 
         Args:
             name: Binary file name to remove
-            bin_dir: Directory to look in (default: {project}/bin)
+            install_dir: Directory to look in (default: ``{project}/.install``)
             clean_shell: Remove PATH entries from shell config
 
         Returns:
             InstallResult with details
         """
-        if bin_dir is None:
-            bin_dir = self.project_root / "bin"
+        if install_dir is None:
+            install_dir = self.default_install_dir()
 
-        target = bin_dir / name
+        target = install_dir / name
         if target.exists() or target.is_symlink():
             target.unlink()
-            message = f"Removed {name} from {bin_dir}"
+            message = f"Removed {name} from {install_dir}"
         else:
-            message = f"{name} not found in {bin_dir} (nothing to remove)"
+            message = f"{name} not found in {install_dir} (nothing to remove)"
 
         if clean_shell:
-            self._remove_from_shell_config(bin_dir)
+            self._remove_from_shell_config(install_dir)
 
         return InstallResult(bin_path=target, in_path=False, message=message)
 
-    def _remove_from_shell_config(self, bin_dir: Path) -> bool:
-        """Remove PATH entries added by install_binary. Returns True if cleaned."""
+    def uninstall_wrapper(
+        self,
+        name: str,
+        *,
+        install_dir: Optional[Path] = None,
+        clean_shell: bool = False,
+    ) -> InstallResult:
+        """Remove an installed wrapper and optionally remove its PATH entry.
+
+        This is the wrapper/script counterpart to ``install_wrapper`` and
+        ``install_python_shim``. Projects can call it directly to provide
+        their own uninstall command on top of dekk's install surface.
+        """
+        from dekk.wrapper import WrapperGenerator
+
+        result = WrapperGenerator.uninstall(name, install_dir=install_dir or self.default_install_dir())
+        if clean_shell:
+            self._remove_from_shell_config(result.bin_path.parent)
+            result.message += MESSAGE_REMOVED_SHELL_CONFIG_ENTRY
+        return result
+
+    def default_install_dir(self) -> Path:
+        """Return the project-local install directory used by dekk."""
+        return self.project_root / DEFAULT_INSTALL_DIRNAME
+
+    def _remove_from_shell_config(self, install_dir: Path) -> bool:
+        """Remove PATH entries added by dekk. Returns True if cleaned."""
         shell_info = ShellDetector().detect()
         if not shell_info or shell_info.kind == ShellKind.UNKNOWN:
             return False
@@ -199,9 +237,9 @@ class BinaryInstaller:
         if not config_file or not config_file.exists():
             return False
 
-        marker = f"# {self.project_root.name} bin"
+        marker = self._shell_config_marker()
         try:
-            lines = config_file.read_text().splitlines(keepends=True)
+            lines = config_file.read_text(encoding="utf-8").splitlines(keepends=True)
         except (OSError, UnicodeDecodeError):
             return False
 
@@ -225,7 +263,7 @@ class BinaryInstaller:
 
         if removed:
             try:
-                config_file.write_text("".join(cleaned))
+                config_file.write_text("".join(cleaned), encoding="utf-8")
                 return True
             except (OSError, PermissionError):
                 return False
@@ -238,52 +276,50 @@ class BinaryInstaller:
         dir_resolved = str(directory.resolve())
         return any(str(Path(p).resolve()) == dir_resolved for p in path_dirs if p)
 
-    def _add_to_shell_config(self, bin_dir: Path) -> bool:
-        """Add bin_dir to shell config. Returns True if updated."""
+    def _ensure_shell_config_path(
+        self,
+        install_dir: Path,
+    ) -> Literal["added", "already_configured", "failed"]:
+        """Ensure the install directory is exported from the active shell config."""
         shell_info = ShellDetector().detect()
         if not shell_info or shell_info.kind == ShellKind.UNKNOWN:
-            return False
+            return SHELL_CONFIG_STATE_FAILED
 
         config_file = self._find_shell_config(shell_info.kind)
-        if not config_file or not config_file.exists():
-            return False
+        if not config_file:
+            return SHELL_CONFIG_STATE_FAILED
+
+        config_file.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            if str(bin_dir) in config_file.read_text():
-                return False
+            existing = config_file.read_text(encoding="utf-8") if config_file.exists() else ""
+            if str(install_dir) in existing:
+                return SHELL_CONFIG_STATE_ALREADY_CONFIGURED
         except (OSError, UnicodeDecodeError):
-            return False
+            return SHELL_CONFIG_STATE_FAILED
 
-        export_line = self._path_export(shell_info.kind, bin_dir)
+        export_line = self._path_export(shell_info.kind, install_dir)
         try:
-            with config_file.open("a") as f:
-                f.write(f"\n# {self.project_root.name} bin\n{export_line}\n")
-            return True
+            with config_file.open("a", encoding="utf-8") as f:
+                f.write(f"\n{self._shell_config_marker()}\n{export_line}\n")
+            return SHELL_CONFIG_STATE_ADDED
         except (OSError, PermissionError):
-            return False
+            return SHELL_CONFIG_STATE_FAILED
 
     def _find_shell_config(self, kind: ShellKind) -> Optional[Path]:
         """Find the shell config file to update."""
-        home = Path.home()
-
-        candidates = {
-            ShellKind.BASH: [home / ".bashrc", home / ".bash_profile"],
-            ShellKind.ZSH: [home / ".zshrc"],
-            ShellKind.FISH: [Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "fish" / "config.fish"],
-            ShellKind.TCSH: [home / ".tcshrc", home / ".cshrc"],
-            ShellKind.POWERSHELL: self._powershell_profiles(home),
-            ShellKind.PWSH: self._powershell_profiles(home),
-        }.get(kind, [])
+        detector = ShellDetector()
+        candidates = detector.config_candidates(kind)
 
         for candidate in candidates:
             if candidate.exists():
                 return candidate
 
-        return None
+        return candidates[0] if candidates else None
 
-    def _path_export(self, kind: ShellKind, bin_dir: Path) -> str:
+    def _path_export(self, kind: ShellKind, install_dir: Path) -> str:
         """Generate PATH export for shell type."""
-        path = str(bin_dir)
+        path = str(install_dir)
         if kind == ShellKind.FISH:
             return f'fish_add_path -p "{path}"'
         elif kind == ShellKind.TCSH:
@@ -292,6 +328,29 @@ class BinaryInstaller:
             return f'$env:PATH = "{path}" + [IO.Path]::PathSeparator + $env:PATH'
         else:
             return f'export PATH="{path}:$PATH"'
+
+    def _with_shell_path_update(self, result: InstallResult, *, update_shell: bool) -> InstallResult:
+        """Update shell config for an install result when needed."""
+        install_dir = result.bin_path.parent
+        in_path = self._is_in_path(install_dir)
+        message = result.message.split(" (add ", 1)[0]
+
+        if not in_path and update_shell:
+            shell_config_state = self._ensure_shell_config_path(install_dir)
+            if shell_config_state == SHELL_CONFIG_STATE_ADDED:
+                message += MESSAGE_ADDED_TO_SHELL_CONFIG
+                in_path = True
+            elif shell_config_state == SHELL_CONFIG_STATE_ALREADY_CONFIGURED:
+                message += MESSAGE_ALREADY_IN_SHELL_CONFIG
+                in_path = True
+            else:
+                message += f" (add {install_dir} to PATH manually)"
+
+        return InstallResult(bin_path=result.bin_path, in_path=in_path, message=message)
+
+    def _shell_config_marker(self) -> str:
+        """Return the dekk marker used around shell PATH exports."""
+        return f"# {DEKK_MODULE_NAME}: {self.project_root.name} {SHELL_CONFIG_ENTRY_SUFFIX}"
 
 
 def _render_command_wrapper(command: Sequence[str], *, project_name: str) -> str:
@@ -334,15 +393,3 @@ def _find_pyproject(start: Path) -> Path | None:
         if candidate.is_file():
             return candidate
     return None
-
-    def _powershell_profiles(self, home: Path) -> list[Path]:
-        """Return candidate PowerShell profile paths for the current platform."""
-        if os.name == "nt":
-            docs = Path(os.environ.get("USERPROFILE", home)) / "Documents"
-            return [
-                docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1",
-                docs / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1",
-            ]
-
-        config_dir = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
-        return [config_dir / "powershell" / "Microsoft.PowerShell_profile.ps1"]

@@ -149,11 +149,16 @@ def _make_app():
     def uninstall(
         name: str = typer.Argument(..., help="Wrapper name to uninstall"),
         install_dir: str | None = typer.Option(None, "--install-dir", help="Installation directory"),
+        remove_path: bool = typer.Option(False, "--remove-path", help="Also remove the PATH export for this project"),
     ) -> None:
         """Remove an installed wrapper."""
         from dekk.cli.commands import uninstall as _uninstall
 
-        _uninstall(name=name, install_dir=Path(install_dir) if install_dir else None)
+        _uninstall(
+            name=name,
+            install_dir=Path(install_dir) if install_dir else None,
+            remove_path=remove_path,
+        )
 
     return app
 
