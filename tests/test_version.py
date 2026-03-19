@@ -2,7 +2,7 @@
 
 import pytest
 
-from sniff_cli.version import (
+from dekk.version import (
     Version,
     VersionConstraint,
     VersionSpec,

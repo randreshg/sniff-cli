@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff_cli.config import ConfigManager, ConfigReconciler, ConfigSource
+from dekk.config import ConfigManager, ConfigReconciler, ConfigSource
 
 
 # ===========================================================================

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff_cli.build import (
+from dekk.build import (
     BuildSystem,
     BuildSystemDetector,
     BuildSystemInfo,

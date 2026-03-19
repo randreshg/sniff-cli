@@ -1,4 +1,4 @@
-"""Tests for sniff_cli.cli.main command wiring."""
+"""Tests for dekk.cli.main command wiring."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from sniff_cli.cli.main import _make_app
+from dekk.cli.main import _make_app
 
 
 runner = CliRunner()
@@ -16,7 +16,7 @@ runner = CliRunner()
 class TestCliMain:
     def test_activate_passes_shell(self):
         app = _make_app()
-        with patch("sniff_cli.cli.commands.activate") as activate_mock:
+        with patch("dekk.cli.commands.activate") as activate_mock:
             result = runner.invoke(app, ["activate", "--shell", "powershell"])
 
         assert result.exit_code == 0
@@ -27,7 +27,7 @@ class TestCliMain:
         target_dir = tmp_path / "demo"
         target_dir.mkdir()
 
-        with patch("sniff_cli.cli.commands.init") as init_mock:
+        with patch("dekk.cli.commands.init") as init_mock:
             result = runner.invoke(
                 app,
                 ["init", str(target_dir), "--name", "demo-app", "--force"],
@@ -46,7 +46,7 @@ class TestCliMain:
         target_dir = tmp_path / "demo"
         target_dir.mkdir()
 
-        with patch("sniff_cli.cli.commands.init") as init_mock:
+        with patch("dekk.cli.commands.init") as init_mock:
             result = runner.invoke(
                 app,
                 ["init", str(target_dir), "--example", "conda"],
@@ -66,11 +66,11 @@ class TestCliMain:
         target.write_text("print('hi')", encoding="utf-8")
         python = tmp_path / "python.exe"
         python.write_text("", encoding="utf-8")
-        spec = tmp_path / ".sniff-cli.toml"
+        spec = tmp_path / ".dekk.toml"
         spec.write_text("[project]\nname='demo'\n", encoding="utf-8")
         install_dir = tmp_path / "bin"
 
-        with patch("sniff_cli.cli.commands.wrap") as wrap_mock:
+        with patch("dekk.cli.commands.wrap") as wrap_mock:
             result = runner.invoke(
                 app,
                 [
@@ -101,11 +101,11 @@ class TestCliMain:
         target.write_text("print('hi')", encoding="utf-8")
         python = tmp_path / "python.exe"
         python.write_text("", encoding="utf-8")
-        spec = tmp_path / ".sniff-cli.toml"
+        spec = tmp_path / ".dekk.toml"
         spec.write_text("[project]\nname='demo'\n", encoding="utf-8")
         install_dir = tmp_path / "bin"
 
-        with patch("sniff_cli.cli.commands.install") as install_mock:
+        with patch("dekk.cli.commands.install") as install_mock:
             result = runner.invoke(
                 app,
                 [
@@ -134,7 +134,7 @@ class TestCliMain:
     def test_test_passes_extra_args(self):
         app = _make_app()
 
-        with patch("sniff_cli.cli.commands.test") as test_mock:
+        with patch("dekk.cli.commands.test") as test_mock:
             result = runner.invoke(app, ["test", "-q", "tests/test_detect.py"])
 
         assert result.exit_code == 0
@@ -143,7 +143,7 @@ class TestCliMain:
         app = _make_app()
         install_dir = tmp_path / "bin"
 
-        with patch("sniff_cli.cli.commands.uninstall") as uninstall_mock:
+        with patch("dekk.cli.commands.uninstall") as uninstall_mock:
             result = runner.invoke(
                 app,
                 ["uninstall", "demo", "--install-dir", str(install_dir)],
@@ -157,9 +157,9 @@ class TestCliMain:
 
     def test_example_passes_output_and_name(self, tmp_path: Path):
         app = _make_app()
-        output = tmp_path / ".sniff-cli.toml"
+        output = tmp_path / ".dekk.toml"
 
-        with patch("sniff_cli.cli.commands.example") as example_mock:
+        with patch("dekk.cli.commands.example") as example_mock:
             result = runner.invoke(
                 app,
                 ["example", "conda", "--output", str(output), "--name", "demo-app", "--force"],

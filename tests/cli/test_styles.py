@@ -1,4 +1,4 @@
-"""Tests for sniff_cli.cli.styles -- semantic colors, symbols, and output functions."""
+"""Tests for dekk.cli.styles -- semantic colors, symbols, and output functions."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pytest
 from rich.console import Console
 from rich.theme import Theme
 
-from sniff_cli.cli.styles import (
+from dekk.cli.styles import (
     CLI_THEME,
     Colors,
     Symbols,

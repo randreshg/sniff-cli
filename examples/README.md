@@ -1,37 +1,37 @@
 # Examples
 
-The built-in examples are the fastest way to get started with `sniff-cli`.
+The built-in examples are the fastest way to get started with `dekk`.
 
 ## Recommended Order
 
-1. Install the package: `pipx install sniff-cli`
-2. Verify the command works: `sniff --help`
-3. Check the current machine: `sniff doctor`
-4. Create a starter config: `sniff init --example quickstart`
+1. Install the package: `pipx install dekk`
+2. Verify the command works: `dekk --help`
+3. Check the current machine: `dekk doctor`
+4. Create a starter config: `dekk init --example quickstart`
 5. Build one real target in your project
-6. Wrap that target: `sniff wrap myapp ./bin/myapp`
+6. Wrap that target: `dekk wrap myapp ./bin/myapp`
 
-If `sniff` is not on `PATH` yet, use `python -m sniff_cli --help` first.
+If `dekk` is not on `PATH` yet, use `python -m dekk --help` first.
 
 ## Built-in Templates
 
-- `.sniff-cli.toml.quickstart` is the best default for most projects.
-- `.sniff-cli.toml.minimal` is the smallest valid config.
-- `.sniff-cli.toml.conda` is the best starting point for conda-backed projects.
+- `.dekk.toml.quickstart` is the best default for most projects.
+- `.dekk.toml.minimal` is the smallest valid config.
+- `.dekk.toml.conda` is the best starting point for conda-backed projects.
 
 You can print them directly:
 
 ```bash
-sniff example quickstart
-sniff example minimal
-sniff example conda
+dekk example quickstart
+dekk example minimal
+dekk example conda
 ```
 
 Or write one into the current directory:
 
 ```bash
-sniff init --example quickstart
-sniff example conda --output .sniff-cli.toml
+dekk init --example quickstart
+dekk example conda --output .dekk.toml
 ```
 
 ## Example Flows
@@ -39,24 +39,24 @@ sniff example conda --output .sniff-cli.toml
 Minimal Python script:
 
 ```bash
-sniff init --example quickstart
-sniff wrap myapp ./tools/cli.py --python /path/to/python
+dekk init --example quickstart
+dekk wrap myapp ./tools/cli.py --python /path/to/python
 myapp --help
 ```
 
 Compiled binary:
 
 ```bash
-sniff init --example minimal
-sniff wrap myapp ./target/release/myapp
+dekk init --example minimal
+dekk wrap myapp ./target/release/myapp
 myapp --version
 ```
 
 Windows PowerShell:
 
 ```powershell
-sniff --help
-sniff init --example quickstart
-sniff wrap myapp .\dist\myapp.exe
+dekk --help
+dekk init --example quickstart
+dekk wrap myapp .\dist\myapp.exe
 myapp --help
 ```

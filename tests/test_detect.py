@@ -4,7 +4,7 @@ import platform
 
 import pytest
 
-from sniff_cli.detect import PlatformDetector, PlatformInfo
+from dekk.detect import PlatformDetector, PlatformInfo
 
 
 def test_platform_detector_always_succeeds():

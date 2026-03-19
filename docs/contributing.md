@@ -1,13 +1,13 @@
-# Contributing to sniff-cli
+# Contributing to dekk
 
-Thank you for your interest in contributing to sniff-cli!
+Thank you for your interest in contributing to dekk!
 
 ## Development Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/randreshg/sniff-cli.git
-cd sniff-cli
+git clone https://github.com/randreshg/dekk.git
+cd dekk
 ```
 
 2. Create a virtual environment:
@@ -39,13 +39,13 @@ pip install -e ".[dev]"
 
 ```bash
 # Run all tests
-sniff test
+dekk test
 
 # Run with coverage
-sniff test -- --cov=sniff_cli --cov-report=html
+dekk test -- --cov=dekk --cov-report=html
 
 # Run specific test file
-sniff test tests/test_detect.py
+dekk test tests/test_detect.py
 ```
 
 ## Code Quality
@@ -60,7 +60,7 @@ ruff format .
 ruff check .
 
 # Type check
-mypy src/sniff_cli
+mypy src/dekk
 ```
 
 ## Pull Request Process

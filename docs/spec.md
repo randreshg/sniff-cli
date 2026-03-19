@@ -1,8 +1,8 @@
-# .sniff-cli.toml Specification
+# .dekk.toml Specification
 
 **Version:** 1.0
 
-Canonical reference for `.sniff-cli.toml`, the declarative environment configuration file read by `sniff_cli`. One file describes your entire project environment -- conda, tools, paths, variables -- and sniff-cli handles detection, activation, and wrapper generation.
+Canonical reference for `.dekk.toml`, the declarative environment configuration file read by `dekk`. One file describes your entire project environment -- conda, tools, paths, variables -- and dekk handles detection, activation, and wrapper generation.
 
 ---
 
@@ -24,7 +24,7 @@ All string values support `{variable}` expansion at runtime.
 
 | Variable | Resolves to | Example |
 |----------|-------------|---------|
-| `{project}` | Project root (directory containing `.sniff-cli.toml`) | `/home/user/projects/myapp` |
+| `{project}` | Project root (directory containing `.dekk.toml`) | `/home/user/projects/myapp` |
 | `{conda}` | `$CONDA_PREFIX` for the resolved conda environment | `/home/user/miniforge3/envs/myapp` |
 | `{home}` | User home directory (`$HOME`) | `/home/user` |
 
@@ -53,7 +53,7 @@ CONFIG   = "{home}/.config/myapp"
 
 ### `[project]` -- Project Identity (required)
 
-Every `.sniff-cli.toml` must have a `[project]` section with at least a `name`.
+Every `.dekk.toml` must have a `[project]` section with at least a `name`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -66,7 +66,7 @@ name = "myapp"
 description = "REST API server"
 ```
 
-**Implementation:** `sniff_cli.envspec.EnvironmentSpec`
+**Implementation:** `dekk.envspec.EnvironmentSpec`
 
 ---
 
@@ -85,9 +85,9 @@ name = "myapp"
 file = "environment.yaml"
 ```
 
-When present, `sniff activate` and `sniff wrap` resolve the conda prefix automatically using `CondaDetector.find_environment()`.
+When present, `dekk activate` and `dekk wrap` resolve the conda prefix automatically using `CondaDetector.find_environment()`.
 
-**Implementation:** `sniff_cli.conda.CondaDetector`
+**Implementation:** `dekk.conda.CondaDetector`
 
 ---
 
@@ -127,7 +127,7 @@ optional = false
 | `version` | string | no | Semver constraint (e.g., `>=3.20`, `>=1.70`). |
 | `optional` | bool | no | If `true`, a missing tool is a warning, not an error. Default: `false`. |
 
-**Implementation:** `sniff_cli.deps.DependencyChecker`, `sniff_cli.version.VersionSpec`
+**Implementation:** `dekk.deps.DependencyChecker`, `dekk.version.VersionSpec`
 
 ---
 
@@ -145,7 +145,7 @@ NODE_ENV = "development"
 
 All keys are exported as environment variables (`export KEY="value"` in generated scripts).
 
-**Implementation:** `sniff_cli.toolchain.EnvVarBuilder`
+**Implementation:** `dekk.toolchain.EnvVarBuilder`
 
 ---
 
@@ -160,7 +160,7 @@ bin = ["{project}/bin", "{project}/target/release", "{conda}/bin"]
 
 Each key maps to a list of directories. The `bin` key is treated specially: its entries are prepended to `PATH`. Other keys are available for custom use by downstream tools.
 
-**Implementation:** `sniff_cli.activation.EnvironmentActivator`
+**Implementation:** `dekk.activation.EnvironmentActivator`
 
 ---
 
@@ -176,15 +176,15 @@ Each key maps to a list of directories. The `bin` key is treated specially: its 
 
 ## Module Mapping
 
-| `.sniff-cli.toml` Section | `sniff_cli` Module | Primary Classes |
+| `.dekk.toml` Section | `dekk` Module | Primary Classes |
 |-----------------------|--------------|-----------------|
-| `[project]` | `sniff_cli.envspec` | `EnvironmentSpec` |
-| `[conda]` | `sniff_cli.conda` | `CondaDetector`, `CondaEnvironment` |
-| `[tools]` | `sniff_cli.deps`, `sniff_cli.version` | `DependencyChecker`, `VersionSpec` |
-| `[env]` | `sniff_cli.toolchain` | `EnvVarBuilder` |
-| `[paths]` | `sniff_cli.activation` | `EnvironmentActivator` |
-| *(activation)* | `sniff_cli.activation` | `EnvironmentActivator` |
-| *(wrappers)* | `sniff_cli.wrapper` | `WrapperGenerator` |
+| `[project]` | `dekk.envspec` | `EnvironmentSpec` |
+| `[conda]` | `dekk.conda` | `CondaDetector`, `CondaEnvironment` |
+| `[tools]` | `dekk.deps`, `dekk.version` | `DependencyChecker`, `VersionSpec` |
+| `[env]` | `dekk.toolchain` | `EnvVarBuilder` |
+| `[paths]` | `dekk.activation` | `EnvironmentActivator` |
+| *(activation)* | `dekk.activation` | `EnvironmentActivator` |
+| *(wrappers)* | `dekk.wrapper` | `WrapperGenerator` |
 
 ---
 

@@ -1,10 +1,10 @@
-"""Tests for sniff_cli.cli.progress -- progress bars and spinners."""
+"""Tests for dekk.cli.progress -- progress bars and spinners."""
 
 from __future__ import annotations
 
 from rich.progress import Progress
 
-from sniff_cli.cli.progress import progress_bar, spinner
+from dekk.cli.progress import progress_bar, spinner
 
 
 # ---------------------------------------------------------------------------

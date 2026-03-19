@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sniff-cli"
+name = "dekk"
 version = "1.0.0"
 description = "Reusable environment detection, activation, and wrapper tooling for developer CLIs."
 readme = "README.md"
@@ -52,15 +52,14 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/randreshg/sniff-cli"
-Documentation = "https://github.com/randreshg/sniff-cli/tree/main/docs"
-Repository = "https://github.com/randreshg/sniff-cli"
-Issues = "https://github.com/randreshg/sniff-cli/issues"
-Changelog = "https://github.com/randreshg/sniff-cli/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/randreshg/dekk"
+Documentation = "https://github.com/randreshg/dekk/tree/main/docs"
+Repository = "https://github.com/randreshg/dekk"
+Issues = "https://github.com/randreshg/dekk/issues"
+Changelog = "https://github.com/randreshg/dekk/blob/main/CHANGELOG.md"
 
 [project.scripts]
-sniff = "sniff_cli.cli.main:main"
-sniff-cli = "sniff_cli.cli.main:main"
+dekk = "dekk.cli.main:main"
 
 [project.optional-dependencies]
 tracking = [
@@ -80,7 +79,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sniff_cli"]
+packages = ["src/dekk"]
 
 [tool.hatch.build.targets.sdist]
 include = [

@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff_cli.shell import ActivationConfig, ActivationScriptBuilder, EnvVar, ShellKind
-from sniff_cli.toolchain import (
+from dekk.shell import ActivationConfig, ActivationScriptBuilder, EnvVar, ShellKind
+from dekk.toolchain import (
     CMakeToolchain,
     CondaToolchain,
     EnvVarBuilder,
@@ -97,7 +97,7 @@ class TestEnvVarBuilder:
         builder.prepend_var("PYTHONPATH", "C:/first")
         builder.prepend_var("PYTHONPATH", "C:/second")
         builder.prepend_path("C:/bin")
-        monkeypatch.setattr("sniff_cli.toolchain.os.pathsep", ";")
+        monkeypatch.setattr("dekk.toolchain.os.pathsep", ";")
         d = builder.to_env_dict()
         assert d["PYTHONPATH"] == "C:/first;C:/second"
         assert d["PATH"] == "C:/bin"
@@ -141,7 +141,7 @@ class TestCMakeToolchain:
         assert self.tc.lib_dir == self.prefix / "lib"
         assert self.tc.bin_dir == self.prefix / "bin"
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.toolchain.platform.system", return_value="Windows")
     def test_properties_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CMakeToolchain(prefix=prefix)
@@ -157,7 +157,7 @@ class TestCMakeToolchain:
             prefix / "bin",
         )
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Linux")
+    @patch("dekk.toolchain.platform.system", return_value="Linux")
     def test_configure_linux(self, _mock):
         builder = EnvVarBuilder(app_name="apxm")
         self.tc.configure(builder)
@@ -181,7 +181,7 @@ class TestCMakeToolchain:
 
         assert str(self.prefix / "bin") in config.path_prepends
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Darwin")
+    @patch("dekk.toolchain.platform.system", return_value="Darwin")
     def test_configure_macos(self, _mock):
         builder = EnvVarBuilder()
         self.tc.configure(builder)
@@ -191,7 +191,7 @@ class TestCMakeToolchain:
         assert "DYLD_LIBRARY_PATH" in var_names
         assert "LD_LIBRARY_PATH" not in var_names
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.toolchain.platform.system", return_value="Windows")
     def test_configure_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CMakeToolchain(prefix=prefix)
@@ -211,7 +211,7 @@ class TestCMakeToolchain:
         assert str(prefix / "Scripts") in config.path_prepends
         assert str(prefix / "bin") in config.path_prepends
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Linux")
+    @patch("dekk.toolchain.platform.system", return_value="Linux")
     def test_extra_lib_dirs(self, _mock):
         tc = CMakeToolchain(
             prefix=self.prefix,
@@ -281,7 +281,7 @@ class TestCondaToolchain:
         assert "CONDA_PREFIX" in var_names
         assert "CONDA_DEFAULT_ENV" not in var_names
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.toolchain.platform.system", return_value="Windows")
     def test_configure_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CondaToolchain(prefix=prefix, env_name="apxm")
@@ -335,7 +335,7 @@ class TestToolchainProfileProtocol:
 class TestApxmIntegration:
     """Demonstrate replacing setup_mlir_environment with toolchain profiles."""
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Linux")
+    @patch("dekk.toolchain.platform.system", return_value="Linux")
     def test_replaces_setup_mlir_environment(self, _mock):
         """The toolchain module should produce equivalent env vars to
         the old setup_mlir_environment() function."""
@@ -408,8 +408,8 @@ class TestApxmIntegration:
         assert d["LLVM_DIR"] == str(prefix / "lib" / "cmake" / "llvm")
         assert str(prefix / "bin") in d["PATH"]
 
-    @patch("sniff_cli.toolchain.platform.system", return_value="Windows")
-    @patch("sniff_cli.toolchain.os.pathsep", ";")
+    @patch("dekk.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.toolchain.os.pathsep", ";")
     def test_to_env_dict_uses_windows_separator(self, _platform_mock):
         prefix = Path("C:/miniforge/envs/apxm")
         builder = EnvVarBuilder()

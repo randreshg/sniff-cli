@@ -2,7 +2,7 @@
 
 import pytest
 
-from sniff_cli.deps import DependencyChecker, DependencySpec, DependencyResult
+from dekk.deps import DependencyChecker, DependencySpec, DependencyResult
 
 
 def test_dependency_spec_creation():

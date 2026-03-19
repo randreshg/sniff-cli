@@ -1,17 +1,17 @@
-# sniff-cli Architecture
+# dekk Architecture
 
 ## Overview
 
-sniff-cli is a development environment detection library and CLI framework.
+dekk is a development environment detection library and CLI framework.
 It detects platforms, conda environments, build systems, compilers, CI providers,
 shells, and workspaces -- then provides activation and wrapper generation via
-`.sniff-cli.toml` configuration files.
+`.dekk.toml` configuration files.
 
 ---
 
 ## Core Principles
 
-1. **Lazy by default** -- `import sniff_cli` takes <1ms. All modules use PEP 562
+1. **Lazy by default** -- `import dekk` takes <1ms. All modules use PEP 562
    `__getattr__` for deferred loading. Rich and Typer are only imported when
    CLI features are actually used.
 
@@ -30,7 +30,7 @@ shells, and workspaces -- then provides activation and wrapper generation via
 ## Module Organization
 
 ```
-src/sniff_cli/
+src/dekk/
 ├── __init__.py          # PEP 562 lazy re-exports (auto-generated __all__)
 ├── _compat.py           # TOML compat, load_toml, load_json, deep_merge, walk_up
 │
@@ -50,7 +50,7 @@ src/sniff_cli/
 ├── version_managers.py  # VersionManagerDetector, VersionManagerInfo
 ├── lockfile.py          # LockfileParser, LockfileInfo, LockfileKind
 ├── shell.py             # ShellDetector, ShellInfo, ActivationScriptBuilder
-├── sniff_os.py          # Host OS interface: wrapper/venv/conda path behavior
+├── dekk_os.py          # Host OS interface: wrapper/venv/conda path behavior
 ├── libpath.py           # LibraryPathInfo, LibraryPathResolver
 │
 │   # ── Environment Setup ─────────────────────────────────
@@ -77,7 +77,7 @@ src/sniff_cli/
 │   ├── __init__.py      # Lazy re-exports for cli subpackage
 │   ├── styles.py        # Colors, Symbols, print_success/error/warning/info/...
 │   ├── output.py        # OutputFormatter (TABLE/JSON/YAML/TEXT), print_dep_results
-│   ├── errors.py        # SniffError, ExitCodes, typed error classes
+│   ├── errors.py        # DekkError, ExitCodes, typed error classes
 │   ├── progress.py      # progress_bar, spinner context managers
 │   ├── runner.py        # run_logged (subprocess with logging)
 │   ├── config.py        # CLI-layer ConfigManager (TOML I/O, walk-up discovery)
@@ -94,8 +94,8 @@ and loaded on first access via PEP 562 `__getattr__`:
 
 ```python
 _MODULE_ATTRS = {
-    "sniff_cli.detect": ["PlatformDetector", "PlatformInfo"],
-    "sniff_cli.deps": ["DependencyChecker", "DependencySpec", ...],
+    "dekk.detect": ["PlatformDetector", "PlatformInfo"],
+    "dekk.deps": ["DependencyChecker", "DependencySpec", ...],
     ...
 }
 
@@ -123,56 +123,56 @@ Consolidated compatibility layer used by 6+ modules:
 
 ---
 
-## OS Abstraction (`sniff_os.py`)
+## OS Abstraction (`dekk_os.py`)
 
 Windows-specific behavior used to be scattered across wrapper generation,
-toolchain setup, runner bootstrap, and install-path defaults. `sniff_os.py`
+toolchain setup, runner bootstrap, and install-path defaults. `dekk_os.py`
 centralizes those decisions behind a small interface:
 
-- `PosixSniffOS` owns POSIX wrapper generation, `bin/` venv layout, and
+- `PosixDekkOS` owns POSIX wrapper generation, `bin/` venv layout, and
   Unix conda/runtime path conventions.
-- `WindowsSniffOS` owns `.cmd` wrapper generation, `Scripts/` venv layout,
+- `WindowsDekkOS` owns `.cmd` wrapper generation, `Scripts/` venv layout,
   Windows conda runtime path layout, and user scripts installation defaults.
-- `get_sniff_os()` selects the host implementation once, so higher-level
+- `get_dekk_os()` selects the host implementation once, so higher-level
   modules do not duplicate platform checks.
 
 Modules that rely on this layer:
 
 - `wrapper.py` delegates launcher format, filename suffixes, and default
-  installation directories to `sniff_os`.
-- `runner.py` uses `sniff_os` to find `python` and `pip` inside a venv.
-- `toolchain.py` uses `sniff_os` for conda runtime paths and CMake layout.
+  installation directories to `dekk_os`.
+- `runner.py` uses `dekk_os` to find `python` and `pip` inside a venv.
+- `toolchain.py` uses `dekk_os` for conda runtime paths and CMake layout.
 
 The design rule is: platform-sensitive filesystem and launcher behavior lives
-in `sniff_os.py`; higher-level modules stay focused on environment semantics.
+in `dekk_os.py`; higher-level modules stay focused on environment semantics.
 
 ---
 
 ## CLI Framework
 
-The CLI layer (included in the base `sniff-cli` install) provides:
+The CLI layer (included in the base `dekk` install) provides:
 
-- **`sniff_cli.cli.styles`** -- 12 semantic output functions (`print_success`,
+- **`dekk.cli.styles`** -- 12 semantic output functions (`print_success`,
   `print_error`, etc.) covering 89% of CLI output patterns. Colors and Symbols
   enums for consistent styling.
 
-- **`sniff_cli.cli.output`** -- `OutputFormatter` with TABLE/JSON/YAML/TEXT modes,
+- **`dekk.cli.output`** -- `OutputFormatter` with TABLE/JSON/YAML/TEXT modes,
   quiet/verbose support, and `print_dep_results` for dependency checks.
 
-- **`sniff_cli.cli.progress`** -- `progress_bar` and `spinner` context managers
+- **`dekk.cli.progress`** -- `progress_bar` and `spinner` context managers
   wrapping Rich progress indicators.
 
-- **`sniff_cli.cli.errors`** -- `SniffError` base class with typed subclasses
+- **`dekk.cli.errors`** -- `DekkError` base class with typed subclasses
   (`NotFoundError`, `ValidationError`, `ConfigError`, `DependencyError`).
 
-- **`sniff_cli.typer_app`** -- `Typer` wrapper that adds auto-activation from
-  `.sniff-cli.toml` as a pre-command hook.
+- **`dekk.typer_app`** -- `Typer` wrapper that adds auto-activation from
+  `.dekk.toml` as a pre-command hook.
 
 ---
 
 ## Extension Points
 
-sniff-cli uses the **provider pattern**: sniff-cli defines Protocol interfaces,
+dekk uses the **provider pattern**: dekk defines Protocol interfaces,
 consumers register implementations.
 
 | Extension Point | Protocol | Registry | Use Case |
@@ -188,10 +188,10 @@ consumers register implementations.
 
 | Metric | Target | Actual |
 |--------|--------|--------|
-| `import sniff_cli` | < 5ms | 0.4ms |
+| `import dekk` | < 5ms | 0.4ms |
 | `PlatformDetector().detect()` | < 5ms | ~2ms |
 | `CIDetector().detect()` | < 1ms | ~0.5ms |
-| `sniff --help` | < 500ms | ~200ms |
+| `dekk --help` | < 500ms | ~200ms |
 
 Strategies:
 - PEP 562 lazy loading for all modules
@@ -204,6 +204,6 @@ Strategies:
 ## See Also
 
 - [Getting Started](getting-started.md) -- Installation and quick start
-- [.sniff-cli.toml Specification](spec.md) -- Config file format reference
-- [Wrapper Generation](wrapper.md) -- How `sniff wrap` works
+- [.dekk.toml Specification](spec.md) -- Config file format reference
+- [Wrapper Generation](wrapper.md) -- How `dekk wrap` works
 - [Contributing](contributing.md) -- Development setup and code style

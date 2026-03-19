@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff_cli.detect import PlatformInfo
-from sniff_cli.libpath import LibraryPathInfo, LibraryPathResolver
+from dekk.detect import PlatformInfo
+from dekk.libpath import LibraryPathInfo, LibraryPathResolver
 
 
 # ---------------------------------------------------------------------------
@@ -291,8 +291,8 @@ class TestToEnvVar:
         assert value == "/opt/lib"
 
     def test_works_with_env_var_dataclass(self):
-        """Verify the tuple integrates with sniff_cli.shell.EnvVar."""
-        from sniff_cli.shell import EnvVar
+        """Verify the tuple integrates with dekk.shell.EnvVar."""
+        from dekk.shell import EnvVar
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib")
@@ -364,8 +364,8 @@ class TestConfigureBuilder:
     """Test LibraryPathResolver.configure_builder with both builder types."""
 
     def test_configure_env_builder(self):
-        """configure_builder with sniff_cli.env.EnvVarBuilder (has set_from_path)."""
-        from sniff_cli.env import EnvVarBuilder
+        """configure_builder with dekk.env.EnvVarBuilder (has set_from_path)."""
+        from dekk.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib", "/usr/local/lib")
@@ -381,8 +381,8 @@ class TestConfigureBuilder:
         assert "/usr/local/lib" in value
 
     def test_configure_toolchain_builder(self):
-        """configure_builder with sniff_cli.toolchain.EnvVarBuilder (has prepend_var)."""
-        from sniff_cli.toolchain import EnvVarBuilder as TcBuilder
+        """configure_builder with dekk.toolchain.EnvVarBuilder (has prepend_var)."""
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib")
@@ -407,7 +407,7 @@ class TestConfigureBuilder:
 
     def test_configure_builder_empty_resolves_noop(self):
         """configure_builder with no paths does nothing."""
-        from sniff_cli.env import EnvVarBuilder
+        from dekk.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Linux")
         builder = EnvVarBuilder()
@@ -420,7 +420,7 @@ class TestConfigureBuilder:
 
     def test_configure_macos_builder(self):
         """configure_builder sets DYLD_LIBRARY_PATH for macOS."""
-        from sniff_cli.env import EnvVarBuilder
+        from dekk.env import EnvVarBuilder
 
         resolver = LibraryPathResolver.for_platform("Darwin")
         resolver.prepend("/opt/lib")
@@ -445,7 +445,7 @@ class TestLibpathToolchainIntegration:
     def test_libpath_then_cmake_toolchain(self):
         """LibraryPathResolver and CMakeToolchain can both contribute to the same builder."""
         from pathlib import Path as P
-        from sniff_cli.toolchain import CMakeToolchain, EnvVarBuilder as TcBuilder
+        from dekk.toolchain import CMakeToolchain, EnvVarBuilder as TcBuilder
 
         prefix = "/opt/conda/envs/apxm"
         resolver = LibraryPathResolver.for_platform("Linux")
@@ -458,7 +458,7 @@ class TestLibpathToolchainIntegration:
             resolver.configure_builder(builder)
             # Then, CMakeToolchain contributes
             from unittest.mock import patch as mpatch
-            with mpatch("sniff_cli.toolchain.platform.system", return_value="Linux"):
+            with mpatch("dekk.toolchain.platform.system", return_value="Linux"):
                 cmake = CMakeToolchain(prefix=P(prefix))
                 cmake.configure(builder)
 

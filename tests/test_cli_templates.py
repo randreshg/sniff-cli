@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from sniff_cli.cli.commands import _load_example_template
-from sniff_cli.cli.errors import ConfigError
+from dekk.cli.commands import _load_example_template
+from dekk.cli.errors import ConfigError
 
 
 class TestLoadExampleTemplate:

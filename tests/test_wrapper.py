@@ -1,4 +1,4 @@
-"""Tests for sniff_cli.wrapper -- self-contained wrapper script generation."""
+"""Tests for dekk.wrapper -- self-contained wrapper script generation."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff_cli.wrapper import (
+from dekk.wrapper import (
     WrapperGenerator,
     _cmd_escape_value,
     _generate_cmd_script,
@@ -18,9 +18,9 @@ from sniff_cli.wrapper import (
     _sh_escape_double,
     _sh_quote,
 )
-from sniff_cli.activation import ActivationResult
-from sniff_cli.install import InstallResult
-from sniff_cli.sniff_os import PosixSniffOS, WindowsSniffOS
+from dekk.activation import ActivationResult
+from dekk.install import InstallResult
+from dekk.dekk_os import PosixDekkOS, WindowsDekkOS
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class TestGenerate:
         assert exec_line.count("'") == 2  # opening and closing quote around target
 
     def test_target_not_found_raises(self, tmp_path: Path):
-        from sniff_cli.cli.errors import NotFoundError
+        from dekk.cli.errors import NotFoundError
 
         nonexistent = tmp_path / "does_not_exist"
         with pytest.raises(NotFoundError, match="Target does not exist"):
@@ -203,7 +203,7 @@ class TestGenerate:
             )
 
     def test_python_not_found_raises(self, dummy_target: Path, tmp_path: Path):
-        from sniff_cli.cli.errors import NotFoundError
+        from dekk.cli.errors import NotFoundError
 
         nonexistent_python = tmp_path / "no_such_python"
         with pytest.raises(NotFoundError, match="Python interpreter does not exist"):
@@ -398,8 +398,8 @@ class TestInstall:
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         fake_userbase = tmp_path / "userbase"
-        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: PosixSniffOS())
-        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: PosixDekkOS())
+        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
 
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
         expected = fake_userbase / "bin" / "myapp"
@@ -409,8 +409,8 @@ class TestInstall:
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         fake_userbase = tmp_path / "userbase"
         scripts_dir = fake_userbase / "Scripts"
-        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
-        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
+        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
 
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
         expected = scripts_dir / "myapp.cmd"
@@ -428,7 +428,7 @@ class TestInstall:
     def test_custom_install_dir_windows_uses_cmd_suffix(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
+        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
         custom = tmp_path / "custom_bin"
         result = WrapperGenerator.install(
             self.SAMPLE_SCRIPT, "myapp", install_dir=custom,
@@ -474,7 +474,7 @@ class TestInstall:
         assert "PATH" in result.message
 
     def test_name_with_separator_raises(self, tmp_path: Path):
-        from sniff_cli.cli.errors import ValidationError
+        from dekk.cli.errors import ValidationError
 
         with pytest.raises(ValidationError, match="path separator"):
             WrapperGenerator.install(
@@ -521,7 +521,7 @@ class TestInstallFromSpec:
             [project]
             name = "testproject"
         """)
-        spec_path = tmp_path / ".sniff-cli.toml"
+        spec_path = tmp_path / ".dekk.toml"
         spec_path.write_text(toml_content)
         return spec_path
 
@@ -531,7 +531,7 @@ class TestInstallFromSpec:
         install_dir = tmp_path / "install_bin"
         # Mock the EnvironmentActivator.activate to avoid needing a real conda env.
         with patch(
-            "sniff_cli.wrapper.EnvironmentActivator.activate",
+            "dekk.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={"MY_VAR": "val"}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -546,12 +546,12 @@ class TestInstallFromSpec:
         assert "MY_VAR" in content
 
     def test_with_environment_spec(self, tmp_path: Path, dummy_target: Path):
-        from sniff_cli.envspec import EnvironmentSpec
+        from dekk.envspec import EnvironmentSpec
 
         spec = EnvironmentSpec(project_name="direct-spec")
         install_dir = tmp_path / "install_bin"
         with patch(
-            "sniff_cli.wrapper.EnvironmentActivator.activate",
+            "dekk.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -571,11 +571,11 @@ class TestInstallFromSpec:
         # When project_root is not given, it should be inferred from spec_file's parent.
         install_dir = tmp_path / "install_bin"
         with patch(
-            "sniff_cli.wrapper.EnvironmentActivator.activate",
+            "dekk.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ) as mock_activate:
             with patch(
-                "sniff_cli.wrapper.EnvironmentActivator.__init__",
+                "dekk.wrapper.EnvironmentActivator.__init__",
                 return_value=None,
             ) as mock_init:
                 mock_init.return_value = None
@@ -587,7 +587,7 @@ class TestInstallFromSpec:
 
         # Simpler approach: verify the root matches spec_file.parent.
         with patch(
-            "sniff_cli.wrapper.EnvironmentActivator",
+            "dekk.wrapper.EnvironmentActivator",
         ) as MockActivator:
             mock_instance = MockActivator.return_value
             mock_instance.activate.return_value = ActivationResult(env_vars={})
@@ -636,8 +636,8 @@ class TestUninstall:
 
     def test_default_install_dir(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         fake_userbase = tmp_path / "userbase"
-        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: PosixSniffOS())
-        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: PosixDekkOS())
+        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
         local_bin = fake_userbase / "bin"
         local_bin.mkdir(parents=True)
 
@@ -652,8 +652,8 @@ class TestUninstall:
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         fake_userbase = tmp_path / "userbase"
         scripts_dir = fake_userbase / "Scripts"
-        monkeypatch.setattr("sniff_cli.wrapper.get_sniff_os", lambda: WindowsSniffOS())
-        monkeypatch.setattr("sniff_cli.sniff_os.site.getuserbase", lambda: str(fake_userbase))
+        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
+        monkeypatch.setattr("dekk.dekk_os.site.getuserbase", lambda: str(fake_userbase))
         scripts_dir.mkdir(parents=True)
 
         WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")

@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from sniff_cli.scaffold import (
+from dekk.scaffold import (
     FileTemplate,
     ProjectFramework,
     ProjectLanguage,

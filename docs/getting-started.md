@@ -1,6 +1,6 @@
-# Getting Started with sniff-cli
+# Getting Started with dekk
 
-`sniff-cli` is both a command-line tool and a reusable Python package. Start
+`dekk` is both a command-line tool and a reusable Python package. Start
 with the CLI flow first. Once that works, move to the detection and library
 APIs.
 
@@ -8,97 +8,97 @@ APIs.
 
 ```bash
 # Recommended for the CLI tool
-pipx install sniff-cli
+pipx install dekk
 
 # Standard Python install
-python -m pip install --upgrade sniff-cli
+python -m pip install --upgrade dekk
 ```
 
 Verify the command first:
 
 ```bash
-sniff --help
-sniff doctor
+dekk --help
+dekk doctor
 ```
 
 If your scripts directory is not on `PATH` yet, use:
 
 ```bash
-python -m sniff_cli --help
+python -m dekk --help
 ```
 
 On Windows, use PowerShell for activation output:
 
 ```powershell
-sniff --help
-Invoke-Expression (& sniff activate --shell powershell | Out-String)
+dekk --help
+Invoke-Expression (& dekk activate --shell powershell | Out-String)
 ```
 
 ## First Commands
 
 ```bash
-sniff --help
-sniff doctor
-sniff init --example quickstart
+dekk --help
+dekk doctor
+dekk init --example quickstart
 ```
 
 That sequence is the intended onboarding path:
 
-- `sniff --help` confirms the command is installed correctly.
-- `sniff doctor` checks the current machine and toolchain state.
-- `sniff init --example quickstart` creates a starter `.sniff-cli.toml` in the current directory.
+- `dekk --help` confirms the command is installed correctly.
+- `dekk doctor` checks the current machine and toolchain state.
+- `dekk init --example quickstart` creates a starter `.dekk.toml` in the current directory.
 
 For ready-to-use starter configs, see
-[`examples/.sniff-cli.toml.quickstart`](../examples/.sniff-cli.toml.quickstart)
-and [`examples/.sniff-cli.toml.minimal`](../examples/.sniff-cli.toml.minimal), or print them directly with:
+[`examples/.dekk.toml.quickstart`](../examples/.dekk.toml.quickstart)
+and [`examples/.dekk.toml.minimal`](../examples/.dekk.toml.minimal), or print them directly with:
 
 ```bash
-sniff example quickstart
-sniff example conda
+dekk example quickstart
+dekk example conda
 ```
 
 ## First End-to-End Flow
 
 This is the smallest reliable workflow for a new project:
 
-1. Install `sniff-cli`.
-2. Confirm the command works with `sniff --help`.
-3. Run `sniff doctor`.
-4. Create a starter config with `sniff init --example quickstart`.
-5. Edit `.sniff-cli.toml` so it matches your project.
+1. Install `dekk`.
+2. Confirm the command works with `dekk --help`.
+3. Run `dekk doctor`.
+4. Create a starter config with `dekk init --example quickstart`.
+5. Edit `.dekk.toml` so it matches your project.
 6. Build one real target in your repo.
-7. Run `sniff install <target>` or `sniff wrap <name> <target>`.
+7. Run `dekk install <target>` or `dekk wrap <name> <target>`.
 8. Run the generated wrapper directly.
 
 Example:
 
 ```bash
-sniff install ./tools/cli.py
+dekk install ./tools/cli.py
 
-sniff init --example quickstart
-sniff install ./bin/myapp --name myapp
+dekk init --example quickstart
+dekk install ./bin/myapp --name myapp
 myapp --help
 ```
 
 PowerShell example:
 
 ```powershell
-sniff init --example quickstart
-sniff install .\dist\myapp.exe --name myapp
+dekk init --example quickstart
+dekk install .\dist\myapp.exe --name myapp
 myapp --help
 ```
 
-For Python scripts, `sniff install ./tools/cli.py` expects a nearby
+For Python scripts, `dekk install ./tools/cli.py` expects a nearby
 `pyproject.toml` and bootstraps `.venv` automatically on first run.
-For binaries and conda-backed projects, prefer `.sniff-cli.toml` plus
-`sniff install <target>`.
+For binaries and conda-backed projects, prefer `.dekk.toml` plus
+`dekk install <target>`.
 
 ## Using The Library APIs
 
 ### Platform Detection
 
 ```python
-from sniff_cli import PlatformDetector
+from dekk import PlatformDetector
 
 detector = PlatformDetector()
 platform = detector.detect()
@@ -113,7 +113,7 @@ print(platform.is_container) # True/False
 ### Check Dependencies
 
 ```python
-from sniff_cli import DependencyChecker, DependencySpec
+from dekk import DependencyChecker, DependencySpec
 
 checker = DependencyChecker()
 result = checker.check(DependencySpec("Python", "python3", min_version="3.11"))
@@ -127,7 +127,7 @@ else:
 ### Detect Conda Environment
 
 ```python
-from sniff_cli import CondaDetector
+from dekk import CondaDetector
 
 detector = CondaDetector()
 env = detector.find_active()
@@ -141,7 +141,7 @@ if env:
 ### CI/CD Detection
 
 ```python
-from sniff_cli import CIDetector
+from dekk import CIDetector
 
 detector = CIDetector()
 ci = detector.detect()
@@ -155,7 +155,7 @@ if ci.is_ci:
 ### Workspace/Monorepo Detection
 
 ```python
-from sniff_cli import WorkspaceDetector
+from dekk import WorkspaceDetector
 from pathlib import Path
 
 detector = WorkspaceDetector()
@@ -170,7 +170,7 @@ for ws in workspaces:
 ### Configuration Management
 
 ```python
-from sniff_cli import ConfigManager
+from dekk import ConfigManager
 
 config = ConfigManager("myapp", defaults={"database": {"path": "/tmp/db"}})
 
@@ -185,7 +185,7 @@ config.save()  # Writes to project config file
 ### Tool Version Checking
 
 ```python
-from sniff_cli import ToolChecker
+from dekk import ToolChecker
 
 checker = ToolChecker()
 
@@ -200,7 +200,7 @@ if cmake_path:
 
 ### Detection-Only Philosophy
 
-sniff-cli never modifies your environment. All detectors are **pure**:
+dekk never modifies your environment. All detectors are **pure**:
 - No subprocess calls that change state
 - No file writes (unless explicitly saving config)
 - No network requests
@@ -221,7 +221,7 @@ result = checker.check(spec)   # Returns DependencyResult with found=False
 Each detector is independent:
 
 ```python
-from sniff_cli import PlatformDetector, CondaDetector, CIDetector
+from dekk import PlatformDetector, CondaDetector, CIDetector
 
 platform = PlatformDetector().detect()
 conda = CondaDetector().find_active()
@@ -238,7 +238,7 @@ print(f"CI: {ci.provider if ci.is_ci else 'local'}")
 ### Environment Health Check
 
 ```python
-from sniff_cli import PlatformDetector, DependencyChecker, DependencySpec
+from dekk import PlatformDetector, DependencyChecker, DependencySpec
 
 platform = PlatformDetector().detect()
 checker = DependencyChecker()
@@ -259,7 +259,7 @@ for spec in required_tools:
 ### Adaptive Install Commands
 
 ```python
-from sniff_cli import PlatformDetector
+from dekk import PlatformDetector
 
 platform = PlatformDetector().detect()
 
@@ -274,7 +274,7 @@ elif platform.pkg_manager == "dnf":
 ### Project Context Detection
 
 ```python
-from sniff_cli import WorkspaceDetector, CondaDetector, CIDetector
+from dekk import WorkspaceDetector, CondaDetector, CIDetector
 from pathlib import Path
 
 workspace = WorkspaceDetector().detect_first(Path.cwd())
@@ -295,10 +295,10 @@ else:
 
 ## Extension: Remediation
 
-sniff-cli is detection-only, but provides a Protocol for consumers to implement fixes:
+dekk is detection-only, but provides a Protocol for consumers to implement fixes:
 
 ```python
-from sniff_cli.remediate import Remediator, DetectedIssue, FixResult
+from dekk.remediate import Remediator, DetectedIssue, FixResult
 from typing_extensions import runtime_checkable
 
 @runtime_checkable
@@ -315,10 +315,10 @@ class MyRemediator(Remediator):
         ...
 ```
 
-See `src/sniff_cli/remediate.py` for the full Protocol definition.
+See `src/dekk/remediate.py` for the full Protocol definition.
 
 ## Next Steps
 
 - **[Architecture](architecture.md)** — Module organization and extension points
 - **[Examples by Language](examples-by-language.md)** — Configs for Python, Rust, C++, Node, Go, Java
-- **README** — CLI framework usage (`sniff_cli.Typer`, `sniff_cli.cli.styles`, errors, progress)
+- **README** — CLI framework usage (`dekk.Typer`, `dekk.cli.styles`, errors, progress)

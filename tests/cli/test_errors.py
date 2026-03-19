@@ -1,17 +1,17 @@
-"""Tests for sniff_cli.cli.errors -- exception hierarchy and exit codes."""
+"""Tests for dekk.cli.errors -- exception hierarchy and exit codes."""
 
 from __future__ import annotations
 
 import pytest
 
-from sniff_cli.cli.errors import (
+from dekk.cli.errors import (
     ConfigError,
     DependencyError,
     ExitCodes,
     NotFoundError,
     PermissionError,
     RuntimeError,
-    SniffError,
+    DekkError,
     TimeoutError,
     ValidationError,
 )
@@ -56,68 +56,68 @@ class TestExitCodes:
 
 
 # ---------------------------------------------------------------------------
-# SniffError (base class)
+# DekkError (base class)
 # ---------------------------------------------------------------------------
 
 
-class TestSniffError:
-    """Tests for the base SniffError exception."""
+class TestDekkError:
+    """Tests for the base DekkError exception."""
 
     def test_is_exception(self):
-        assert issubclass(SniffError, Exception)
+        assert issubclass(DekkError, Exception)
 
     def test_message_stored(self):
-        err = SniffError("Something went wrong")
+        err = DekkError("Something went wrong")
         assert err.message == "Something went wrong"
 
     def test_hint_none_by_default(self):
-        err = SniffError("error")
+        err = DekkError("error")
         assert err.hint is None
 
     def test_hint_stored(self):
-        err = SniffError("error", hint="Try this")
+        err = DekkError("error", hint="Try this")
         assert err.hint == "Try this"
 
     def test_default_exit_code(self):
-        err = SniffError("error")
+        err = DekkError("error")
         assert err.exit_code == ExitCodes.GENERAL_ERROR
 
     def test_details_stored(self):
-        err = SniffError("error", path="/tmp", count=42)
+        err = DekkError("error", path="/tmp", count=42)
         assert err.details == {"path": "/tmp", "count": 42}
 
     def test_details_empty_by_default(self):
-        err = SniffError("error")
+        err = DekkError("error")
         assert err.details == {}
 
     def test_str_is_message(self):
-        err = SniffError("Something went wrong")
+        err = DekkError("Something went wrong")
         assert str(err) == "Something went wrong"
 
     def test_can_be_raised_and_caught(self):
-        with pytest.raises(SniffError, match="boom"):
-            raise SniffError("boom")
+        with pytest.raises(DekkError, match="boom"):
+            raise DekkError("boom")
 
     def test_to_dict_basic(self):
-        err = SniffError("broken", hint="Fix it")
+        err = DekkError("broken", hint="Fix it")
         d = err.to_dict()
-        assert d["error"] == "SniffError"
+        assert d["error"] == "DekkError"
         assert d["message"] == "broken"
         assert d["hint"] == "Fix it"
         assert d["exit_code"] == 1
 
     def test_to_dict_includes_details(self):
-        err = SniffError("broken", searched_paths=["/a", "/b"])
+        err = DekkError("broken", searched_paths=["/a", "/b"])
         d = err.to_dict()
         assert d["searched_paths"] == ["/a", "/b"]
 
     def test_to_dict_hint_none(self):
-        err = SniffError("broken")
+        err = DekkError("broken")
         d = err.to_dict()
         assert d["hint"] is None
 
     def test_to_dict_no_extra_keys(self):
-        err = SniffError("broken")
+        err = DekkError("broken")
         assert set(d.keys()) == {"error", "message", "hint", "exit_code"} if not (d := err.to_dict()) else True
         d = err.to_dict()
         assert "error" in d
@@ -173,7 +173,7 @@ class TestSubclassExitCodes:
 
 
 class TestSubclassInheritance:
-    """Tests that all subclasses inherit from SniffError."""
+    """Tests that all subclasses inherit from DekkError."""
 
     @pytest.mark.parametrize(
         "cls",
@@ -187,8 +187,8 @@ class TestSubclassInheritance:
             RuntimeError,
         ],
     )
-    def test_is_sniff_error(self, cls):
-        assert issubclass(cls, SniffError)
+    def test_is_dekk_error(self, cls):
+        assert issubclass(cls, DekkError)
 
     @pytest.mark.parametrize(
         "cls",
@@ -202,8 +202,8 @@ class TestSubclassInheritance:
             RuntimeError,
         ],
     )
-    def test_catchable_as_sniff_error(self, cls):
-        with pytest.raises(SniffError):
+    def test_catchable_as_dekk_error(self, cls):
+        with pytest.raises(DekkError):
             raise cls("test")
 
 
@@ -271,22 +271,22 @@ class TestEdgeCases:
     """Edge case tests for errors module."""
 
     def test_empty_message(self):
-        err = SniffError("")
+        err = DekkError("")
         assert err.message == ""
         assert str(err) == ""
 
     def test_unicode_message(self):
-        err = SniffError("Failed \u2717 badly")
+        err = DekkError("Failed \u2717 badly")
         assert "\u2717" in err.message
 
     def test_multiple_details(self):
-        err = SniffError("err", a=1, b="two", c=[3])
+        err = DekkError("err", a=1, b="two", c=[3])
         assert err.details == {"a": 1, "b": "two", "c": [3]}
 
     def test_detail_with_colliding_key(self):
         """Details whose key collides with to_dict base keys override them."""
         # "error" is set by to_dict but can be overridden via **details
-        err = SniffError("msg", error="CustomName")
+        err = DekkError("msg", error="CustomName")
         d = err.to_dict()
         # result.update(self.details) runs after setting result["error"],
         # so the detail value wins.
@@ -294,9 +294,9 @@ class TestEdgeCases:
 
     def test_shadowing_builtin_names(self):
         """PermissionError and RuntimeError shadow builtins but work correctly."""
-        # Our PermissionError should be SniffError, not builtins.PermissionError
+        # Our PermissionError should be DekkError, not builtins.PermissionError
         err = PermissionError("denied")
-        assert isinstance(err, SniffError)
+        assert isinstance(err, DekkError)
         assert not isinstance(err, builtins_PermissionError)
 
 

@@ -31,10 +31,10 @@ jobs:
         run: ruff check .
 
       - name: Mypy
-        run: mypy src/sniff_cli
+        run: mypy src/dekk
 
       - name: Tests
-        run: sniff test
+        run: dekk test
 
       - name: Build package
         run: python -m build

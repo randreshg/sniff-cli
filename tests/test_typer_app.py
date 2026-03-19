@@ -9,9 +9,9 @@ import pytest
 import typer as base_typer
 from typer.testing import CliRunner
 
-from sniff_cli.cli.errors import ExitCodes, NotFoundError, SniffError, ValidationError
-from sniff_cli import typer_app
-from sniff_cli.typer_app import Typer, _get_typer
+from dekk.cli.errors import ExitCodes, NotFoundError, DekkError, ValidationError
+from dekk import typer_app
+from dekk.typer_app import Typer, _get_typer
 
 
 runner = CliRunner()
@@ -49,7 +49,7 @@ def test_get_typer_lazy_loads_and_wraps_base_typer():
     assert isinstance(app._app, base_typer.Typer)
 
 
-@patch("sniff_cli.typer_app._TYPER_AVAILABLE", False)
+@patch("dekk.typer_app._TYPER_AVAILABLE", False)
 def test_get_typer_raises_when_dependency_is_missing():
     with pytest.raises(ImportError, match="typer is required"):
         _get_typer()
@@ -86,7 +86,7 @@ def test_context_is_captured_once_and_shortcuts_proxy_to_it():
     app = Typer()
     fake_ctx = _make_fake_context(conda_env=MagicMock(name="conda"))
 
-    with patch("sniff_cli.context.ExecutionContext.capture", return_value=fake_ctx) as capture:
+    with patch("dekk.context.ExecutionContext.capture", return_value=fake_ctx) as capture:
         assert app.context is fake_ctx
         assert app.context is fake_ctx
         assert app.platform is fake_ctx.platform
@@ -208,7 +208,7 @@ def test_tracking_starts_with_context_payload_and_completes():
 def test_tracking_returns_none_without_tully_client():
     app = Typer(enable_tracking=True)
 
-    with patch("sniff_cli.typer_app.Typer._get_tully_client", return_value=None):
+    with patch("dekk.typer_app.Typer._get_tully_client", return_value=None):
         assert app._start_tracking("cmd", _make_fake_context()) is None
 
 
@@ -283,14 +283,14 @@ def test_get_tully_client_caches_instance_and_handles_missing_package():
 @pytest.mark.parametrize(
     ("app_kwargs", "command_name", "patch_target", "expected_args"),
     [
-        ({"add_doctor_command": True}, "doctor", "sniff_cli.cli_commands.run_doctor", lambda ctx: (ctx,)),
+        ({"add_doctor_command": True}, "doctor", "dekk.cli_commands.run_doctor", lambda ctx: (ctx,)),
         (
             {"add_version_command": True, "project_version": "3.4.5", "name": "demo"},
             "version",
-            "sniff_cli.cli_commands.run_version",
+            "dekk.cli_commands.run_version",
             lambda ctx: ("demo", "3.4.5", ctx),
         ),
-        ({"add_env_command": True}, "env", "sniff_cli.cli_commands.run_env", lambda ctx: (ctx,)),
+        ({"add_env_command": True}, "env", "dekk.cli_commands.run_env", lambda ctx: (ctx,)),
     ],
 )
 def test_built_in_commands_register_and_dispatch(app_kwargs, command_name, patch_target, expected_args):
@@ -333,10 +333,10 @@ def test_parent_hooks_do_not_leak_into_child_apps():
     [
         (ValidationError("Bad input", hint="Check your config"), ExitCodes.VALIDATION_ERROR, True),
         (NotFoundError("Missing file"), ExitCodes.NOT_FOUND, False),
-        (SniffError("Generic error", hint="Try again"), ExitCodes.GENERAL_ERROR, True),
+        (DekkError("Generic error", hint="Try again"), ExitCodes.GENERAL_ERROR, True),
     ],
 )
-def test_catch_errors_converts_sniff_errors_to_typer_exit(exc, exit_code, hint):
+def test_catch_errors_converts_dekk_errors_to_typer_exit(exc, exit_code, hint):
     fake_ctx = _make_fake_context()
     app = _make_group_app(fake_ctx)
 
@@ -351,27 +351,27 @@ def test_catch_errors_converts_sniff_errors_to_typer_exit(exc, exit_code, hint):
     assert ("Hint:" in result.output) is hint
 
 
-def test_catch_errors_false_and_non_sniff_errors_propagate():
+def test_catch_errors_false_and_non_dekk_errors_propagate():
     fake_ctx = _make_fake_context()
     propagate_app = _make_group_app(fake_ctx)
     raw_app = _make_group_app(fake_ctx)
 
     @propagate_app.command(catch_errors=False)
-    def sniff_failure() -> None:
+    def dekk_failure() -> None:
         raise ValidationError("Bad input")
 
     @raw_app.command()
     def value_failure() -> None:
         raise ValueError("boom")
 
-    sniff_result = runner.invoke(propagate_app, ["sniff-failure"])
+    dekk_result = runner.invoke(propagate_app, ["dekk-failure"])
     raw_result = runner.invoke(raw_app, ["value-failure"])
 
-    assert isinstance(sniff_result.exception, ValidationError)
+    assert isinstance(dekk_result.exception, ValidationError)
     assert isinstance(raw_result.exception, ValueError)
 
 
-def test_caught_sniff_errors_still_run_after_hooks_and_complete_tracking():
+def test_caught_dekk_errors_still_run_after_hooks_and_complete_tracking():
     fake_ctx = _make_fake_context()
     app = _make_group_app(fake_ctx, enable_tracking=True)
     app._tully_client = MagicMock()

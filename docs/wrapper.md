@@ -2,7 +2,7 @@
 
 ## Overview
 
-`sniff` can generate self-contained wrapper launchers that bake your entire
+`dekk` can generate self-contained wrapper launchers that bake your entire
 project environment into a single executable command. The wrapper sets conda
 paths, environment variables, and PATH entries, then launches your target
 binary.
@@ -11,16 +11,16 @@ No `conda activate`. No `source ~/.bashrc`. No manual PATH setup.
 
 ## Smallest Working Flow
 
-If you are new to `sniff-cli`, use this sequence first:
+If you are new to `dekk`, use this sequence first:
 
 ```bash
-sniff init --example quickstart
+dekk init --example quickstart
 ```
 
-Edit `.sniff-cli.toml` so it matches your project, build your target, then:
+Edit `.dekk.toml` so it matches your project, build your target, then:
 
 ```bash
-sniff install ./bin/myapp --name myapp
+dekk install ./bin/myapp --name myapp
 myapp --help
 ```
 
@@ -29,7 +29,7 @@ without activating anything first.
 
 ## How It Works
 
-1. `sniff` reads your `.sniff-cli.toml`
+1. `dekk` reads your `.dekk.toml`
 2. Resolves conda prefix, env vars, and paths via `EnvironmentSpec.expand_placeholders()`
 3. Generates a platform-appropriate launcher with hardcoded absolute paths
 4. Installs it to the user scripts directory, or to a custom directory you choose
@@ -45,7 +45,7 @@ exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```
 
-On Windows, `sniff-cli` installs a `.cmd` launcher in Python's user scripts
+On Windows, `dekk` installs a `.cmd` launcher in Python's user scripts
 directory by default. That is the `Scripts` directory under
 `python -m site --user-base`. It matches the standard user-level scripts
 directory used by Python packaging tools and avoids relying on `Activate.ps1`.
@@ -57,7 +57,7 @@ paths, then run the target.
 ## CLI Usage
 
 ```text
-sniff wrap <name> <target> [OPTIONS]
+dekk wrap <name> <target> [OPTIONS]
 ```
 
 **Arguments:**
@@ -73,30 +73,30 @@ sniff wrap <name> <target> [OPTIONS]
 |--------|-------------|
 | `--python PATH` | Python interpreter for script targets |
 | `--install-dir PATH`, `-d` | Installation directory (default: user scripts directory) |
-| `--spec PATH`, `-s` | Path to `.sniff-cli.toml` (default: auto-detect from cwd) |
+| `--spec PATH`, `-s` | Path to `.dekk.toml` (default: auto-detect from cwd) |
 
 **Examples:**
 
 ```bash
 # Wrap a compiled binary
-sniff wrap myapp ./target/release/myapp
+dekk wrap myapp ./target/release/myapp
 
 # Wrap a Python script with a specific interpreter
-sniff wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
+dekk wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
 
 # Install to a custom directory
-sniff wrap myapp ./bin/myapp --install-dir /usr/local/bin
+dekk wrap myapp ./bin/myapp --install-dir /usr/local/bin
 
-# Use a specific .sniff-cli.toml
-sniff wrap myapp ./bin/myapp --spec /path/to/.sniff-cli.toml
+# Use a specific .dekk.toml
+dekk wrap myapp ./bin/myapp --spec /path/to/.dekk.toml
 ```
 
 ```powershell
 # Windows executable target
-sniff wrap myapp .\dist\myapp.exe
+dekk wrap myapp .\dist\myapp.exe
 
 # Windows Python script target
-sniff wrap myapp .\tools\cli.py --python C:\miniforge3\envs\myapp\python.exe
+dekk wrap myapp .\tools\cli.py --python C:\miniforge3\envs\myapp\python.exe
 ```
 
 After running, the wrapper is executable and ready to use:
@@ -114,10 +114,10 @@ The primary API for programmatic wrapper generation:
 
 ```python
 from pathlib import Path
-from sniff_cli import WrapperGenerator
+from dekk import WrapperGenerator
 
 result = WrapperGenerator.install_from_spec(
-    spec_file=Path(".sniff-cli.toml"),
+    spec_file=Path(".dekk.toml"),
     target=Path("tools/cli.py"),
     python=Path("/opt/conda/envs/myapp/bin/python3"),
     name="myapp",
@@ -135,7 +135,7 @@ Lower-level API available via `BinaryInstaller`:
 
 ```python
 from pathlib import Path
-from sniff_cli import BinaryInstaller
+from dekk import BinaryInstaller
 
 installer = BinaryInstaller(project_root=Path("."))
 result = installer.install_wrapper(
@@ -151,7 +151,7 @@ A typical project install command generates the wrapper as part of setup:
 ```python
 # In your project's install command
 from pathlib import Path
-from sniff_cli import WrapperGenerator
+from dekk import WrapperGenerator
 
 def install():
     """Build and install the project."""
@@ -159,7 +159,7 @@ def install():
 
     # Generate wrapper that bakes in the full environment
     WrapperGenerator.install_from_spec(
-        spec_file=Path(".sniff-cli.toml"),
+        spec_file=Path(".dekk.toml"),
         target=Path("target/release/myapp"),
         name="myapp",
     )
@@ -175,12 +175,12 @@ $ myapp build     # full environment is set up by the wrapper
 ## Regeneration
 
 When your environment changes (conda update, new dependencies, new env vars
-in `.sniff-cli.toml`), re-run your project's install command or `sniff wrap` to
+in `.dekk.toml`), re-run your project's install command or `dekk wrap` to
 regenerate the wrapper. The old wrapper is overwritten in place.
 
 ```bash
-# After updating conda or .sniff-cli.toml
-sniff wrap myapp ./bin/myapp
+# After updating conda or .dekk.toml
+dekk wrap myapp ./bin/myapp
 ```
 
 ## Technical Details
@@ -192,4 +192,4 @@ sniff wrap myapp ./bin/myapp
 - Proper shell escaping for values with special characters
 - POSIX wrappers are marked executable (`chmod 755`) automatically
 - Default install directory follows Python's user scripts convention
-- If the install directory is not in `PATH`, `sniff-cli` reports this and suggests adding it
+- If the install directory is not in `PATH`, `dekk` reports this and suggests adding it

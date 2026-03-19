@@ -1,6 +1,6 @@
-# .sniff-cli.toml Quick Reference
+# .dekk.toml Quick Reference
 
-One-page cheat sheet for install, first-run commands, and `.sniff-cli.toml`
+One-page cheat sheet for install, first-run commands, and `.dekk.toml`
 syntax.
 
 ---
@@ -101,36 +101,36 @@ BIN      = "{project}/target/release"
 ## CLI Commands
 
 ```bash
-pipx install sniff-cli
-# or: python -m pip install --upgrade sniff-cli
+pipx install dekk
+# or: python -m pip install --upgrade dekk
 ```
 
 ```bash
-sniff init                              # Create .sniff-cli.toml in current directory
-sniff init --example quickstart         # Start from a built-in template
-sniff init --force                      # Overwrite existing .sniff-cli.toml
+dekk init                              # Create .dekk.toml in current directory
+dekk init --example quickstart         # Start from a built-in template
+dekk init --force                      # Overwrite existing .dekk.toml
 
-sniff install ./tools/cli.py            # Install a Python CLI; first run bootstraps .venv from pyproject.toml
-sniff install ./bin/myapp --name myapp  # Install a wrapped binary command
+dekk install ./tools/cli.py            # Install a Python CLI; first run bootstraps .venv from pyproject.toml
+dekk install ./bin/myapp --name myapp  # Install a wrapped binary command
 
-eval "$(sniff activate --shell bash)"      # Activate environment in the current POSIX shell
-sniff activate --shell powershell          # Emit PowerShell activation script
+eval "$(dekk activate --shell bash)"      # Activate environment in the current POSIX shell
+dekk activate --shell powershell          # Emit PowerShell activation script
 
-sniff wrap myapp ./bin/myapp               # Generate wrapper in the default user scripts dir
-sniff wrap myapp ./cli.py \
+dekk wrap myapp ./bin/myapp               # Generate wrapper in the default user scripts dir
+dekk wrap myapp ./cli.py \
   --python /path/to/python3        # Wrap a Python script
-sniff wrap myapp ./bin/myapp \
+dekk wrap myapp ./bin/myapp \
   -d /usr/local/bin                # Custom install directory
 
-sniff example quickstart                # Print starter config to stdout
-sniff doctor                            # Run system health checks
-sniff version                           # Show sniff-cli version and platform
-sniff env                               # Show environment details
+dekk example quickstart                # Print starter config to stdout
+dekk doctor                            # Run system health checks
+dekk version                           # Show dekk version and platform
+dekk env                               # Show environment details
 ```
 
 ```powershell
-Invoke-Expression (& sniff activate --shell powershell | Out-String)
-sniff install .\dist\myapp.exe --name myapp
+Invoke-Expression (& dekk activate --shell powershell | Out-String)
+dekk install .\dist\myapp.exe --name myapp
 ```
 
 ---

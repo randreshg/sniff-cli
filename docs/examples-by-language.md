@@ -1,8 +1,7 @@
-# .sniff-cli.toml Examples by Language
+# .dekk.toml Examples by Language
 
-Ready-to-use `.sniff-cli.toml` configurations for common project types, each
-with a wrapper generation example. Use `sniff` as the canonical command in the
-examples below. `sniff-cli` remains available as a compatibility alias.
+Ready-to-use `.dekk.toml` configurations for common project types, each
+with a wrapper generation example. Use `dekk` in the examples below.
 
 ---
 
@@ -30,7 +29,7 @@ bin = ["{conda}/bin"]
 **Wrapper:**
 
 ```bash
-sniff wrap ml-pipeline ./tools/cli.py \
+dekk wrap ml-pipeline ./tools/cli.py \
   --python /path/to/conda/envs/ml-pipeline/bin/python3
 ```
 
@@ -54,7 +53,7 @@ bin = ["{project}/target/release"]
 
 ```bash
 # After: cargo build --release
-sniff wrap my-rust-app ./target/release/my-rust-app
+dekk wrap my-rust-app ./target/release/my-rust-app
 ```
 
 ---
@@ -88,7 +87,7 @@ bin = ["{project}/build/bin"]
 
 ```bash
 # After: cmake --build build
-sniff wrap physics-sim ./build/bin/physics-sim
+dekk wrap physics-sim ./build/bin/physics-sim
 ```
 
 ---
@@ -126,7 +125,7 @@ NODE_ENV = "development"
 **Wrapper (for a Node.js CLI tool):**
 
 ```bash
-sniff wrap web-app ./node_modules/.bin/next
+dekk wrap web-app ./node_modules/.bin/next
 ```
 
 ---
@@ -153,7 +152,7 @@ bin = ["{home}/go/bin", "{project}/bin"]
 
 ```bash
 # After: go build -o ./bin/api-server ./cmd/server
-sniff wrap api-server ./bin/api-server
+dekk wrap api-server ./bin/api-server
 ```
 
 ---
@@ -197,7 +196,7 @@ GRADLE_OPTS = "-Xmx2g"
 # #!/bin/sh
 # exec java -jar /path/to/backend-service.jar "$@"
 
-sniff wrap backend-service ./bin/backend-service
+dekk wrap backend-service ./bin/backend-service
 ```
 
 ---
@@ -236,7 +235,7 @@ bin = [
 
 ```bash
 # Wrap the Python CLI that drives the Rust-built compiler
-sniff wrap compiler-toolkit ./tools/cli.py \
+dekk wrap compiler-toolkit ./tools/cli.py \
   --python /path/to/conda/envs/compiler-toolkit/bin/python3
 ```
 
@@ -246,7 +245,7 @@ sniff wrap compiler-toolkit ./tools/cli.py \
 
 ### Minimal (any language)
 
-The smallest valid `.sniff-cli.toml`:
+The smallest valid `.dekk.toml`:
 
 ```toml
 [project]
@@ -288,17 +287,17 @@ PYTHONPATH = "{project}/src"
 Generate separate wrappers for each entry point:
 
 ```bash
-sniff wrap myapp-server ./target/release/server
-sniff wrap myapp-cli    ./target/release/cli
-sniff wrap myapp-worker ./target/release/worker
+dekk wrap myapp-server ./target/release/server
+dekk wrap myapp-cli    ./target/release/cli
+dekk wrap myapp-worker ./target/release/worker
 ```
 
-All three wrappers share the same environment from `.sniff-cli.toml`.
+All three wrappers share the same environment from `.dekk.toml`.
 
 ---
 
 ## See Also
 
-- [.sniff-cli.toml Specification](spec.md) -- full field reference
+- [.dekk.toml Specification](spec.md) -- full field reference
 - [Wrapper Generation](wrapper.md) -- how wrappers work
 - [Quick Reference](cheatsheet.md) -- one-page cheat sheet

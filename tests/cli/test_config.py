@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sniff_cli.cli.config import ConfigManager, _deep_copy, _deep_merge, _load_toml
+from dekk.cli.config import ConfigManager, _deep_copy, _deep_merge, _load_toml
 
 
 def test_deep_copy_copies_nested_dicts_and_lists_without_aliasing():
@@ -40,7 +40,7 @@ def test_load_toml_handles_valid_missing_invalid_and_disabled_cases(tmp_path):
     assert _load_toml(tmp_path / "missing.toml") == {}
     assert _load_toml(invalid) == {}
 
-    import sniff_cli.cli.config as config_module
+    import dekk.cli.config as config_module
 
     original = config_module.tomllib
     config_module.tomllib = None
@@ -155,7 +155,7 @@ def test_config_manager_save_requires_tomli_w(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
 
-    import sniff_cli.cli.config as config_module
+    import dekk.cli.config as config_module
 
     original = config_module.tomli_w
     config_module.tomli_w = None

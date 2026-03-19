@@ -1,4 +1,4 @@
-"""Tests for sniff_cli.install."""
+"""Tests for dekk.install."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from sniff_cli.cli.errors import NotFoundError
-from sniff_cli.install import BinaryInstaller
+from dekk.cli.errors import NotFoundError
+from dekk.install import BinaryInstaller
 
 
 def test_install_python_shim_writes_wrapper(tmp_path: Path) -> None:
@@ -26,7 +26,7 @@ def test_install_python_shim_writes_wrapper(tmp_path: Path) -> None:
 
     assert result.bin_path.exists()
     wrapper_text = result.bin_path.read_text(encoding="utf-8")
-    assert "-m sniff_cli" in wrapper_text
+    assert "-m dekk" in wrapper_text
     assert str(script.resolve()) in wrapper_text
 
 

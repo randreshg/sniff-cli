@@ -1,4 +1,4 @@
-"""Tests for sniff_cli.env -- EnvSnapshot and EnvVarBuilder."""
+"""Tests for dekk.env -- EnvSnapshot and EnvVarBuilder."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sniff_cli.env import EnvSnapshot, EnvVarBuilder
+from dekk.env import EnvSnapshot, EnvVarBuilder
 
 
 # ---------------------------------------------------------------------------
@@ -251,13 +251,13 @@ class TestEnvIntegration:
             assert result.get("PATH") is not None
 
     def test_top_level_import(self):
-        """EnvSnapshot is importable from the top-level sniff_cli package."""
-        from sniff_cli import EnvSnapshot as ES
+        """EnvSnapshot is importable from the top-level dekk package."""
+        from dekk import EnvSnapshot as ES
         assert ES is EnvSnapshot
 
     def test_direct_module_import(self):
-        """Both types are importable from sniff_cli.env."""
-        from sniff_cli.env import EnvSnapshot as ES, EnvVarBuilder as EVB
+        """Both types are importable from dekk.env."""
+        from dekk.env import EnvSnapshot as ES, EnvVarBuilder as EVB
         assert ES is EnvSnapshot
         assert EVB is EnvVarBuilder
 
@@ -268,12 +268,12 @@ class TestEnvIntegration:
 
 
 class TestEnvToolchainIntegration:
-    """Tests combining sniff_cli.env and sniff_cli.toolchain modules."""
+    """Tests combining dekk.env and dekk.toolchain modules."""
 
     def test_toolchain_env_dict_into_env_builder(self):
         """Toolchain's to_env_dict can be merged into an env.EnvVarBuilder."""
-        from sniff_cli.toolchain import CondaToolchain, CMakeToolchain
-        from sniff_cli.toolchain import EnvVarBuilder as TcBuilder
+        from dekk.toolchain import CondaToolchain, CMakeToolchain
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
         from pathlib import Path
 
         prefix = Path("/opt/conda/envs/apxm")
@@ -293,8 +293,8 @@ class TestEnvToolchainIntegration:
 
     def test_env_snapshot_as_toolchain_base(self):
         """EnvSnapshot can be merged with toolchain overrides."""
-        from sniff_cli.toolchain import CondaToolchain
-        from sniff_cli.toolchain import EnvVarBuilder as TcBuilder
+        from dekk.toolchain import CondaToolchain
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
         from pathlib import Path
 
         # Simulate captured env
@@ -319,11 +319,11 @@ class TestEnvToolchainIntegration:
 
 
 class TestEnvLibpathIntegration:
-    """Tests combining sniff_cli.env and sniff_cli.libpath modules."""
+    """Tests combining dekk.env and dekk.libpath modules."""
 
     def test_libpath_to_env_var_into_builder(self):
         """LibraryPathResolver.to_env_var() integrates with env.EnvVarBuilder."""
-        from sniff_cli.libpath import LibraryPathResolver
+        from dekk.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib", "/usr/local/lib")
@@ -337,7 +337,7 @@ class TestEnvLibpathIntegration:
 
     def test_env_snapshot_capture_includes_lib_path(self):
         """After libpath.apply(), the captured snapshot has the var."""
-        from sniff_cli.libpath import LibraryPathResolver
+        from dekk.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/snapshot/test/lib")

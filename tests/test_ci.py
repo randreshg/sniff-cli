@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from sniff_cli.ci import (
+from dekk.ci import (
     CIBuildInfo,
     CIDetector,
     CIGitInfo,

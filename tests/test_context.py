@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sniff_cli.context import (
+from dekk.context import (
     CPUInfo,
     ContextDiff,
     ContextWorkspaceInfo,
@@ -113,7 +113,7 @@ def test_detect_git_info_returns_none_without_git_dir(tmp_path):
     assert _detect_git_info(tmp_path) is None
 
 
-@patch("sniff_cli.context.subprocess.run")
+@patch("dekk.context.subprocess.run")
 def test_detect_git_info_parses_git_state(mock_run, tmp_path):
     (tmp_path / ".git").mkdir()
 
@@ -141,7 +141,7 @@ def test_detect_git_info_parses_git_state(mock_run, tmp_path):
     )
 
 
-@patch("sniff_cli.context.subprocess.run", side_effect=subprocess.TimeoutExpired("git", 5))
+@patch("dekk.context.subprocess.run", side_effect=subprocess.TimeoutExpired("git", 5))
 def test_detect_git_info_handles_subprocess_failures(mock_run, tmp_path):
     (tmp_path / ".git").mkdir()
     assert _detect_git_info(tmp_path) is None
@@ -171,11 +171,11 @@ def test_detect_cpu_info_returns_sane_values():
     assert result.total_mb >= 0
 
 
-@patch("sniff_cli.context.platform.processor", return_value="Fallback CPU")
-@patch("sniff_cli.context.os.cpu_count", return_value=4)
+@patch("dekk.context.platform.processor", return_value="Fallback CPU")
+@patch("dekk.context.os.cpu_count", return_value=4)
 def test_detect_cpu_info_falls_back_without_psutil(mock_cpu_count, mock_processor):
     with patch.dict("sys.modules", {"psutil": None}):
-        with patch("sniff_cli.context.sys.platform", "unknown"):
+        with patch("dekk.context.sys.platform", "unknown"):
             result = ExecutionContext.capture(
                 include_env_vars=False,
                 include_packages=False,
@@ -191,7 +191,7 @@ def test_detect_nvidia_gpus_returns_empty_without_tool(mock_which):
     assert _detect_nvidia_gpus() == []
 
 
-@patch("sniff_cli.context.subprocess.run")
+@patch("dekk.context.subprocess.run")
 @patch("shutil.which", return_value="/usr/bin/nvidia-smi")
 def test_detect_nvidia_gpus_parses_cli_output(mock_which, mock_run):
     mock_run.return_value = MagicMock(
@@ -211,7 +211,7 @@ def test_detect_nvidia_gpus_parses_cli_output(mock_which, mock_run):
     ]
 
 
-@patch("sniff_cli.context.subprocess.run")
+@patch("dekk.context.subprocess.run")
 @patch("shutil.which", return_value="/usr/bin/rocm-smi")
 def test_detect_amd_gpus_uses_fallback_output(mock_which, mock_run):
     mock_run.side_effect = [
@@ -240,7 +240,7 @@ def test_detect_intel_gpus_reads_sysfs_layout(tmp_path):
     real_path = Path
 
     with patch(
-        "sniff_cli.context.Path",
+        "dekk.context.Path",
         side_effect=lambda value: drm_root if value == "/sys/class/drm" else real_path(value),
     ):
         result = _detect_intel_gpus()
@@ -256,15 +256,15 @@ def test_detect_intel_gpus_reads_sysfs_layout(tmp_path):
 
 
 @patch(
-    "sniff_cli.context._detect_nvidia_gpus",
+    "dekk.context._detect_nvidia_gpus",
     return_value=[GPUInfo("nvidia", "RTX", 8192, "535")],
 )
 @patch(
-    "sniff_cli.context._detect_amd_gpus",
+    "dekk.context._detect_amd_gpus",
     return_value=[GPUInfo("amd", "MI300X", 192000, None)],
 )
 @patch(
-    "sniff_cli.context._detect_intel_gpus",
+    "dekk.context._detect_intel_gpus",
     return_value=[GPUInfo("intel", "Arc", None, None)],
 )
 def test_detect_gpus_merges_all_vendor_detectors(mock_intel, mock_amd, mock_nvidia):
@@ -295,8 +295,8 @@ def test_serialize_value_handles_nested_paths_dataclasses_and_datetimes():
 
 
 def _make_context(**overrides) -> ExecutionContext:
-    from sniff_cli.ci import CIInfo
-    from sniff_cli.detect import PlatformInfo
+    from dekk.ci import CIInfo
+    from dekk.detect import PlatformInfo
 
     defaults = dict(
         platform=PlatformInfo(os="Linux", arch="x86_64"),
@@ -324,17 +324,17 @@ def _make_context(**overrides) -> ExecutionContext:
 
 
 def test_execution_context_capture_respects_optional_sections():
-    from sniff_cli.ci import CIInfo
-    from sniff_cli.detect import PlatformInfo
+    from dekk.ci import CIInfo
+    from dekk.detect import PlatformInfo
 
     workspace = ContextWorkspaceInfo(Path.cwd(), None, [], [])
     fake_platform = PlatformInfo(os="Linux", arch="x86_64")
     fake_ci = CIInfo(is_ci=False)
 
-    with patch("sniff_cli.detect.PlatformDetector.detect", return_value=fake_platform), patch(
-        "sniff_cli.conda.CondaDetector.find_active", return_value=None
-    ), patch("sniff_cli.ci.CIDetector.detect", return_value=fake_ci), patch(
-        "sniff_cli.context._detect_workspace", return_value=workspace
+    with patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform), patch(
+        "dekk.conda.CondaDetector.find_active", return_value=None
+    ), patch("dekk.ci.CIDetector.detect", return_value=fake_ci), patch(
+        "dekk.context._detect_workspace", return_value=workspace
     ):
         ctx = ExecutionContext.capture(
             include_env_vars=False,
@@ -350,8 +350,8 @@ def test_execution_context_capture_respects_optional_sections():
 
 
 def test_execution_context_capture_includes_requested_sections():
-    from sniff_cli.ci import CIInfo
-    from sniff_cli.detect import PlatformInfo
+    from dekk.ci import CIInfo
+    from dekk.detect import PlatformInfo
 
     fake_platform = PlatformInfo(os="Linux", arch="x86_64")
     fake_ci = CIInfo(is_ci=False)
@@ -360,14 +360,14 @@ def test_execution_context_capture_includes_requested_sections():
     gpu = [GPUInfo("nvidia", "RTX", 8192, "535")]
     memory = MemoryInfo(16384, 8192, 8192)
 
-    with patch("sniff_cli.detect.PlatformDetector.detect", return_value=fake_platform), patch(
-        "sniff_cli.conda.CondaDetector.find_active", return_value=None
-    ), patch("sniff_cli.ci.CIDetector.detect", return_value=fake_ci), patch(
-        "sniff_cli.context._detect_workspace", return_value=workspace
-    ), patch("sniff_cli.context._detect_installed_packages", return_value={"pytest": "8.4.0"}), patch(
-        "sniff_cli.context._detect_cpu_info", return_value=cpu
-    ), patch("sniff_cli.context._detect_gpus", return_value=gpu), patch(
-        "sniff_cli.context._detect_memory_info", return_value=memory
+    with patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform), patch(
+        "dekk.conda.CondaDetector.find_active", return_value=None
+    ), patch("dekk.ci.CIDetector.detect", return_value=fake_ci), patch(
+        "dekk.context._detect_workspace", return_value=workspace
+    ), patch("dekk.context._detect_installed_packages", return_value={"pytest": "8.4.0"}), patch(
+        "dekk.context._detect_cpu_info", return_value=cpu
+    ), patch("dekk.context._detect_gpus", return_value=gpu), patch(
+        "dekk.context._detect_memory_info", return_value=memory
     ):
         ctx = ExecutionContext.capture()
 

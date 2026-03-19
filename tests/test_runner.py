@@ -1,11 +1,11 @@
-"""Tests for sniff_cli.runner helpers."""
+"""Tests for dekk.runner helpers."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from sniff_cli import runner as runner_mod
-from sniff_cli.sniff_os import PosixSniffOS, WindowsSniffOS
+from dekk import runner as runner_mod
+from dekk.dekk_os import PosixDekkOS, WindowsDekkOS
 
 
 class TestVenvExecutable:
@@ -16,7 +16,7 @@ class TestVenvExecutable:
         python = bin_dir / "python"
         python.write_text("", encoding="utf-8")
 
-        monkeypatch.setattr(runner_mod, "get_sniff_os", lambda: PosixSniffOS())
+        monkeypatch.setattr(runner_mod, "get_dekk_os", lambda: PosixDekkOS())
         assert runner_mod._venv_executable(venv, "python") == python
 
     def test_uses_scripts_on_windows(self, tmp_path: Path, monkeypatch):
@@ -26,7 +26,7 @@ class TestVenvExecutable:
         python = scripts_dir / "python.exe"
         python.write_text("", encoding="utf-8")
 
-        monkeypatch.setattr(runner_mod, "get_sniff_os", lambda: WindowsSniffOS())
+        monkeypatch.setattr(runner_mod, "get_dekk_os", lambda: WindowsDekkOS())
         assert runner_mod._venv_executable(venv, "python") == python
 
     def test_falls_back_to_executable_name_when_missing(self, tmp_path: Path, monkeypatch):
@@ -34,5 +34,5 @@ class TestVenvExecutable:
         scripts_dir = venv / "Scripts"
         scripts_dir.mkdir(parents=True)
 
-        monkeypatch.setattr(runner_mod, "get_sniff_os", lambda: WindowsSniffOS())
+        monkeypatch.setattr(runner_mod, "get_dekk_os", lambda: WindowsDekkOS())
         assert runner_mod._venv_executable(venv, "pip") == scripts_dir / "pip"

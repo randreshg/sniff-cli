@@ -1,8 +1,8 @@
-# sniff-cli
+# dekk
 
 **One config. Zero activation. Any project.**
 
-sniff-cli detects your project's environment, activates it, and generates
+dekk detects your project's environment, activates it, and generates
 a self-contained wrapper binary. No manual setup. No `conda activate`.
 No PATH wrangling. Just works.
 
@@ -11,20 +11,19 @@ No PATH wrangling. Just works.
 Recommended for end users:
 
 ```bash
-pipx install sniff-cli
+pipx install dekk
 ```
 
 Fallback if you already manage Python packages directly:
 
 ```bash
-python -m pip install --upgrade sniff-cli
+python -m pip install --upgrade dekk
 ```
 
-After installation, you can use either command:
+After installation:
 
-- `sniff` is the short command used in the quick examples below.
-- `sniff-cli` is the explicit compatibility command.
-- `python -m sniff_cli` works as a fallback if your scripts directory is not on `PATH` yet.
+- Use `dekk` for the CLI.
+- Use `python -m dekk` as a fallback if your scripts directory is not on `PATH` yet.
 
 ## The Problem
 
@@ -35,7 +34,7 @@ duplicate configuration.
 
 ## The Solution
 
-Declare your environment once in `.sniff-cli.toml`. sniff-cli handles the rest.
+Declare your environment once in `.dekk.toml`. dekk handles the rest.
 
 ```toml
 [project]
@@ -72,7 +71,7 @@ Zero-dependency detection of your entire development environment:
 - **Workspaces**: Monorepo detection with dependency graphs
 
 ```python
-from sniff_cli import PlatformDetector, CondaDetector, BuildSystemDetector
+from dekk import PlatformDetector, CondaDetector, BuildSystemDetector
 
 platform = PlatformDetector().detect()
 # PlatformInfo(os='Linux', arch='x86_64', distro='ubuntu', ...)
@@ -86,10 +85,10 @@ builds = BuildSystemDetector().detect(Path("."))
 
 ### 2. Activate
 
-Read `.sniff-cli.toml`, resolve conda paths, set environment variables, validate tools:
+Read `.dekk.toml`, resolve conda paths, set environment variables, validate tools:
 
 ```python
-from sniff_cli import EnvironmentActivator
+from dekk import EnvironmentActivator
 
 activator = EnvironmentActivator.from_cwd()
 result = activator.activate()
@@ -98,21 +97,21 @@ result = activator.activate()
 
 Or from the CLI:
 ```
-$ eval "$(sniff activate --shell bash)"
+$ eval "$(dekk activate --shell bash)"
 ```
 
 On Windows PowerShell:
 ```powershell
-PS> Invoke-Expression (& sniff activate --shell powershell | Out-String)
+PS> Invoke-Expression (& dekk activate --shell powershell | Out-String)
 ```
 
 ### 3. Wrap
 
 Generate a self-contained launcher that bakes in the full environment.
-**This is what makes sniff-cli zero-friction.**
+**This is what makes dekk zero-friction.**
 
 ```
-$ sniff wrap myapp ./bin/myapp
+$ dekk wrap myapp ./bin/myapp
   Generated myapp -> ~/.local/bin/myapp
 
 $ myapp doctor    # just works -- no activation needed
@@ -128,17 +127,17 @@ exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```
 
-On Windows, sniff-cli installs a `.cmd` launcher in Python's user scripts
+On Windows, dekk installs a `.cmd` launcher in Python's user scripts
 directory (the `Scripts` directory under `python -m site --user-base`) so the
 command works from both Command Prompt and PowerShell without requiring
 `Activate.ps1`.
 
 From Python:
 ```python
-from sniff_cli import WrapperGenerator
+from dekk import WrapperGenerator
 
 result = WrapperGenerator.install_from_spec(
-    spec_file=Path(".sniff-cli.toml"),
+    spec_file=Path(".dekk.toml"),
     target=Path("tools/cli.py"),
     python=Path("/opt/conda/envs/myapp/bin/python3"),
     name="myapp",
@@ -148,10 +147,10 @@ result = WrapperGenerator.install_from_spec(
 ## Installation
 
 ```bash
-pipx install sniff-cli
-python -m pip install --upgrade sniff-cli
-python -m pip install --upgrade "sniff-cli[tracking]"
-python -m pip install --upgrade "sniff-cli[all]"
+pipx install dekk
+python -m pip install --upgrade dekk
+python -m pip install --upgrade "dekk[tracking]"
+python -m pip install --upgrade "dekk[all]"
 ```
 
 ## First Run
@@ -159,77 +158,77 @@ python -m pip install --upgrade "sniff-cli[all]"
 The default path should be simple:
 
 ```bash
-sniff --help
-sniff doctor
-sniff init --example quickstart
+dekk --help
+dekk doctor
+dekk init --example quickstart
 ```
 
 That gives you a working CLI immediately, a system check, and a starter
-`.sniff-cli.toml` in the current directory.
+`.dekk.toml` in the current directory.
 
-If `sniff` is not found yet, your scripts directory is probably not on `PATH`.
-Use `python -m sniff_cli --help` immediately, then add the user scripts
+If `dekk` is not found yet, your scripts directory is probably not on `PATH`.
+Use `python -m dekk --help` immediately, then add the user scripts
 directory reported by `python -m site --user-base` to `PATH`.
 
 If you want a built-in starter without writing files yet:
 
 ```bash
-sniff example quickstart
-sniff example conda --output .sniff-cli.toml
+dekk example quickstart
+dekk example conda --output .dekk.toml
 ```
 
 Built-in templates live in
-[examples/.sniff-cli.toml.quickstart](examples/.sniff-cli.toml.quickstart),
-[examples/.sniff-cli.toml.minimal](examples/.sniff-cli.toml.minimal),
-and [examples/.sniff-cli.toml.conda](examples/.sniff-cli.toml.conda).
+[examples/.dekk.toml.quickstart](examples/.dekk.toml.quickstart),
+[examples/.dekk.toml.minimal](examples/.dekk.toml.minimal),
+and [examples/.dekk.toml.conda](examples/.dekk.toml.conda).
 
 Typical next steps:
 
 ```bash
 # Python CLI from a repo with pyproject.toml
-sniff install ./tools/cli.py
+dekk install ./tools/cli.py
 
 # POSIX shells
-eval "$(sniff activate --shell bash)"
+eval "$(dekk activate --shell bash)"
 
 # Install a launcher after your project builds a target
-sniff install ./bin/myapp --name myapp
+dekk install ./bin/myapp --name myapp
 ```
 
-For Python scripts, `sniff install ./tools/cli.py` uses `pyproject.toml` to
+For Python scripts, `dekk install ./tools/cli.py` uses `pyproject.toml` to
 create or refresh `.venv` automatically on first run. For binaries and
-conda-backed projects, `sniff install` uses `.sniff-cli.toml` to bake the
+conda-backed projects, `dekk install` uses `.dekk.toml` to bake the
 required environment into the installed command.
 
 ```powershell
 # PowerShell
-Invoke-Expression (& sniff activate --shell powershell | Out-String)
-sniff install .\dist\myapp.exe --name myapp
+Invoke-Expression (& dekk activate --shell powershell | Out-String)
+dekk install .\dist\myapp.exe --name myapp
 ```
 
 ## Naming Conventions
 
-sniff-cli uses one name per surface area:
+dekk uses one name per surface area:
 
-- **PyPI package**: `sniff-cli`
-- **Python import**: `sniff_cli`
-- **CLI commands**: `sniff` and `sniff-cli`
-- **Project config file**: `.sniff-cli.toml`
+- **PyPI package**: `dekk`
+- **Python import**: `dekk`
+- **CLI command**: `dekk`
+- **Project config file**: `.dekk.toml`
 - **Default wrapper location**: the Python user scripts directory on the current platform
 
 That keeps installation, imports, command usage, and project setup distinct and predictable.
 
 ## CLI Framework
 
-sniff-cli includes a production-quality CLI framework built on Rich and Typer.
+dekk includes a production-quality CLI framework built on Rich and Typer.
 Use it as the foundation for your own CLI tools:
 
 ```python
-from sniff_cli import Typer, Option
+from dekk import Typer, Option
 
 app = Typer(
     name="myapp",
-    auto_activate=True,      # auto-setup from .sniff-cli.toml
+    auto_activate=True,      # auto-setup from .dekk.toml
     add_doctor_command=True,  # built-in health check
     add_version_command=True, # built-in version info
 )
@@ -246,8 +245,8 @@ if __name__ == "__main__":
 ### Styled output
 
 ```python
-from sniff_cli import print_success, print_error, print_warning, print_info
-from sniff_cli import print_header, print_step, print_table
+from dekk import print_success, print_error, print_warning, print_info
+from dekk import print_header, print_step, print_table
 
 print_header("Building MyApp")
 print_step("Compiling...")
@@ -258,7 +257,7 @@ print_warning("Debug symbols not stripped")
 ### Progress indicators
 
 ```python
-from sniff_cli import spinner, progress_bar
+from dekk import spinner, progress_bar
 
 with spinner("Installing dependencies..."):
     install_deps()
@@ -272,7 +271,7 @@ with progress_bar("Processing", total=100) as bar:
 ### Structured errors
 
 ```python
-from sniff_cli import NotFoundError, DependencyError
+from dekk import NotFoundError, DependencyError
 
 raise NotFoundError(
     "Compiler not found",
@@ -284,7 +283,7 @@ raise NotFoundError(
 ### Multi-format output
 
 ```python
-from sniff_cli import OutputFormatter, OutputFormat
+from dekk import OutputFormatter, OutputFormat
 
 fmt = OutputFormatter(format=OutputFormat.JSON)
 fmt.print_result({"status": "ok", "version": "1.0"})
@@ -293,7 +292,7 @@ fmt.print_result({"status": "ok", "version": "1.0"})
 ### LLM-friendly subprocess runner
 
 ```python
-from sniff_cli import run_logged
+from dekk import run_logged
 
 result = run_logged(
     ["cargo", "build", "--release"],
@@ -303,7 +302,7 @@ result = run_logged(
 # Shows spinner, captures output to log, prints path for agents to read
 ```
 
-## .sniff-cli.toml Reference
+## .dekk.toml Reference
 
 ### [project] -- required
 
@@ -429,7 +428,7 @@ bin = ["{home}/go/bin"]
 
 ## For AI Agents
 
-sniff-cli reduces environment setup from 2000-5000 tokens to ~150 tokens:
+dekk reduces environment setup from 2000-5000 tokens to ~150 tokens:
 
 **Before** (what agents had to explain):
 > Check if conda is installed. If not, install miniforge. Create environment
@@ -456,19 +455,19 @@ sniff-cli reduces environment setup from 2000-5000 tokens to ~150 tokens:
 
 ## Architecture
 
-sniff-cli is organized in three tiers:
+dekk is organized in three tiers:
 
 - **Tier 1 (Core)**: Foundational detection and config modules. Platform, conda, deps, workspace, config, remediation.
 - **Tier 2 (Extended)**: Paths, build systems, compilers, shells, toolchains, versions, CI.
 - **Tier 3 (Frameworks)**: Diagnostics, commands, scaffolding.
 
-The CLI framework ships in the base `sniff-cli` install.
+The CLI framework ships in the base `dekk` install.
 
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
-- [.sniff-cli.toml Specification](docs/spec.md)
+- [.dekk.toml Specification](docs/spec.md)
 - [Wrapper Generation](docs/wrapper.md)
 - [Examples by Language](docs/examples-by-language.md)
 - [Contributing](docs/contributing.md)
