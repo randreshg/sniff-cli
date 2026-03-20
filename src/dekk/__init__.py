@@ -17,7 +17,7 @@ from typing import Any
 try:
     __version__ = version("dekk")
 except PackageNotFoundError:
-    __version__ = "1.0.1"
+    __version__ = "1.1.0"
 
 # ---------------------------------------------------------------------------
 # Lazy import registry: module_path -> list of exported names
@@ -135,7 +135,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "ContextDiff",
     ],
     # -- CLI Framework --
-    "dekk.typer_app": ["Typer", "Option", "Argument", "Exit"],
+    "dekk.typer_app": ["Typer", "Option", "Argument", "Exit", "Context"],
     # -- CLI Commands --
     "dekk.cli_commands": ["run_doctor", "run_version", "run_env"],
     # -- CLI Styling & Output --

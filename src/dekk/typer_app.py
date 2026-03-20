@@ -26,7 +26,7 @@ _typer = None
 _TYPER_AVAILABLE: bool | None = None
 
 
-TYPER_EXPORTS: Final = ("Option", "Argument", "Exit")
+TYPER_EXPORTS: Final = ("Option", "Argument", "Exit", "Context")
 TRACKING_STATUS_SUCCESS: Final = "success"
 TRACKING_STATUS_FAILED: Final = "failed"
 DEFAULT_APP_NAME: Final = "app"

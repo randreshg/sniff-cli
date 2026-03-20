@@ -2,6 +2,11 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.1.0 - 2026-03-20
+
+- Export `Context` from `dekk.typer_app` so consumers can use `from dekk import Context`
+  instead of importing directly from `typer`.
+
 ## 1.0.1 - 2026-03-19
 
 - Added project-local install and uninstall APIs for generated launchers.
