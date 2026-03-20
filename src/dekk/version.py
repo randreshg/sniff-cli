@@ -19,15 +19,15 @@ Pure data + logic -- no I/O, no subprocesses.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from functools import total_ordering
-from typing import Sequence
-
 
 # ---------------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------------
+
 
 @total_ordering
 @dataclass(frozen=True)
@@ -160,6 +160,7 @@ class Version:
 # Constraint operators
 # ---------------------------------------------------------------------------
 
+
 class ConstraintOp(Enum):
     EQ = "=="
     NEQ = "!="
@@ -168,13 +169,14 @@ class ConstraintOp(Enum):
     LTE = "<="
     LT = "<"
     COMPAT = "~="  # PEP 440 compatible release
-    TILDE = "~"    # npm-style tilde
-    CARET = "^"    # npm-style caret
+    TILDE = "~"  # npm-style tilde
+    CARET = "^"  # npm-style caret
 
 
 # ---------------------------------------------------------------------------
 # VersionConstraint  (single operator + version)
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class VersionConstraint:
@@ -240,9 +242,7 @@ _CONSTRAINT_RE = re.compile(
     r"\s*$"
 )
 
-_WILDCARD_RE = re.compile(
-    r"^\s*(?P<prefix>\d+(?:\.\d+)*)\.\*\s*$"
-)
+_WILDCARD_RE = re.compile(r"^\s*(?P<prefix>\d+(?:\.\d+)*)\.\*\s*$")
 
 
 @dataclass(frozen=True)
@@ -387,6 +387,7 @@ class VersionSpec:
 # ---------------------------------------------------------------------------
 # Utility: compare two version strings
 # ---------------------------------------------------------------------------
+
 
 def compare_versions(a: str, b: str) -> int:
     """Compare two version strings.

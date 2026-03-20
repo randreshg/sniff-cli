@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 
 from dekk.lockfile import (
+    LockedDependency,
+    LockfileInfo,
     LockfileKind,
     LockfileParser,
-    LockfileInfo,
-    LockedDependency,
 )
 
 
@@ -21,6 +21,7 @@ def parser():
 # ---------------------------------------------------------------------------
 # LockedDependency / LockfileInfo
 # ---------------------------------------------------------------------------
+
 
 class TestLockfileInfo:
     def test_package_count(self):
@@ -97,6 +98,7 @@ class TestLockfileInfo:
 # Cargo.lock
 # ---------------------------------------------------------------------------
 
+
 class TestCargoLock:
     def test_parse_cargo_lock(self, tmp_path, parser):
         lock_content = """\
@@ -152,6 +154,7 @@ dependencies = [
 # ---------------------------------------------------------------------------
 # package-lock.json (npm)
 # ---------------------------------------------------------------------------
+
 
 class TestNpmLock:
     def test_parse_npm_v3(self, tmp_path, parser):
@@ -214,6 +217,7 @@ class TestNpmLock:
 # yarn.lock
 # ---------------------------------------------------------------------------
 
+
 class TestYarnLock:
     def test_parse_yarn_v1(self, tmp_path, parser):
         lock_content = """\
@@ -267,6 +271,7 @@ body-parser@1.20.2:
 # poetry.lock
 # ---------------------------------------------------------------------------
 
+
 class TestPoetryLock:
     def test_parse_poetry_lock(self, tmp_path, parser):
         lock_content = """\
@@ -306,6 +311,7 @@ version = "2.1.0"
 # ---------------------------------------------------------------------------
 # pnpm-lock.yaml
 # ---------------------------------------------------------------------------
+
 
 class TestPnpmLock:
     def test_parse_pnpm_v9(self, tmp_path, parser):
@@ -364,6 +370,7 @@ packages:
 # Gemfile.lock
 # ---------------------------------------------------------------------------
 
+
 class TestGemfileLock:
     def test_parse_gemfile_lock(self, tmp_path, parser):
         lock_content = """\
@@ -402,6 +409,7 @@ BUNDLED WITH
 # detect_and_parse
 # ---------------------------------------------------------------------------
 
+
 class TestDetectAndParse:
     def test_finds_multiple_lockfiles(self, tmp_path, parser):
         # Create Cargo.lock
@@ -410,13 +418,17 @@ class TestDetectAndParse:
 
         # Create package-lock.json
         npm_lock = tmp_path / "package-lock.json"
-        npm_lock.write_text(json.dumps({
-            "lockfileVersion": 3,
-            "packages": {
-                "": {"name": "test"},
-                "node_modules/bar": {"version": "2.0.0"},
-            },
-        }))
+        npm_lock.write_text(
+            json.dumps(
+                {
+                    "lockfileVersion": 3,
+                    "packages": {
+                        "": {"name": "test"},
+                        "node_modules/bar": {"version": "2.0.0"},
+                    },
+                }
+            )
+        )
 
         results = parser.detect_and_parse(tmp_path)
         assert len(results) == 2

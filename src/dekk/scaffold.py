@@ -10,10 +10,9 @@ setup script generation -- no subprocess calls, no side effects.
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Protocol, Sequence
-
+from typing import Final, Protocol
 
 DEFAULT_RENDER_SHELL: Final = "bash"
 FISH_RENDER_SHELL: Final = "fish"
@@ -218,9 +217,7 @@ class ProjectTypeDetector:
             entry_points=entry_points,
         )
 
-    def _detect_language_framework(
-        self, root: Path
-    ) -> tuple[ProjectLanguage, ProjectFramework]:
+    def _detect_language_framework(self, root: Path) -> tuple[ProjectLanguage, ProjectFramework]:
         """Detect primary language and framework from config files."""
         language = ProjectLanguage.UNKNOWN
         framework = ProjectFramework.NONE
@@ -254,9 +251,7 @@ class ProjectTypeDetector:
 
         return language, framework
 
-    def _refine_python_framework(
-        self, root: Path, current: ProjectFramework
-    ) -> ProjectFramework:
+    def _refine_python_framework(self, root: Path, current: ProjectFramework) -> ProjectFramework:
         """Refine Python framework from pyproject.toml contents."""
         pyproject = root / "pyproject.toml"
         if not pyproject.exists():
@@ -280,9 +275,7 @@ class ProjectTypeDetector:
 
         return current
 
-    def _refine_js_framework(
-        self, root: Path, current: ProjectFramework
-    ) -> ProjectFramework:
+    def _refine_js_framework(self, root: Path, current: ProjectFramework) -> ProjectFramework:
         """Refine JS/TS framework from package.json dependencies."""
         import json
 
@@ -318,6 +311,7 @@ class ProjectTypeDetector:
             if pkg_json.exists():
                 try:
                     import json
+
                     with open(pkg_json, encoding="utf-8") as f:
                         data = json.load(f)
                     return "main" in data or "exports" in data
@@ -336,6 +330,7 @@ class ProjectTypeDetector:
             if pkg_json.exists():
                 try:
                     import json
+
                     with open(pkg_json, encoding="utf-8") as f:
                         data = json.load(f)
                     scripts = data.get("scripts", {})
@@ -372,6 +367,7 @@ class ProjectTypeDetector:
         if pkg_json.exists():
             try:
                 import json
+
                 with open(pkg_json, encoding="utf-8") as f:
                     data = json.load(f)
                 if "workspaces" in data:
@@ -421,9 +417,7 @@ class ProjectTypeDetector:
                 return True
         return False
 
-    def _detect_entry_points(
-        self, root: Path, language: ProjectLanguage
-    ) -> tuple[str, ...]:
+    def _detect_entry_points(self, root: Path, language: ProjectLanguage) -> tuple[str, ...]:
         """Detect common entry point files."""
         candidates: list[str] = []
 
@@ -437,9 +431,7 @@ class ProjectTypeDetector:
                 try:
                     for pkg in src.iterdir():
                         if pkg.is_dir() and (pkg / "__main__.py").exists():
-                            candidates.append(
-                                str((pkg / "__main__.py").relative_to(root))
-                            )
+                            candidates.append(str((pkg / "__main__.py").relative_to(root)))
                 except OSError:
                     pass
 
@@ -813,12 +805,14 @@ class SetupScriptBuilder:
         if sys_deps and pkg_manager:
             install_cmd = self._pkg_install_command(pkg_manager, sys_deps)
             if install_cmd:
-                steps.append(SetupStep(
-                    name=SYSTEM_DEPS_STEP_NAME,
-                    command=install_cmd,
-                    description="Install system-level dependencies",
-                    optional=True,
-                ))
+                steps.append(
+                    SetupStep(
+                        name=SYSTEM_DEPS_STEP_NAME,
+                        command=install_cmd,
+                        description="Install system-level dependencies",
+                        optional=True,
+                    )
+                )
 
         # Add language-specific steps
         steps.extend(self._steps_for_language(project_type))
@@ -826,10 +820,7 @@ class SetupScriptBuilder:
 
         return SetupScript(
             name=f"{project_type.language.value}-setup",
-            description=(
-                f"Setup script for {project_type.language.value} project "
-                f"on {os_name}"
-            ),
+            description=(f"Setup script for {project_type.language.value} project on {os_name}"),
             steps=tuple(steps),
         )
 
@@ -845,8 +836,7 @@ class SetupScriptBuilder:
 
         raw_steps = step_map.get(project_type.language, [])
         return [
-            SetupStep(name=name, command=cmd, description=desc)
-            for name, cmd, desc in raw_steps
+            SetupStep(name=name, command=cmd, description=desc) for name, cmd, desc in raw_steps
         ]
 
     def _steps_for_framework(self, project_type: ProjectType) -> list[SetupStep]:
@@ -855,59 +845,71 @@ class SetupScriptBuilder:
 
         if project_type.framework == ProjectFramework.POETRY:
             # Replace pip install with poetry install
-            steps.append(SetupStep(
-                name="poetry-install",
-                command="poetry install",
-                description="Install dependencies via Poetry",
-            ))
+            steps.append(
+                SetupStep(
+                    name="poetry-install",
+                    command="poetry install",
+                    description="Install dependencies via Poetry",
+                )
+            )
 
         elif project_type.framework == ProjectFramework.PDM:
-            steps.append(SetupStep(
-                name="pdm-install",
-                command="pdm install",
-                description="Install dependencies via PDM",
-            ))
+            steps.append(
+                SetupStep(
+                    name="pdm-install",
+                    command="pdm install",
+                    description="Install dependencies via PDM",
+                )
+            )
 
         elif project_type.framework == ProjectFramework.HATCH:
-            steps.append(SetupStep(
-                name="hatch-env",
-                command="hatch env create",
-                description="Create Hatch environment",
-            ))
+            steps.append(
+                SetupStep(
+                    name="hatch-env",
+                    command="hatch env create",
+                    description="Create Hatch environment",
+                )
+            )
 
         elif project_type.framework == ProjectFramework.NEXT:
-            steps.append(SetupStep(
-                name="next-build",
-                command="npm run build",
-                description="Build Next.js application",
-                optional=True,
-            ))
+            steps.append(
+                SetupStep(
+                    name="next-build",
+                    command="npm run build",
+                    description="Build Next.js application",
+                    optional=True,
+                )
+            )
 
         elif project_type.framework == ProjectFramework.DJANGO:
-            steps.append(SetupStep(
-                name="migrate",
-                command="python manage.py migrate",
-                description="Run Django database migrations",
-                optional=True,
-            ))
+            steps.append(
+                SetupStep(
+                    name="migrate",
+                    command="python manage.py migrate",
+                    description="Run Django database migrations",
+                    optional=True,
+                )
+            )
 
         elif project_type.framework == ProjectFramework.CMAKE:
-            steps.append(SetupStep(
-                name="cmake-configure",
-                command="cmake -B build -S .",
-                description="Configure CMake build",
-            ))
-            steps.append(SetupStep(
-                name="cmake-build",
-                command="cmake --build build",
-                description="Build with CMake",
-            ))
+            steps.append(
+                SetupStep(
+                    name="cmake-configure",
+                    command="cmake -B build -S .",
+                    description="Configure CMake build",
+                )
+            )
+            steps.append(
+                SetupStep(
+                    name="cmake-build",
+                    command="cmake --build build",
+                    description="Build with CMake",
+                )
+            )
 
         return steps
 
-    def _system_deps_for(
-        self, project_type: ProjectType, pkg_manager: str | None
-    ) -> list[str]:
+    def _system_deps_for(self, project_type: ProjectType, pkg_manager: str | None) -> list[str]:
         """Determine system dependencies needed for the project."""
         deps: list[str] = []
 
@@ -927,9 +929,7 @@ class SetupScriptBuilder:
 
         return deps
 
-    def _pkg_install_command(
-        self, pkg_manager: str, packages: list[str]
-    ) -> str | None:
+    def _pkg_install_command(self, pkg_manager: str, packages: list[str]) -> str | None:
         """Generate a package install command."""
         if not packages:
             return None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import builtins
-from pathlib import Path
 
 import pytest
 
@@ -96,7 +95,9 @@ def test_config_manager_merges_user_project_and_env_precedence(tmp_path, monkeyp
 
     project_config = project / ".testapp"
     project_config.mkdir()
-    (project_config / "config.toml").write_text('[tier]\nwho = "project"\n[build]\ntarget = "release"\n')
+    (project_config / "config.toml").write_text(
+        '[tier]\nwho = "project"\n[build]\ntarget = "release"\n'
+    )
 
     monkeypatch.setenv("TESTAPP_BUILD_OPTIMIZE", "true")
     monkeypatch.setenv("TESTAPP_DATABASE_HOST", "db.example.com")
@@ -166,4 +167,3 @@ def test_config_manager_save_requires_tomli_w(tmp_path, monkeypatch):
             config.save()
     finally:
         config_module.tomli_w = original
-

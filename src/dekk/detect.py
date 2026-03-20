@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import platform
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -90,11 +89,10 @@ class PlatformDetector:
         """Detect Linux distribution and version."""
         try:
             # Try Python 3.10+ freedesktop_os_release
-            if sys.version_info >= (3, 10):
-                import platform as p
+            import platform as p
 
-                os_release = p.freedesktop_os_release()
-                return os_release.get("ID"), os_release.get("VERSION_ID")
+            os_release = p.freedesktop_os_release()
+            return os_release.get("ID"), os_release.get("VERSION_ID")
         except (AttributeError, OSError):
             pass
 

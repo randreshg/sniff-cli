@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from rich.console import Console
 from rich.theme import Theme
 
@@ -26,7 +25,6 @@ from dekk.cli.styles import (
     print_warning,
 )
 
-
 # ---------------------------------------------------------------------------
 # Theme
 # ---------------------------------------------------------------------------
@@ -39,7 +37,17 @@ class TestCLITheme:
         assert isinstance(CLI_THEME, Theme)
 
     def test_theme_contains_all_semantic_styles(self):
-        expected = {"success", "error", "warning", "info", "debug", "header", "step", "dim", "highlight"}
+        expected = {
+            "success",
+            "error",
+            "warning",
+            "info",
+            "debug",
+            "header",
+            "step",
+            "dim",
+            "highlight",
+        }
         assert expected <= set(CLI_THEME.styles.keys())
 
 

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from .dekk_os import get_dekk_os
+
+VERSION_PREFIX_PATTERN = re.compile(r"^[\^~><!=]+")
 
 
 def _find_pyproject(start: Path) -> Path | None:
@@ -30,7 +34,7 @@ def _find_dekk_toml(start: Path) -> Path | None:
     return None
 
 
-def _parse_poetry_deps(deps: dict) -> list[str]:
+def _parse_poetry_deps(deps: dict[str, Any]) -> list[str]:
     """Parse [tool.poetry.dependencies] into pip install specs."""
     specs = []
     for name, constraint in deps.items():
@@ -38,7 +42,7 @@ def _parse_poetry_deps(deps: dict) -> list[str]:
             continue
         if isinstance(constraint, str):
             # Strip leading ^, ~, etc. to produce a >= spec
-            version = constraint.lstrip("^~>=<!=")
+            version = VERSION_PREFIX_PATTERN.sub("", constraint)
             if version:
                 specs.append(f"{name}>={version}")
             else:
@@ -51,14 +55,14 @@ def _parse_poetry_deps(deps: dict) -> list[str]:
             elif "extras" in constraint:
                 extras = ",".join(constraint["extras"])
                 version = constraint.get("version", "")
-                version = version.lstrip("^~>=<!=")
+                version = VERSION_PREFIX_PATTERN.sub("", version)
                 base = f"{name}[{extras}]"
                 if version:
                     specs.append(f"{base}>={version}")
                 else:
                     specs.append(base)
             elif "version" in constraint:
-                version = constraint["version"].lstrip("^~>=<!=")
+                version = VERSION_PREFIX_PATTERN.sub("", constraint["version"])
                 if version:
                     specs.append(f"{name}>={version}")
                 else:
@@ -70,7 +74,7 @@ def _parse_poetry_deps(deps: dict) -> list[str]:
     return specs
 
 
-def _parse_pep621_deps(deps: list) -> list[str]:
+def _parse_pep621_deps(deps: list[Any]) -> list[str]:
     """Parse [project.dependencies] list (PEP 621 format) into pip install specs."""
     # PEP 621 deps are already pip-compatible strings
     return [str(d) for d in deps]

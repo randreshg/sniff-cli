@@ -1,8 +1,5 @@
 """Tests for version manager detection."""
 
-import os
-from pathlib import Path
-
 import pytest
 
 from dekk.version_managers import (
@@ -20,13 +17,17 @@ def detector():
 class TestVersionManagerInfo:
     def test_is_available_true(self, tmp_path):
         info = VersionManagerInfo(
-            name="test", command="test", root=tmp_path,
+            name="test",
+            command="test",
+            root=tmp_path,
         )
         assert info.is_available is True
 
     def test_is_available_false(self, tmp_path):
         info = VersionManagerInfo(
-            name="test", command="test", root=tmp_path / "no_such_dir",
+            name="test",
+            command="test",
+            root=tmp_path / "no_such_dir",
         )
         assert info.is_available is False
 
@@ -36,7 +37,9 @@ class TestVersionManagerInfo:
             ManagedVersion("3.12.0", tmp_path / "3.12.0"),
         )
         info = VersionManagerInfo(
-            name="test", command="test", root=tmp_path,
+            name="test",
+            command="test",
+            root=tmp_path,
             installed_versions=versions,
         )
         assert info.version_count == 2

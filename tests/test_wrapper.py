@@ -10,18 +10,17 @@ from unittest.mock import patch
 
 import pytest
 
+from dekk.activation import ActivationResult
+from dekk.dekk_os import WindowsDekkOS
+from dekk.install import InstallResult
 from dekk.wrapper import (
     WrapperGenerator,
     _cmd_escape_value,
-    _generate_cmd_script,
     _dir_in_path,
+    _generate_cmd_script,
     _sh_escape_double,
     _sh_quote,
 )
-from dekk.activation import ActivationResult
-from dekk.install import InstallResult
-from dekk.dekk_os import PosixDekkOS, WindowsDekkOS
-
 
 # ---------------------------------------------------------------------------
 # _sh_quote
@@ -113,7 +112,7 @@ class TestGenerate:
     @pytest.fixture()
     def dummy_python(self, tmp_path: Path) -> Path:
         py = tmp_path / "python3"
-        py.write_text("#!/bin/sh\nexec python3 \"$@\"\n")
+        py.write_text('#!/bin/sh\nexec python3 "$@"\n')
         py.chmod(0o755)
         return py
 
@@ -126,8 +125,8 @@ class TestGenerate:
         )
         lines = script.split("\n")
         assert lines[0] == "#!/bin/sh"
-        assert any("Wrapper for testproj" in l for l in lines)
-        assert any("exec" in l for l in lines)
+        assert any("Wrapper for testproj" in line for line in lines)
+        assert any("exec" in line for line in lines)
 
     def test_env_vars_exported(self, dummy_target: Path):
         script = WrapperGenerator.generate(
@@ -186,7 +185,7 @@ class TestGenerate:
         # Should NOT have a python reference in exec line.
         assert "python" not in script.split("exec")[-1].split("\n")[0].lower() or True
         # More direct: the exec line should have exactly one quoted path (the target).
-        exec_line = [l for l in script.split("\n") if l.startswith("exec")][0]
+        exec_line = [line for line in script.split("\n") if line.startswith("exec")][0]
         # Only one quoted path before "$@"
         assert exec_line.count("'") == 2  # opening and closing quote around target
 
@@ -223,8 +222,10 @@ class TestGenerate:
             project_name="proj",
         )
         # No export statements for env vars.
-        assert "export" not in script.replace("# ---", "").split("exec")[0] or \
-            script.count("export") == 0
+        assert (
+            "export" not in script.replace("# ---", "").split("exec")[0]
+            or script.count("export") == 0
+        )
 
     def test_empty_path_prepends(self, dummy_target: Path):
         script = WrapperGenerator.generate(
@@ -254,6 +255,7 @@ class TestGenerate:
         )
         # UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ
         import re
+
         assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", script)
 
     def test_project_name_in_header(self, dummy_target: Path):
@@ -312,7 +314,9 @@ class TestFromActivation:
     def test_extracts_env_vars(self, dummy_target: Path):
         activation = ActivationResult(env_vars={"FOO": "bar", "BAZ": "qux"})
         script = WrapperGenerator.from_activation(
-            activation, target=dummy_target, project_name="proj",
+            activation,
+            target=dummy_target,
+            project_name="proj",
         )
         assert "export FOO='bar'" in script
         assert "export BAZ='qux'" in script
@@ -324,7 +328,9 @@ class TestFromActivation:
         )
         with patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
             script = WrapperGenerator.from_activation(
-                activation, target=dummy_target, project_name="proj",
+                activation,
+                target=dummy_target,
+                project_name="proj",
             )
         assert "export OTHER='val'" in script
         # PATH should be handled as prepend, not as a regular env var export.
@@ -337,10 +343,12 @@ class TestFromActivation:
         )
         with patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
             script = WrapperGenerator.from_activation(
-                activation, target=dummy_target, project_name="proj",
+                activation,
+                target=dummy_target,
+                project_name="proj",
             )
         # /opt/bin should appear exactly once in the PATH export line.
-        path_line = [l for l in script.split("\n") if "export PATH=" in l][0]
+        path_line = [line for line in script.split("\n") if "export PATH=" in line][0]
         assert path_line.count("/opt/bin") == 1
 
     def test_filters_current_path(self, dummy_target: Path):
@@ -350,10 +358,12 @@ class TestFromActivation:
         )
         with patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
             script = WrapperGenerator.from_activation(
-                activation, target=dummy_target, project_name="proj",
+                activation,
+                target=dummy_target,
+                project_name="proj",
             )
         # /usr/bin is already in PATH, so it should be filtered out.
-        path_lines = [l for l in script.split("\n") if "export PATH=" in l]
+        path_lines = [line for line in script.split("\n") if "export PATH=" in line]
         if path_lines:
             assert "/usr/bin" not in path_lines[0] or path_lines[0].endswith('$PATH"')
         # /new/bin should be present since it's not in current PATH.
@@ -362,7 +372,9 @@ class TestFromActivation:
     def test_empty_activation(self, dummy_target: Path):
         activation = ActivationResult(env_vars={})
         script = WrapperGenerator.from_activation(
-            activation, target=dummy_target, project_name="proj",
+            activation,
+            target=dummy_target,
+            project_name="proj",
         )
         # Should still produce a valid script with shebang and exec.
         assert script.startswith("#!/bin/sh")
@@ -377,11 +389,13 @@ class TestFromActivation:
 class TestInstall:
     """Tests for WrapperGenerator.install()."""
 
-    SAMPLE_SCRIPT = "#!/bin/sh\nexec /usr/bin/true \"$@\"\n"
+    SAMPLE_SCRIPT = '#!/bin/sh\nexec /usr/bin/true "$@"\n'
 
     def test_writes_executable_file(self, tmp_path: Path):
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=tmp_path,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=tmp_path,
         )
         assert result.bin_path.exists()
         mode = result.bin_path.stat().st_mode
@@ -391,7 +405,9 @@ class TestInstall:
 
     def test_content_matches_script(self, tmp_path: Path):
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=tmp_path,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=tmp_path,
         )
         content = result.bin_path.read_text(encoding="utf-8")
         assert content == self.SAMPLE_SCRIPT
@@ -414,18 +430,24 @@ class TestInstall:
     def test_custom_install_dir(self, tmp_path: Path):
         custom = tmp_path / "custom_bin"
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=custom,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=custom,
         )
         assert result.bin_path == custom / "myapp"
         assert result.bin_path.exists()
 
     def test_custom_install_dir_windows_uses_cmd_suffix(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
         custom = tmp_path / "custom_bin"
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=custom,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=custom,
         )
         assert result.bin_path == custom / "myapp.cmd"
         assert result.bin_path.exists()
@@ -434,7 +456,9 @@ class TestInstall:
         nested = tmp_path / "a" / "b" / "c"
         assert not nested.exists()
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=nested,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=nested,
         )
         assert nested.is_dir()
         assert result.bin_path.exists()
@@ -444,7 +468,9 @@ class TestInstall:
         bin_dir.mkdir()
         monkeypatch.setenv("PATH", str(bin_dir))
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=bin_dir,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=bin_dir,
         )
         assert result.in_path is True
 
@@ -453,7 +479,9 @@ class TestInstall:
         bin_dir.mkdir()
         monkeypatch.setenv("PATH", "/some/unrelated/dir")
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=bin_dir,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=bin_dir,
         )
         assert result.in_path is False
 
@@ -462,7 +490,9 @@ class TestInstall:
         bin_dir.mkdir()
         monkeypatch.setenv("PATH", "/some/unrelated/dir")
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=bin_dir,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=bin_dir,
         )
         assert "add" in result.message.lower()
         assert "PATH" in result.message
@@ -472,7 +502,9 @@ class TestInstall:
 
         with pytest.raises(ValidationError, match="path separator"):
             WrapperGenerator.install(
-                self.SAMPLE_SCRIPT, "foo/bar", install_dir=tmp_path,
+                self.SAMPLE_SCRIPT,
+                "foo/bar",
+                install_dir=tmp_path,
             )
 
     def test_overwrites_existing_wrapper(self, tmp_path: Path):
@@ -487,7 +519,9 @@ class TestInstall:
         bin_dir.mkdir()
         monkeypatch.setenv("PATH", str(bin_dir))
         result = WrapperGenerator.install(
-            self.SAMPLE_SCRIPT, "myapp", install_dir=bin_dir,
+            self.SAMPLE_SCRIPT,
+            "myapp",
+            install_dir=bin_dir,
         )
         # When in PATH, message should NOT mention "add ... to PATH".
         assert "add" not in result.message.lower()
@@ -520,7 +554,10 @@ class TestInstallFromSpec:
         return spec_path
 
     def test_with_spec_file_path(
-        self, tmp_path: Path, dummy_target: Path, spec_file: Path,
+        self,
+        tmp_path: Path,
+        dummy_target: Path,
+        spec_file: Path,
     ):
         install_dir = tmp_path / "install_bin"
         # Mock the EnvironmentActivator.activate to avoid needing a real conda env.
@@ -560,14 +597,17 @@ class TestInstallFromSpec:
         assert "direct-spec" in content
 
     def test_infers_project_root(
-        self, tmp_path: Path, dummy_target: Path, spec_file: Path,
+        self,
+        tmp_path: Path,
+        dummy_target: Path,
+        spec_file: Path,
     ):
         # When project_root is not given, it should be inferred from spec_file's parent.
         install_dir = tmp_path / "install_bin"
         with patch(
             "dekk.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
-        ) as mock_activate:
+        ):
             with patch(
                 "dekk.wrapper.EnvironmentActivator.__init__",
                 return_value=None,
@@ -585,7 +625,7 @@ class TestInstallFromSpec:
         ) as MockActivator:
             mock_instance = MockActivator.return_value
             mock_instance.activate.return_value = ActivationResult(env_vars={})
-            result = WrapperGenerator.install_from_spec(
+            WrapperGenerator.install_from_spec(
                 spec_file=spec_file,
                 target=dummy_target,
                 name="mytool",
@@ -606,7 +646,7 @@ class TestInstallFromSpec:
 class TestUninstall:
     """Tests for WrapperGenerator.uninstall()."""
 
-    SAMPLE_SCRIPT = "#!/bin/sh\nexec /usr/bin/true \"$@\"\n"
+    SAMPLE_SCRIPT = '#!/bin/sh\nexec /usr/bin/true "$@"\n'
 
     def test_removes_existing_wrapper(self, tmp_path: Path):
         # Install first, then uninstall.

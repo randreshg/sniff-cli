@@ -135,9 +135,7 @@ class CondaDetector:
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
             return None
 
-    def find_prefix(
-        self, env_name: str, *, probe_common: bool = True
-    ) -> Path | None:
+    def find_prefix(self, env_name: str, *, probe_common: bool = True) -> Path | None:
         """Find a conda environment prefix by name.
 
         Searches in order:

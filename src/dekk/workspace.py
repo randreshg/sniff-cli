@@ -14,12 +14,10 @@ Pure detection -- no side effects.
 from __future__ import annotations
 
 import enum
-import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
-from dekk._compat import load_toml, load_json
+from dekk._compat import load_json, load_toml
 
 
 class WorkspaceKind(enum.Enum):
@@ -77,8 +75,7 @@ class WorkspaceInfo:
         """Build a name -> dependencies mapping for inter-project deps."""
         project_names = set(self.project_names)
         return {
-            p.name: tuple(d for d in p.dependencies if d in project_names)
-            for p in self.projects
+            p.name: tuple(d for d in p.dependencies if d in project_names) for p in self.projects
         }
 
     def build_order(self) -> list[str]:
@@ -255,13 +252,15 @@ class WorkspaceDetector:
                     if isinstance(dep_val, dict) and dep_val.get("path"):
                         deps.append(dep_name)
 
-            projects.append(SubProject(
-                name=name,
-                path=member_dir,
-                kind="rust_crate",
-                version=version,
-                dependencies=tuple(deps),
-            ))
+            projects.append(
+                SubProject(
+                    name=name,
+                    path=member_dir,
+                    kind="rust_crate",
+                    version=version,
+                    dependencies=tuple(deps),
+                )
+            )
 
         return projects
 
@@ -432,13 +431,15 @@ class WorkspaceDetector:
                     ):
                         deps.append(dep_name)
 
-            projects.append(SubProject(
-                name=name,
-                path=member_dir,
-                kind="npm_package",
-                version=version,
-                dependencies=tuple(deps),
-            ))
+            projects.append(
+                SubProject(
+                    name=name,
+                    path=member_dir,
+                    kind="npm_package",
+                    version=version,
+                    dependencies=tuple(deps),
+                )
+            )
 
         return projects
 
@@ -474,11 +475,13 @@ class WorkspaceDetector:
                 pkg_from = pkg.get("from", ".")
                 pkg_path = root / pkg_from / pkg["include"]
                 if pkg_path.is_dir():
-                    projects.append(SubProject(
-                        name=pkg["include"],
-                        path=pkg_path,
-                        kind="python_package",
-                    ))
+                    projects.append(
+                        SubProject(
+                            name=pkg["include"],
+                            path=pkg_path,
+                            kind="python_package",
+                        )
+                    )
 
         if not projects:
             return None
@@ -548,11 +551,13 @@ class WorkspaceDetector:
         for pkg_path in packages:
             resolved = root / pkg_path
             if resolved.is_dir():
-                projects.append(SubProject(
-                    name=Path(pkg_path).name,
-                    path=resolved,
-                    kind="python_package",
-                ))
+                projects.append(
+                    SubProject(
+                        name=Path(pkg_path).name,
+                        path=resolved,
+                        kind="python_package",
+                    )
+                )
 
         if not projects:
             return None
@@ -619,7 +624,7 @@ class WorkspaceDetector:
 
             # Collect path dependencies
             deps: list[str] = []
-            for dep_str in project.get("dependencies", []):
+            for _dep_str in project.get("dependencies", []):
                 # PEP 508 doesn't have path deps in requirements strings,
                 # but some tools use them; skip for now
                 pass
@@ -633,13 +638,15 @@ class WorkspaceDetector:
                         if isinstance(dep_spec, dict) and dep_spec.get("path"):
                             deps.append(dep_name)
 
-            projects.append(SubProject(
-                name=name,
-                path=member_dir,
-                kind="python_package",
-                version=version,
-                dependencies=tuple(deps),
-            ))
+            projects.append(
+                SubProject(
+                    name=name,
+                    path=member_dir,
+                    kind="python_package",
+                    version=version,
+                    dependencies=tuple(deps),
+                )
+            )
 
         return projects
 
@@ -701,11 +708,13 @@ class WorkspaceDetector:
             except OSError:
                 pass
 
-            projects.append(SubProject(
-                name=mod_name,
-                path=mod_dir,
-                kind="go_module",
-            ))
+            projects.append(
+                SubProject(
+                    name=mod_name,
+                    path=mod_dir,
+                    kind="go_module",
+                )
+            )
 
         return WorkspaceInfo(
             kind=WorkspaceKind.GO_WORK,
@@ -749,11 +758,13 @@ class WorkspaceDetector:
                         pkg_data = load_json(pkg_json)
                         if pkg_data:
                             name = pkg_data.get("name", name)
-                    projects.append(SubProject(
-                        name=name,
-                        path=child,
-                        kind="nx_project",
-                    ))
+                    projects.append(
+                        SubProject(
+                            name=name,
+                            path=child,
+                            kind="nx_project",
+                        )
+                    )
 
         return WorkspaceInfo(
             kind=WorkspaceKind.NX,
@@ -852,11 +863,13 @@ class WorkspaceDetector:
                 continue
             for build_file in ("BUILD.bazel", "BUILD"):
                 if (child / build_file).exists():
-                    projects.append(SubProject(
-                        name=child.name,
-                        path=child,
-                        kind="bazel_package",
-                    ))
+                    projects.append(
+                        SubProject(
+                            name=child.name,
+                            path=child,
+                            kind="bazel_package",
+                        )
+                    )
                     break
         return projects
 
@@ -888,9 +901,7 @@ class WorkspaceDetector:
 
     # --- Utility methods ---
 
-    def _expand_globs(
-        self, root: Path, patterns: list[str], exclude: list[str]
-    ) -> list[Path]:
+    def _expand_globs(self, root: Path, patterns: list[str], exclude: list[str]) -> list[Path]:
         """Expand glob patterns relative to root, minus exclusions.
 
         Handles both simple globs (packages/*) and recursive globs (crates/**).

@@ -163,7 +163,9 @@ class CompilerDetector:
                 return self._probe(command, family, language, ver_arg, ver_pat, target_pat)
 
         # Unknown compiler -- try generic detection
-        return self._probe(command, CompilerFamily.UNKNOWN, "unknown", "--version", r"(\d+\.\d+\.\d+)", None)
+        return self._probe(
+            command, CompilerFamily.UNKNOWN, "unknown", "--version", r"(\d+\.\d+\.\d+)", None
+        )
 
     def _probe(
         self,
@@ -266,7 +268,14 @@ class CompilerDetector:
                 if c.found and c.language == "c" and c.path == cc_path:
                     return c
             # cc exists but doesn't match a detected compiler -- probe it
-            return self._probe("cc", CompilerFamily.UNKNOWN, "c", "--version", r"(\d+\.\d+\.\d+)", r"Target:\s*(\S+)")
+            return self._probe(
+                "cc",
+                CompilerFamily.UNKNOWN,
+                "c",
+                "--version",
+                r"(\d+\.\d+\.\d+)",
+                r"Target:\s*(\S+)",
+            )
 
         # Fallback: first found C compiler
         for c in compilers:
@@ -282,7 +291,14 @@ class CompilerDetector:
             for c in compilers:
                 if c.found and c.language == "c++" and c.path == cxx_path:
                     return c
-            return self._probe("c++", CompilerFamily.UNKNOWN, "c++", "--version", r"(\d+\.\d+\.\d+)", r"Target:\s*(\S+)")
+            return self._probe(
+                "c++",
+                CompilerFamily.UNKNOWN,
+                "c++",
+                "--version",
+                r"(\d+\.\d+\.\d+)",
+                r"Target:\s*(\S+)",
+            )
 
         # Fallback: first found C++ compiler
         for c in compilers:

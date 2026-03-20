@@ -6,7 +6,6 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from .cli.errors import NotFoundError
 from .conda import CondaDetector
@@ -22,7 +21,7 @@ class ActivationResult:
 
     env_vars: dict[str, str] = field(default_factory=dict)
     missing_tools: list[str] = field(default_factory=list)
-    activation_script: Optional[str] = None
+    activation_script: str | None = None
 
 
 class EnvironmentActivator:
@@ -32,7 +31,9 @@ class EnvironmentActivator:
         self.spec = spec
         self.project_root = project_root
 
-    def activate(self, shell: Optional[str | ShellKind] = None, use_cache: bool = True) -> ActivationResult:
+    def activate(
+        self, shell: str | ShellKind | None = None, use_cache: bool = True
+    ) -> ActivationResult:
         """Activate environment and return result.
 
         Args:
@@ -80,7 +81,9 @@ class EnvironmentActivator:
         # Validate tools
         effective_path = os.environ.get("PATH", "")
         if path_prefix := env_vars.get("PATH"):
-            effective_path = f"{path_prefix}{os.pathsep}{effective_path}" if effective_path else path_prefix
+            effective_path = (
+                f"{path_prefix}{os.pathsep}{effective_path}" if effective_path else path_prefix
+            )
 
         missing_tools = [
             name
@@ -91,7 +94,11 @@ class EnvironmentActivator:
         # Generate shell script if requested
         activation_script = None
         if shell:
-            shell_kind = shell if isinstance(shell, ShellKind) else ShellDetector().detect(shell_override=shell).kind
+            shell_kind = (
+                shell
+                if isinstance(shell, ShellKind)
+                else ShellDetector().detect(shell_override=shell).kind
+            )
             activation_script = ActivationScriptBuilder().build(builder.build(), shell_kind)
 
         # Cache for next time

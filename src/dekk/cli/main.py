@@ -7,8 +7,10 @@ All command imports are deferred to their handler functions so that
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
+if TYPE_CHECKING:
+    import typer
 
 CLI_APP_NAME: Final = "dekk"
 CLI_HELP_TEXT: Final = "One config. Zero activation. Any project."
@@ -18,8 +20,9 @@ DEFAULT_EXAMPLE_TEMPLATE: Final = "quickstart"
 FILESYSTEM_RETRY_HINT: Final = "Retry the command after fixing the filesystem or PATH issue."
 
 
-def _make_app():
+def _make_app() -> typer.Typer:
     import typer
+
     globals()["typer"] = typer
 
     app = typer.Typer(
@@ -31,8 +34,8 @@ def _make_app():
     @app.command()
     def doctor() -> None:
         """Run comprehensive system health check."""
-        from dekk.context import ExecutionContext
         from dekk.cli_commands import run_doctor
+        from dekk.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_doctor(context)
@@ -41,8 +44,8 @@ def _make_app():
     def version() -> None:
         """Show dekk version and platform information."""
         from dekk import __version__
-        from dekk.context import ExecutionContext
         from dekk.cli_commands import run_version
+        from dekk.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_version(CLI_APP_NAME, __version__, context)
@@ -50,8 +53,8 @@ def _make_app():
     @app.command()
     def env() -> None:
         """Show complete environment details."""
-        from dekk.context import ExecutionContext
         from dekk.cli_commands import run_env
+        from dekk.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_env(context)
@@ -60,7 +63,9 @@ def _make_app():
     def init(
         directory: str = typer.Argument(DEFAULT_INIT_DIRECTORY, help="Directory to initialize"),
         name: str | None = typer.Option(None, "--name", "-n", help="Project name"),
-        example: str | None = typer.Option(None, "--example", help="Start from a built-in template"),
+        example: str | None = typer.Option(
+            None, "--example", help="Start from a built-in template"
+        ),
         force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing .dekk.toml"),
     ) -> None:
         """Initialize a new .dekk.toml configuration."""
@@ -102,8 +107,12 @@ def _make_app():
     def install(
         target: str = typer.Argument(..., help="Script or binary to install"),
         name: str | None = typer.Option(None, "--name", "-n", help="Installed command name"),
-        python: str | None = typer.Option(None, "--python", help="Python interpreter for script targets"),
-        install_dir: str | None = typer.Option(None, "--install-dir", help="Installation directory"),
+        python: str | None = typer.Option(
+            None, "--python", help="Python interpreter for script targets"
+        ),
+        install_dir: str | None = typer.Option(
+            None, "--install-dir", help="Installation directory"
+        ),
         spec: str | None = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml"),
     ) -> None:
         """Install a project command with automatic environment setup."""
@@ -130,8 +139,12 @@ def _make_app():
     def wrap(
         name: str = typer.Argument(..., help="Wrapper name"),
         target: str = typer.Argument(..., help="Target script/binary"),
-        python: str | None = typer.Option(None, "--python", help="Python interpreter for script targets"),
-        install_dir: str | None = typer.Option(None, "--install-dir", help="Installation directory"),
+        python: str | None = typer.Option(
+            None, "--python", help="Python interpreter for script targets"
+        ),
+        install_dir: str | None = typer.Option(
+            None, "--install-dir", help="Installation directory"
+        ),
         spec: str | None = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml"),
     ) -> None:
         """Generate a self-contained wrapper binary."""
@@ -148,8 +161,12 @@ def _make_app():
     @app.command()
     def uninstall(
         name: str = typer.Argument(..., help="Wrapper name to uninstall"),
-        install_dir: str | None = typer.Option(None, "--install-dir", help="Installation directory"),
-        remove_path: bool = typer.Option(False, "--remove-path", help="Also remove the PATH export for this project"),
+        install_dir: str | None = typer.Option(
+            None, "--install-dir", help="Installation directory"
+        ),
+        remove_path: bool = typer.Option(
+            False, "--remove-path", help="Also remove the PATH export for this project"
+        ),
     ) -> None:
         """Remove an installed wrapper."""
         from dekk.cli.commands import uninstall as _uninstall
@@ -164,7 +181,7 @@ def _make_app():
 
 
 # Build the app lazily on first access
-_app = None
+_app: typer.Typer | None = None
 
 
 def main() -> None:
@@ -196,6 +213,7 @@ def main() -> None:
         raise SystemExit(int(ExitCodes.RUNTIME_ERROR)) from exc
     except Exception as exc:
         from click.exceptions import Exit as ClickExit
+
         from dekk.cli.errors import DekkError
         from dekk.cli.styles import print_error, print_info
 

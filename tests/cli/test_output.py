@@ -7,13 +7,7 @@ import json
 from dataclasses import dataclass
 from unittest.mock import patch
 
-import pytest
-from rich.console import Console
-from rich.theme import Theme
-
 from dekk.cli.output import OutputFormat, OutputFormatter, print_dep_results
-from dekk.cli.styles import CLI_THEME
-
 
 # ---------------------------------------------------------------------------
 # Minimal DependencyResult stub (avoids importing dekk.deps to keep tests fast)
@@ -323,8 +317,9 @@ class TestPrintDepResults:
 
     def test_needs_upgrade_in_returned_list(self):
         results = [
-            _DepResult(name="cmake", command="cmake", found=True,
-                       version="3.10.0", meets_minimum=False)
+            _DepResult(
+                name="cmake", command="cmake", found=True, version="3.10.0", meets_minimum=False
+            )
         ]
         missing = print_dep_results(results)
         assert any("cmake" in m for m in missing)
@@ -367,8 +362,9 @@ class TestPrintDepResults:
 
     def test_needs_upgrade_prints_warning(self):
         results = [
-            _DepResult(name="cmake", command="cmake", found=True,
-                       version="3.10.0", meets_minimum=False)
+            _DepResult(
+                name="cmake", command="cmake", found=True, version="3.10.0", meets_minimum=False
+            )
         ]
         with patch("dekk.cli.output.print_warning") as mock_warn:
             print_dep_results(results)

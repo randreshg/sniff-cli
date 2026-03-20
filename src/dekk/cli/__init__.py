@@ -3,12 +3,29 @@
 All symbols are lazily loaded to avoid pulling in Rich/Typer at import time.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.cli.styles": [
-        "console", "err_console", "CLI_THEME", "Colors", "Symbols",
-        "print_success", "print_error", "print_warning", "print_info", "print_debug",
-        "print_header", "print_step", "print_section", "print_blank",
-        "print_table", "print_numbered_list", "print_next_steps",
+        "console",
+        "err_console",
+        "CLI_THEME",
+        "Colors",
+        "Symbols",
+        "print_success",
+        "print_error",
+        "print_warning",
+        "print_info",
+        "print_debug",
+        "print_header",
+        "print_step",
+        "print_section",
+        "print_blank",
+        "print_table",
+        "print_numbered_list",
+        "print_next_steps",
     ],
 }
 
@@ -17,7 +34,7 @@ _ATTR_TO_MODULE: dict[str, str] = {
 }
 
 
-def __getattr__(name: str):  # noqa: N807
+def __getattr__(name: str) -> Any:  # noqa: N807
     if name in _ATTR_TO_MODULE:
         import importlib
 
@@ -32,7 +49,7 @@ def __getattr__(name: str):  # noqa: N807
     raise AttributeError(f"module 'dekk.cli' has no attribute {name!r}")
 
 
-def __dir__():  # noqa: N807
+def __dir__() -> list[str]:  # noqa: N807
     return list(_ATTR_TO_MODULE.keys())
 
 

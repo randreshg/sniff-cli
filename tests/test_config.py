@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
 from dekk.config import ConfigManager, ConfigReconciler, ConfigSource
-
 
 # ===========================================================================
 # ConfigSource tests
@@ -271,8 +269,8 @@ class TestConfigReconcilerExplain:
         text = rec.explain("k")
         lines = text.split("\n")
         # default (prec 0) should appear before cli (prec 3)
-        default_idx = next(i for i, l in enumerate(lines) if "default:" in l)
-        cli_idx = next(i for i, l in enumerate(lines) if "cli:" in l)
+        default_idx = next(i for i, line in enumerate(lines) if "default:" in line)
+        cli_idx = next(i for i, line in enumerate(lines) if "cli:" in line)
         assert default_idx < cli_idx
 
     def test_explain_arrow_in_final_line(self):

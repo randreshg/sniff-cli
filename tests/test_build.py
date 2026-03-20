@@ -25,8 +25,7 @@ class TestCargo:
     def test_detect_cargo_workspace(self, tmp_path, detector):
         """Detect a Cargo workspace."""
         (tmp_path / "Cargo.toml").write_text(
-            '[workspace]\nmembers = ["crates/*"]\n\n'
-            '[workspace.dependencies]\nserde = "1.0"\n',
+            '[workspace]\nmembers = ["crates/*"]\n\n[workspace.dependencies]\nserde = "1.0"\n',
             encoding="utf-8",
         )
 
@@ -173,11 +172,13 @@ class TestNodeBuildSystems:
     def test_detect_npm(self, tmp_path, detector):
         """Detect npm as build system."""
         (tmp_path / "package.json").write_text(
-            json.dumps({
-                "name": "myapp",
-                "version": "1.0.0",
-                "scripts": {"build": "tsc", "test": "jest", "start": "node ."},
-            }),
+            json.dumps(
+                {
+                    "name": "myapp",
+                    "version": "1.0.0",
+                    "scripts": {"build": "tsc", "test": "jest", "start": "node ."},
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -213,11 +214,13 @@ class TestNodeBuildSystems:
         """Detect yarn as build system."""
         (tmp_path / ".yarnrc.yml").write_text("nodeLinker: node-modules\n", encoding="utf-8")
         (tmp_path / "package.json").write_text(
-            json.dumps({
-                "name": "myapp",
-                "workspaces": ["packages/*"],
-                "scripts": {"build": "tsc"},
-            }),
+            json.dumps(
+                {
+                    "name": "myapp",
+                    "workspaces": ["packages/*"],
+                    "scripts": {"build": "tsc"},
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -244,7 +247,7 @@ class TestPythonBuildSystems:
         """Detect Poetry as build system."""
         (tmp_path / "pyproject.toml").write_bytes(
             b'[tool.poetry]\nname = "myapp"\nversion = "0.1.0"\n\n'
-            b'[project]\nscripts = {}\n\n'
+            b"[project]\nscripts = {}\n\n"
             b'[build-system]\nrequires = ["poetry-core"]\n'
             b'build-backend = "poetry.core.masonry.api"\n'
         )
@@ -259,7 +262,7 @@ class TestPythonBuildSystems:
             b'build-backend = "hatchling.build"\n\n'
             b'[project]\nname = "myapp"\nversion = "0.2.0"\n'
             b'[project.scripts]\nmycli = "myapp:main"\n\n'
-            b'[tool.hatch]\n'
+            b"[tool.hatch]\n"
         )
 
         hatch = next(r for r in detector.detect(tmp_path) if r.system == BuildSystem.HATCH)
@@ -322,8 +325,7 @@ class TestPythonBuildSystems:
     def test_detect_uv_workspace(self, tmp_path, detector):
         """Detect uv workspace."""
         (tmp_path / "pyproject.toml").write_bytes(
-            b'[project]\nname = "root"\n\n'
-            b'[tool.uv.workspace]\nmembers = ["packages/*"]\n'
+            b'[project]\nname = "root"\n\n[tool.uv.workspace]\nmembers = ["packages/*"]\n'
         )
 
         uv = next(r for r in detector.detect(tmp_path) if r.system == BuildSystem.UV)
@@ -452,7 +454,7 @@ class TestOtherBuildSystems:
 
     def test_detect_zig(self, tmp_path, detector):
         """Detect Zig build system."""
-        (tmp_path / "build.zig").write_text("const std = @import(\"std\");\n", encoding="utf-8")
+        (tmp_path / "build.zig").write_text('const std = @import("std");\n', encoding="utf-8")
 
         zig = detector.detect_first(tmp_path)
         assert zig is not None
@@ -468,7 +470,9 @@ class TestOtherBuildSystems:
 
     def test_detect_ninja(self, tmp_path, detector):
         """Detect Ninja build system."""
-        (tmp_path / "build.ninja").write_text("rule cc\n  command = gcc $in -o $out\n", encoding="utf-8")
+        (tmp_path / "build.ninja").write_text(
+            "rule cc\n  command = gcc $in -o $out\n", encoding="utf-8"
+        )
 
         ninja = detector.detect_first(tmp_path)
         assert ninja is not None

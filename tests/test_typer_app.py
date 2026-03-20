@@ -9,10 +9,9 @@ import pytest
 import typer as base_typer
 from typer.testing import CliRunner
 
-from dekk.cli.errors import ExitCodes, NotFoundError, DekkError, ValidationError
 from dekk import typer_app
+from dekk.cli.errors import DekkError, ExitCodes, NotFoundError, ValidationError
 from dekk.typer_app import Typer, _get_typer
-
 
 runner = CliRunner()
 
@@ -242,7 +241,10 @@ def test_tracking_wraps_command_success_and_failure():
     fail_client.complete_run.assert_called_once_with("run-fail", "failed", error="broken")
 
 
-@pytest.mark.parametrize("method_name, expected_call", [("log_metric", ("loss", 0.5, 1)), ("log_artifact", ("model", Path("/tmp/model.pt")))])
+@pytest.mark.parametrize(
+    "method_name, expected_call",
+    [("log_metric", ("loss", 0.5, 1)), ("log_artifact", ("model", Path("/tmp/model.pt")))],
+)
 def test_log_methods_only_emit_when_tracking_is_active(method_name, expected_call):
     active = Typer(enable_tracking=True)
     active._current_run_id = "run-1"
@@ -260,7 +262,9 @@ def test_log_methods_only_emit_when_tracking_is_active(method_name, expected_cal
     else:
         active.log_artifact(expected_call[0], expected_call[1])
         inactive.log_artifact(expected_call[0], expected_call[1])
-        active._tully_client.log_artifact.assert_called_once_with("run-1", "model", Path("/tmp/model.pt"))
+        active._tully_client.log_artifact.assert_called_once_with(
+            "run-1", "model", Path("/tmp/model.pt")
+        )
         inactive._tully_client.log_artifact.assert_not_called()
 
 
@@ -283,7 +287,12 @@ def test_get_tully_client_caches_instance_and_handles_missing_package():
 @pytest.mark.parametrize(
     ("app_kwargs", "command_name", "patch_target", "expected_args"),
     [
-        ({"add_doctor_command": True}, "doctor", "dekk.cli_commands.run_doctor", lambda ctx: (ctx,)),
+        (
+            {"add_doctor_command": True},
+            "doctor",
+            "dekk.cli_commands.run_doctor",
+            lambda ctx: (ctx,),
+        ),
         (
             {"add_version_command": True, "project_version": "3.4.5", "name": "demo"},
             "version",
@@ -293,7 +302,9 @@ def test_get_tully_client_caches_instance_and_handles_missing_package():
         ({"add_env_command": True}, "env", "dekk.cli_commands.run_env", lambda ctx: (ctx,)),
     ],
 )
-def test_built_in_commands_register_and_dispatch(app_kwargs, command_name, patch_target, expected_args):
+def test_built_in_commands_register_and_dispatch(
+    app_kwargs, command_name, patch_target, expected_args
+):
     fake_ctx = _make_fake_context()
     app = Typer(**app_kwargs)
     app._context = fake_ctx

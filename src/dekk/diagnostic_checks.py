@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from typing import Final
 
-from dekk.detect import PlatformDetector
-from dekk.deps import DependencyChecker, DependencySpec
 from dekk.ci import CIDetector
+from dekk.deps import DependencyChecker, DependencySpec
+from dekk.detect import PlatformDetector
 from dekk.diagnostic import CheckResult, CheckStatus
-
 
 PLATFORM_CHECK_NAME: Final = "platform"
 PLATFORM_CHECK_CATEGORY: Final = "platform"
@@ -142,15 +141,14 @@ class DependencyCheck:
             return CheckResult(
                 name=self.name,
                 status=CheckStatus.WARN,
-                summary=(
-                    f"{self._spec.name} {result.version} "
-                    f"< required {self._spec.min_version}"
-                ),
+                summary=(f"{self._spec.name} {result.version} < required {self._spec.min_version}"),
                 details=details,
                 fix_hint=f"Upgrade {self._spec.name} to >= {self._spec.min_version}",
             )
 
-        summary = f"{self._spec.name} {result.version}" if result.version else f"{self._spec.name} found"
+        summary = (
+            f"{self._spec.name} {result.version}" if result.version else f"{self._spec.name} found"
+        )
         return CheckResult(
             name=self.name,
             status=CheckStatus.PASS,

@@ -6,14 +6,14 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final
 
 from dekk.build import BuildSystem, BuildSystemDetector
 from dekk.cli.errors import NotFoundError, RuntimeError
 from dekk.envspec import find_envspec
-
 
 PYTHON_SYSTEMS: Final = {
     BuildSystem.POETRY,
@@ -67,13 +67,19 @@ def resolve_test_plan(root: Path | None = None, extra_args: Sequence[str] = ()) 
         )
 
     if build.system == BuildSystem.CARGO:
-        return TestPlan(cmd=("cargo", TEST_ACTION, *args), cwd=root, label=f"cargo{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("cargo", TEST_ACTION, *args), cwd=root, label=f"cargo{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.GO:
-        return TestPlan(cmd=("go", TEST_ACTION, "./...", *args), cwd=root, label=f"go{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("go", TEST_ACTION, "./...", *args), cwd=root, label=f"go{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.MAVEN:
-        return TestPlan(cmd=("mvn", TEST_ACTION, *args), cwd=root, label=f"maven{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("mvn", TEST_ACTION, *args), cwd=root, label=f"maven{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.GRADLE:
         gradlew = root / "gradlew"
@@ -83,28 +89,42 @@ def resolve_test_plan(root: Path | None = None, extra_args: Sequence[str] = ()) 
                 cwd=root,
                 label=f"gradle{TEST_LABEL_SUFFIX}",
             )
-        return TestPlan(cmd=("gradle", TEST_ACTION, *args), cwd=root, label=f"gradle{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("gradle", TEST_ACTION, *args), cwd=root, label=f"gradle{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.MIX:
         return TestPlan(cmd=("mix", TEST_ACTION, *args), cwd=root, label=f"mix{TEST_LABEL_SUFFIX}")
 
     if build.system == BuildSystem.STACK:
-        return TestPlan(cmd=("stack", TEST_ACTION, *args), cwd=root, label=f"stack{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("stack", TEST_ACTION, *args), cwd=root, label=f"stack{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.CABAL:
-        return TestPlan(cmd=("cabal", TEST_ACTION, *args), cwd=root, label=f"cabal{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("cabal", TEST_ACTION, *args), cwd=root, label=f"cabal{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.ZIG:
-        return TestPlan(cmd=("zig", "build", TEST_ACTION, *args), cwd=root, label=f"zig{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("zig", "build", TEST_ACTION, *args), cwd=root, label=f"zig{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.DUNE:
-        return TestPlan(cmd=("dune", TEST_ACTION, *args), cwd=root, label=f"dune{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("dune", TEST_ACTION, *args), cwd=root, label=f"dune{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.BAZEL:
-        return TestPlan(cmd=("bazel", TEST_ACTION, "//...", *args), cwd=root, label=f"bazel{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("bazel", TEST_ACTION, "//...", *args), cwd=root, label=f"bazel{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system == BuildSystem.BUCK2:
-        return TestPlan(cmd=("buck2", TEST_ACTION, "//...", *args), cwd=root, label=f"buck2{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("buck2", TEST_ACTION, "//...", *args), cwd=root, label=f"buck2{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system in {BuildSystem.NPM, BuildSystem.PNPM, BuildSystem.YARN, BuildSystem.BUN}:
         script_names = set(build.target_names)
@@ -132,7 +152,9 @@ def resolve_test_plan(root: Path | None = None, extra_args: Sequence[str] = ()) 
                 MAKE_TEST_TARGET_NOT_FOUND,
                 hint=f"Add a {TEST_ACTION} target or {DIRECT_RUN_HINT}",
             )
-        return TestPlan(cmd=("make", TEST_ACTION, *args), cwd=root, label=f"make{TEST_LABEL_SUFFIX}")
+        return TestPlan(
+            cmd=("make", TEST_ACTION, *args), cwd=root, label=f"make{TEST_LABEL_SUFFIX}"
+        )
 
     if build.system in {BuildSystem.CMAKE, BuildSystem.MESON, BuildSystem.NINJA}:
         build_dir = root / BUILD_DIR_NAME

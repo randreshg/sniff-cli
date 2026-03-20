@@ -83,8 +83,11 @@ class TestCargoWorkspace:
             encoding="utf-8",
         )
 
-        for name, deps in [("core", ""), ("mid", 'core = { path = "../core" }'),
-                           ("top", 'mid = { path = "../mid" }')]:
+        for name, deps in [
+            ("core", ""),
+            ("mid", 'core = { path = "../core" }'),
+            ("top", 'mid = { path = "../mid" }'),
+        ]:
             d = tmp_path / "crates" / name
             d.mkdir(parents=True)
             deps_section = f"\n[dependencies]\n{deps}\n" if deps else ""
@@ -109,8 +112,7 @@ class TestCargoWorkspace:
     def test_cargo_shared_deps(self, tmp_path, detector):
         """Detect workspace-level shared dependencies."""
         (tmp_path / "Cargo.toml").write_text(
-            '[workspace]\nmembers = ["crates/*"]\n\n'
-            '[workspace.dependencies]\nserde = "1.0"\n',
+            '[workspace]\nmembers = ["crates/*"]\n\n[workspace.dependencies]\nserde = "1.0"\n',
             encoding="utf-8",
         )
 
@@ -270,11 +272,13 @@ class TestNodeWorkspaceDeps:
             encoding="utf-8",
         )
         (tmp_path / "packages" / "app" / "package.json").write_text(
-            json.dumps({
-                "name": "app",
-                "version": "1.0.0",
-                "dependencies": {"shared": "workspace:*"},
-            }),
+            json.dumps(
+                {
+                    "name": "app",
+                    "version": "1.0.0",
+                    "dependencies": {"shared": "workspace:*"},
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -295,9 +299,7 @@ class TestUvWorkspace:
 
         pkg_dir = tmp_path / "packages" / "mylib"
         pkg_dir.mkdir(parents=True)
-        (pkg_dir / "pyproject.toml").write_bytes(
-            b'[project]\nname = "mylib"\nversion = "0.1.0"\n'
-        )
+        (pkg_dir / "pyproject.toml").write_bytes(b'[project]\nname = "mylib"\nversion = "0.1.0"\n')
 
         results = detector.detect(tmp_path)
         uv = next(r for r in results if r.kind == WorkspaceKind.UV)
@@ -459,9 +461,7 @@ class TestBazel:
 class TestPants:
     def test_detect_pants(self, tmp_path, detector):
         """Detect Pants build system."""
-        (tmp_path / "pants.toml").write_bytes(
-            b'[GLOBAL]\npants_version = "2.18.0"\n'
-        )
+        (tmp_path / "pants.toml").write_bytes(b'[GLOBAL]\npants_version = "2.18.0"\n')
 
         pkg_dir = tmp_path / "src" / "python"
         pkg_dir.mkdir(parents=True)

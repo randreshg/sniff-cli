@@ -36,7 +36,9 @@ def test_install_python_shim_requires_pyproject(tmp_path: Path) -> None:
     script.write_text("print('hi')\n", encoding="utf-8")
 
     with pytest.raises(NotFoundError, match="No pyproject.toml found"):
-        BinaryInstaller(project_root=tmp_path).install_python_shim(script, install_dir=tmp_path / "bin")
+        BinaryInstaller(project_root=tmp_path).install_python_shim(
+            script, install_dir=tmp_path / "bin"
+        )
 
 
 def test_install_python_shim_updates_shell_config_when_missing_from_path(
@@ -120,7 +122,7 @@ def test_uninstall_wrapper_can_remove_shell_config_entry(
     wrapper = install_dir / "demo"
     wrapper.write_text("#!/bin/sh\n", encoding="utf-8")
 
-    marker = f"# dekk: {project_dir.name} install dir\nexport PATH=\"{install_dir}:$PATH\"\n"
+    marker = f'# dekk: {project_dir.name} install dir\nexport PATH="{install_dir}:$PATH"\n'
     shell_config.write_text(marker, encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(home))

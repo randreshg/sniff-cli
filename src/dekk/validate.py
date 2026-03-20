@@ -10,9 +10,9 @@ from __future__ import annotations
 import enum
 import shutil
 import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Sequence
 
 from dekk.remediate import DetectedIssue, IssueSeverity
 
@@ -50,9 +50,7 @@ class CheckResult:
         if self.status in (CheckStatus.PASSED, CheckStatus.SKIPPED):
             return None
         severity = (
-            IssueSeverity.WARNING
-            if self.status is CheckStatus.WARNING
-            else IssueSeverity.ERROR
+            IssueSeverity.WARNING if self.status is CheckStatus.WARNING else IssueSeverity.ERROR
         )
         return DetectedIssue(
             category=self.category,

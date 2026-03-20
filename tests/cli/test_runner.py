@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dekk.cli.runner import RunResult, run_logged, _BUILD_OUTPUT_LABEL
-
+from dekk.cli.runner import _BUILD_OUTPUT_LABEL, RunResult, run_logged
 
 # ---------------------------------------------------------------------------
 # RunResult
@@ -147,8 +144,10 @@ class TestRunLogged:
     def test_failure_prints_build_output_label(self, tmp_path):
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="error\n")
-        with patch("subprocess.run", return_value=proc), \
-             patch("dekk.cli.styles.print_info") as mock_print:
+        with (
+            patch("subprocess.run", return_value=proc),
+            patch("dekk.cli.styles.print_info") as mock_print,
+        ):
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -162,8 +161,10 @@ class TestRunLogged:
         """On success the spinner completing is the signal; no path noise."""
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=0, stdout="fine\n")
-        with patch("subprocess.run", return_value=proc), \
-             patch("dekk.cli.styles.print_info") as mock_print:
+        with (
+            patch("subprocess.run", return_value=proc),
+            patch("dekk.cli.styles.print_info") as mock_print,
+        ):
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -176,8 +177,10 @@ class TestRunLogged:
     def test_failure_prints_tail(self, tmp_path):
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="line1\nline2\nerror line\n")
-        with patch("subprocess.run", return_value=proc), \
-             patch("dekk.cli.styles.print_info") as mock_print:
+        with (
+            patch("subprocess.run", return_value=proc),
+            patch("dekk.cli.styles.print_info") as mock_print,
+        ):
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -191,8 +194,10 @@ class TestRunLogged:
     def test_success_does_not_print_tail(self, tmp_path):
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=0, stdout="fine\n")
-        with patch("subprocess.run", return_value=proc), \
-             patch("dekk.cli.styles.print_info") as mock_print:
+        with (
+            patch("subprocess.run", return_value=proc),
+            patch("dekk.cli.styles.print_info") as mock_print,
+        ):
             run_logged(
                 ["cmd"],
                 log_path=log_path,
@@ -205,8 +210,10 @@ class TestRunLogged:
     def test_tail_lines_zero_suppresses_excerpt(self, tmp_path):
         log_path = tmp_path / "build.log"
         proc = _make_completed_process(returncode=1, stdout="error line\n")
-        with patch("subprocess.run", return_value=proc), \
-             patch("dekk.cli.styles.print_info") as mock_print:
+        with (
+            patch("subprocess.run", return_value=proc),
+            patch("dekk.cli.styles.print_info") as mock_print,
+        ):
             run_logged(
                 ["cmd"],
                 log_path=log_path,

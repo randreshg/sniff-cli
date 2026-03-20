@@ -40,7 +40,9 @@ def test_toolchain_info_families():
         CompilerInfo(family=CompilerFamily.GCC, command="gcc", path="/usr/bin/gcc", language="c"),
         CompilerInfo(family=CompilerFamily.GCC, command="g++", path="/usr/bin/g++", language="c++"),
         CompilerInfo(family=CompilerFamily.CLANG, command="clang"),  # not found
-        CompilerInfo(family=CompilerFamily.RUSTC, command="rustc", path="/usr/bin/rustc", language="rust"),
+        CompilerInfo(
+            family=CompilerFamily.RUSTC, command="rustc", path="/usr/bin/rustc", language="rust"
+        ),
     )
     tc = ToolchainInfo(compilers=compilers)
     assert CompilerFamily.GCC in tc.families
@@ -53,7 +55,9 @@ def test_toolchain_info_by_family():
     compilers = (
         CompilerInfo(family=CompilerFamily.GCC, command="gcc", path="/usr/bin/gcc", language="c"),
         CompilerInfo(family=CompilerFamily.GCC, command="g++", path="/usr/bin/g++", language="c++"),
-        CompilerInfo(family=CompilerFamily.CLANG, command="clang", path="/usr/bin/clang", language="c"),
+        CompilerInfo(
+            family=CompilerFamily.CLANG, command="clang", path="/usr/bin/clang", language="c"
+        ),
     )
     tc = ToolchainInfo(compilers=compilers)
     gcc_compilers = tc.by_family(CompilerFamily.GCC)
@@ -65,8 +69,12 @@ def test_toolchain_info_by_language():
     """ToolchainInfo.by_language filters by language."""
     compilers = (
         CompilerInfo(family=CompilerFamily.GCC, command="gcc", path="/usr/bin/gcc", language="c"),
-        CompilerInfo(family=CompilerFamily.CLANG, command="clang", path="/usr/bin/clang", language="c"),
-        CompilerInfo(family=CompilerFamily.RUSTC, command="rustc", path="/usr/bin/rustc", language="rust"),
+        CompilerInfo(
+            family=CompilerFamily.CLANG, command="clang", path="/usr/bin/clang", language="c"
+        ),
+        CompilerInfo(
+            family=CompilerFamily.RUSTC, command="rustc", path="/usr/bin/rustc", language="rust"
+        ),
     )
     tc = ToolchainInfo(compilers=compilers)
     c_compilers = tc.by_language("c")

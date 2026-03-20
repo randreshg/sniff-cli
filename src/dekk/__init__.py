@@ -9,7 +9,10 @@ This means ``import dekk`` is near-instant (<5ms) regardless of which
 optional tracking integrations are installed.
 """
 
+from __future__ import annotations
+
 from importlib.metadata import PackageNotFoundError, version
+from typing import Any
 
 try:
     __version__ = version("dekk")
@@ -30,7 +33,10 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.detect": ["PlatformDetector", "PlatformInfo"],
     "dekk.deps": ["DependencyChecker", "DependencySpec", "DependencyResult", "ToolChecker"],
     "dekk.conda": [
-        "COMMON_INSTALL_PATHS", "CondaDetector", "CondaEnvironment", "CondaValidation",
+        "COMMON_INSTALL_PATHS",
+        "CondaDetector",
+        "CondaEnvironment",
+        "CondaValidation",
     ],
     # -- Configuration (core) --
     "dekk.config": ["ConfigManager", "ConfigReconciler", "ConfigSource"],
@@ -40,8 +46,11 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.workspace": ["WorkspaceDetector", "WorkspaceInfo", "WorkspaceKind", "SubProject"],
     # -- Versioning --
     "dekk.version": [
-        "Version", "VersionSpec", "VersionConstraint",
-        "compare_versions", "version_satisfies",
+        "Version",
+        "VersionSpec",
+        "VersionConstraint",
+        "compare_versions",
+        "version_satisfies",
     ],
     "dekk.version_managers": ["VersionManagerDetector", "VersionManagerInfo", "ManagedVersion"],
     # -- Lockfiles --
@@ -52,10 +61,16 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.cache": ["BuildCacheDetector", "BuildCacheInfo", "CacheKind"],
     # -- Shell --
     "dekk.shell": [
-        "ShellDetector", "ShellInfo", "ShellKind",
-        "ActivationScriptBuilder", "ActivationConfig", "EnvVar",
-        "CompletionGenerator", "CompletionSpec",
-        "PromptHelper", "AliasSuggestor",
+        "ShellDetector",
+        "ShellInfo",
+        "ShellKind",
+        "ActivationScriptBuilder",
+        "ActivationConfig",
+        "EnvVar",
+        "CompletionGenerator",
+        "CompletionSpec",
+        "PromptHelper",
+        "AliasSuggestor",
     ],
     # -- Toolchain --
     "dekk.toolchain": ["ToolchainProfile", "EnvVarBuilder", "CMakeToolchain", "CondaToolchain"],
@@ -65,31 +80,59 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.env": ["EnvSnapshot"],
     # -- Diagnostics --
     "dekk.diagnostic": [
-        "DiagnosticReport", "DiagnosticCheck", "CheckRegistry",
-        "DiagnosticRunner", "TextFormatter", "JsonFormatter", "MarkdownFormatter",
+        "DiagnosticReport",
+        "DiagnosticCheck",
+        "CheckRegistry",
+        "DiagnosticRunner",
+        "TextFormatter",
+        "JsonFormatter",
+        "MarkdownFormatter",
     ],
     "dekk.diagnostic_checks": ["PlatformCheck", "DependencyCheck", "CIEnvironmentCheck"],
     # -- Library Paths --
     "dekk.libpath": ["LibraryPathInfo", "LibraryPathResolver"],
     # -- Commands --
-    "dekk.commands": ["CommandStatus", "CommandMeta", "CommandProvider", "CommandRegistry", "command"],
+    "dekk.commands": [
+        "CommandStatus",
+        "CommandMeta",
+        "CommandProvider",
+        "CommandRegistry",
+        "command",
+    ],
     # -- Validation --
     "dekk.validate": ["CheckStatus", "CheckResult", "ValidationReport", "EnvironmentValidator"],
     # -- Remediation --
     "dekk.remediate": [
-        "IssueSeverity", "FixStatus", "DetectedIssue", "FixResult",
-        "Remediator", "RemediatorRegistry",
+        "IssueSeverity",
+        "FixStatus",
+        "DetectedIssue",
+        "FixResult",
+        "Remediator",
+        "RemediatorRegistry",
     ],
     # -- Scaffold --
     "dekk.scaffold": [
-        "ProjectLanguage", "ProjectFramework", "ProjectType", "ProjectTypeDetector",
-        "FileTemplate", "TemplateSet", "TemplateRegistry",
-        "SetupStep", "SetupScript", "SetupScriptBuilder",
+        "ProjectLanguage",
+        "ProjectFramework",
+        "ProjectType",
+        "ProjectTypeDetector",
+        "FileTemplate",
+        "TemplateSet",
+        "TemplateRegistry",
+        "SetupStep",
+        "SetupScript",
+        "SetupScriptBuilder",
     ],
     # -- Execution Context --
     "dekk.context": [
-        "ExecutionContext", "ContextWorkspaceInfo", "GitInfo",
-        "CPUInfo", "GPUInfo", "MemoryInfo", "SystemLibrary", "ContextDiff",
+        "ExecutionContext",
+        "ContextWorkspaceInfo",
+        "GitInfo",
+        "CPUInfo",
+        "GPUInfo",
+        "MemoryInfo",
+        "SystemLibrary",
+        "ContextDiff",
     ],
     # -- CLI Framework --
     "dekk.typer_app": ["Typer", "Option", "Argument", "Exit"],
@@ -97,17 +140,33 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.cli_commands": ["run_doctor", "run_version", "run_env"],
     # -- CLI Styling & Output --
     "dekk.cli.styles": [
-        "console", "err_console", "Colors", "Symbols",
-        "print_success", "print_error", "print_warning", "print_info", "print_debug",
-        "print_header", "print_step", "print_section", "print_blank",
-        "print_table", "print_numbered_list", "print_next_steps",
+        "console",
+        "err_console",
+        "Colors",
+        "Symbols",
+        "print_success",
+        "print_error",
+        "print_warning",
+        "print_info",
+        "print_debug",
+        "print_header",
+        "print_step",
+        "print_section",
+        "print_blank",
+        "print_table",
+        "print_numbered_list",
+        "print_next_steps",
     ],
     # -- CLI Output Formatting --
     "dekk.cli.output": ["OutputFormatter", "OutputFormat", "print_dep_results"],
     # -- CLI Error Handling --
     "dekk.cli.errors": [
-        "DekkError", "ExitCodes", "NotFoundError", "ValidationError",
-        "ConfigError", "DependencyError",
+        "DekkError",
+        "ExitCodes",
+        "NotFoundError",
+        "ValidationError",
+        "ConfigError",
+        "DependencyError",
     ],
     # -- CLI Progress --
     "dekk.cli.progress": ["progress_bar", "spinner"],
@@ -139,7 +198,7 @@ _ATTR_TO_MODULE: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def __getattr__(name: str):  # noqa: N807
+def __getattr__(name: str) -> Any:  # noqa: N807
     # Check renamed aliases first
     if name in _RENAMES:
         import importlib
@@ -167,7 +226,7 @@ def __getattr__(name: str):  # noqa: N807
     raise AttributeError(f"module 'dekk' has no attribute {name!r}")
 
 
-def __dir__():  # noqa: N807
+def __dir__() -> list[str]:  # noqa: N807
     return list(_ATTR_TO_MODULE.keys()) + list(_RENAMES.keys()) + ["__version__"]
 
 

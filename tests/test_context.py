@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from dekk.context import (
-    CPUInfo,
     ContextDiff,
     ContextWorkspaceInfo,
+    CPUInfo,
     ExecutionContext,
     GitInfo,
     GPUInfo,
@@ -275,13 +273,15 @@ def test_detect_gpus_merges_all_vendor_detectors(mock_intel, mock_amd, mock_nvid
 def test_detect_installed_packages_returns_string_versions():
     result = _detect_installed_packages()
     assert isinstance(result, dict)
-    assert all(isinstance(name, str) and isinstance(version, str) for name, version in result.items())
+    assert all(
+        isinstance(name, str) and isinstance(version, str) for name, version in result.items()
+    )
 
 
 def test_serialize_value_handles_nested_paths_dataclasses_and_datetimes():
     payload = {
         "root": Path("/tmp/project"),
-        "timestamp": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "timestamp": datetime(2026, 1, 1, tzinfo=UTC),
         "cpu": CPUInfo("Intel", 8, 16, 3200.0),
         "items": (Path("/a"), Path("/b")),
     }
@@ -298,27 +298,27 @@ def _make_context(**overrides) -> ExecutionContext:
     from dekk.ci import CIInfo
     from dekk.detect import PlatformInfo
 
-    defaults = dict(
-        platform=PlatformInfo(os="Linux", arch="x86_64"),
-        conda_env=None,
-        ci_info=CIInfo(is_ci=False),
-        workspace=ContextWorkspaceInfo(
+    defaults = {
+        "platform": PlatformInfo(os="Linux", arch="x86_64"),
+        "conda_env": None,
+        "ci_info": CIInfo(is_ci=False),
+        "workspace": ContextWorkspaceInfo(
             root=Path("/project"),
             git_info=GitInfo("abc123", "main", False, None),
             build_artifacts=[Path("/project/build")],
             config_files=[Path("/project/pyproject.toml")],
         ),
-        build_system=None,
-        installed_packages={"pytest": "8.4.0"},
-        system_libraries=[SystemLibrary("ssl", "3.0", Path("/usr/lib/libssl.so"))],
-        cpu_info=CPUInfo("Intel", 8, 16, 3200.0),
-        gpu_info=[GPUInfo("nvidia", "RTX 4090", 24576, "535")],
-        memory_info=MemoryInfo(16384, 8192, 8192),
-        env_vars={"HOME": "/home/user"},
-        command_line=["python", "tool.py"],
-        working_dir=Path("/project"),
-        timestamp=datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-    )
+        "build_system": None,
+        "installed_packages": {"pytest": "8.4.0"},
+        "system_libraries": [SystemLibrary("ssl", "3.0", Path("/usr/lib/libssl.so"))],
+        "cpu_info": CPUInfo("Intel", 8, 16, 3200.0),
+        "gpu_info": [GPUInfo("nvidia", "RTX 4090", 24576, "535")],
+        "memory_info": MemoryInfo(16384, 8192, 8192),
+        "env_vars": {"HOME": "/home/user"},
+        "command_line": ["python", "tool.py"],
+        "working_dir": Path("/project"),
+        "timestamp": datetime(2026, 3, 10, 12, 0, 0, tzinfo=UTC),
+    }
     defaults.update(overrides)
     return ExecutionContext(**defaults)
 
@@ -331,10 +331,11 @@ def test_execution_context_capture_respects_optional_sections():
     fake_platform = PlatformInfo(os="Linux", arch="x86_64")
     fake_ci = CIInfo(is_ci=False)
 
-    with patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform), patch(
-        "dekk.conda.CondaDetector.find_active", return_value=None
-    ), patch("dekk.ci.CIDetector.detect", return_value=fake_ci), patch(
-        "dekk.context._detect_workspace", return_value=workspace
+    with (
+        patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform),
+        patch("dekk.conda.CondaDetector.find_active", return_value=None),
+        patch("dekk.ci.CIDetector.detect", return_value=fake_ci),
+        patch("dekk.context._detect_workspace", return_value=workspace),
     ):
         ctx = ExecutionContext.capture(
             include_env_vars=False,
@@ -360,14 +361,15 @@ def test_execution_context_capture_includes_requested_sections():
     gpu = [GPUInfo("nvidia", "RTX", 8192, "535")]
     memory = MemoryInfo(16384, 8192, 8192)
 
-    with patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform), patch(
-        "dekk.conda.CondaDetector.find_active", return_value=None
-    ), patch("dekk.ci.CIDetector.detect", return_value=fake_ci), patch(
-        "dekk.context._detect_workspace", return_value=workspace
-    ), patch("dekk.context._detect_installed_packages", return_value={"pytest": "8.4.0"}), patch(
-        "dekk.context._detect_cpu_info", return_value=cpu
-    ), patch("dekk.context._detect_gpus", return_value=gpu), patch(
-        "dekk.context._detect_memory_info", return_value=memory
+    with (
+        patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform),
+        patch("dekk.conda.CondaDetector.find_active", return_value=None),
+        patch("dekk.ci.CIDetector.detect", return_value=fake_ci),
+        patch("dekk.context._detect_workspace", return_value=workspace),
+        patch("dekk.context._detect_installed_packages", return_value={"pytest": "8.4.0"}),
+        patch("dekk.context._detect_cpu_info", return_value=cpu),
+        patch("dekk.context._detect_gpus", return_value=gpu),
+        patch("dekk.context._detect_memory_info", return_value=memory),
     ):
         ctx = ExecutionContext.capture()
 
@@ -432,4 +434,3 @@ def test_execution_context_diff_separates_compatibility_breakers_from_noise():
     assert incompatible_diff.git_changes["commit_sha"] == ("abc123", "def456")
     assert incompatible_diff.git_changes["branch"] == ("main", "feature")
     assert incompatible_diff.git_changes["is_dirty"] == (False, True)
-

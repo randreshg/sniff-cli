@@ -6,8 +6,8 @@ Rich imports are deferred to first use of progress_bar/spinner/StatusReporter.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 __all__ = [
     "progress_bar",
@@ -19,7 +19,7 @@ __all__ = [
 def progress_bar(
     description: str,
     total: int | None = None,
-) -> Generator:
+) -> Generator[object, None, None]:
     """Context manager for deterministic progress with spinner, bar, %, and time."""
     from rich.progress import (
         BarColumn,
@@ -29,6 +29,7 @@ def progress_bar(
         TextColumn,
         TimeElapsedColumn,
     )
+
     from dekk.cli.styles import _get_console
 
     with Progress(

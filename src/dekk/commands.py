@@ -15,9 +15,9 @@ Zero dependencies. Pure Python 3.10+.
 from __future__ import annotations
 
 import enum
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol, Sequence, runtime_checkable
-
+from typing import Any, Protocol, runtime_checkable
 
 # ---------------------------------------------------------------------------
 # Data types
@@ -155,7 +155,7 @@ class CommandRegistry:
     def __len__(self) -> int:
         return len(self._commands)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[CommandMeta]:
         return iter(self._commands.values())
 
     @property
@@ -209,10 +209,7 @@ class CommandRegistry:
 
     def dependents(self, qualified_name: str) -> list[CommandMeta]:
         """Commands that list *qualified_name* in their ``requires``."""
-        return [
-            c for c in self._commands.values()
-            if qualified_name in c.requires
-        ]
+        return [c for c in self._commands.values() if qualified_name in c.requires]
 
     def resolve_order(self, qualified_name: str) -> list[str] | None:
         """Topological order to satisfy all transitive requirements.

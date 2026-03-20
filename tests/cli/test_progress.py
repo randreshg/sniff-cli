@@ -6,7 +6,6 @@ from rich.progress import Progress
 
 from dekk.cli.progress import progress_bar, spinner
 
-
 # ---------------------------------------------------------------------------
 # progress_bar
 # ---------------------------------------------------------------------------

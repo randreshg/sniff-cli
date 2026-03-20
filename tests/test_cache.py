@@ -1,8 +1,5 @@
 """Tests for build cache detection."""
 
-import os
-from pathlib import Path
-
 import pytest
 
 from dekk.cache import BuildCacheDetector, BuildCacheInfo, CacheKind
@@ -17,12 +14,24 @@ def detector(tmp_path):
 def clean_env(monkeypatch):
     """Remove cache-related env vars so detection starts clean."""
     cache_vars = [
-        "RUSTC_WRAPPER", "CC", "CXX",
-        "SCCACHE_BUCKET", "SCCACHE_GCS_BUCKET", "SCCACHE_AZURE_CONNECTION_STRING",
-        "SCCACHE_REDIS", "SCCACHE_MEMCACHED", "SCCACHE_DIR", "SCCACHE_CONF",
-        "CCACHE_DIR", "CCACHE_MAXSIZE", "CCACHE_CONFIGPATH",
-        "TURBO_TOKEN", "TURBO_TEAM", "TURBO_API",
-        "NX_CLOUD_ACCESS_TOKEN", "NX_CACHE_DIRECTORY",
+        "RUSTC_WRAPPER",
+        "CC",
+        "CXX",
+        "SCCACHE_BUCKET",
+        "SCCACHE_GCS_BUCKET",
+        "SCCACHE_AZURE_CONNECTION_STRING",
+        "SCCACHE_REDIS",
+        "SCCACHE_MEMCACHED",
+        "SCCACHE_DIR",
+        "SCCACHE_CONF",
+        "CCACHE_DIR",
+        "CCACHE_MAXSIZE",
+        "CCACHE_CONFIGPATH",
+        "TURBO_TOKEN",
+        "TURBO_TEAM",
+        "TURBO_API",
+        "NX_CLOUD_ACCESS_TOKEN",
+        "NX_CACHE_DIRECTORY",
         "BAZEL_REMOTE_CACHE",
     ]
     for var in cache_vars:
@@ -241,9 +250,7 @@ class TestNxDetection:
         assert info is None
 
     def test_detected_via_binary(self, detector, clean_env, monkeypatch):
-        monkeypatch.setattr(
-            "shutil.which", lambda cmd: "/usr/bin/nx" if cmd == "nx" else None
-        )
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/nx" if cmd == "nx" else None)
         info = detector.detect(CacheKind.NX)
         assert info is not None
         assert info.kind == CacheKind.NX
@@ -258,9 +265,7 @@ class TestNxDetection:
         assert info.config_path == str(tmp_path / "nx.json")
 
     def test_cloud_env(self, detector, clean_env, monkeypatch):
-        monkeypatch.setattr(
-            "shutil.which", lambda cmd: "/usr/bin/nx" if cmd == "nx" else None
-        )
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/nx" if cmd == "nx" else None)
         monkeypatch.setenv("NX_CLOUD_ACCESS_TOKEN", "cloud-token")
         monkeypatch.setenv("NX_CACHE_DIRECTORY", "/tmp/nx-cache")
         info = detector.detect(CacheKind.NX)

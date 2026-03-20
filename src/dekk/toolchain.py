@@ -28,12 +28,12 @@ from __future__ import annotations
 
 import os
 import platform
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from dekk.shell import ActivationConfig, EnvVar
 from dekk.dekk_os import get_dekk_os
+from dekk.shell import ActivationConfig, EnvVar
 
 
 @runtime_checkable

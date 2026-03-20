@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, Final
 
-from dekk._compat import tomllib, load_toml, deep_merge, walk_up
+from dekk._compat import deep_merge, load_toml, tomllib, walk_up
 
 # TOML writing: installed with the base dekk package
 try:
@@ -192,7 +192,7 @@ class ConfigManager:
         config: dict[str, Any] = {}
         for key, value in os.environ.items():
             if key.startswith(prefix):
-                config_key = key[len(prefix):].lower()
+                config_key = key[len(prefix) :].lower()
                 # Build nested dict from underscore-separated parts
                 parts = config_key.split(ENV_VAR_SEPARATOR)
                 target = config

@@ -8,7 +8,6 @@ from dekk.commands import (
     command,
 )
 
-
 # ---------------------------------------------------------------------------
 # CommandMeta
 # ---------------------------------------------------------------------------
@@ -51,7 +50,7 @@ class TestCommandMeta:
         m = CommandMeta(name="x")
         try:
             m.name = "y"  # type: ignore[misc]
-            assert False, "Should have raised"
+            raise AssertionError("Should have raised")
         except AttributeError:
             pass
 
@@ -82,17 +81,19 @@ class TestRegistryRegistration:
         reg.register(CommandMeta(name="test"))
         try:
             reg.register(CommandMeta(name="test"))
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError as e:
             assert "test" in str(e)
 
     def test_register_all(self):
         reg = CommandRegistry()
-        reg.register_all([
-            CommandMeta(name="a"),
-            CommandMeta(name="b"),
-            CommandMeta(name="c"),
-        ])
+        reg.register_all(
+            [
+                CommandMeta(name="a"),
+                CommandMeta(name="b"),
+                CommandMeta(name="c"),
+            ]
+        )
         assert len(reg) == 3
 
     def test_unregister(self):
@@ -133,7 +134,7 @@ class TestProvider:
         reg = CommandRegistry()
         try:
             reg.register_provider("not a provider")  # type: ignore[arg-type]
-            assert False, "Should have raised TypeError"
+            raise AssertionError("Should have raised TypeError")
         except TypeError:
             pass
 
@@ -157,30 +158,41 @@ class TestProvider:
 class TestQueries:
     def _populated_registry(self) -> CommandRegistry:
         reg = CommandRegistry()
-        reg.register_all([
-            CommandMeta(name="compile", group="build", help="Compile project"),
-            CommandMeta(name="link", group="build", help="Link objects", requires=("build:compile",)),
-            CommandMeta(name="unit", group="test", help="Unit tests"),
-            CommandMeta(name="lint", group="test", help="Lint check", hidden=True),
-            CommandMeta(name="doctor", help="Check env"),
-            CommandMeta(
-                name="old-cmd",
-                status=CommandStatus.DEPRECATED,
-                help="Legacy",
-            ),
-            CommandMeta(
-                name="disabled-cmd",
-                status=CommandStatus.DISABLED,
-            ),
-        ])
+        reg.register_all(
+            [
+                CommandMeta(name="compile", group="build", help="Compile project"),
+                CommandMeta(
+                    name="link", group="build", help="Link objects", requires=("build:compile",)
+                ),
+                CommandMeta(name="unit", group="test", help="Unit tests"),
+                CommandMeta(name="lint", group="test", help="Lint check", hidden=True),
+                CommandMeta(name="doctor", help="Check env"),
+                CommandMeta(
+                    name="old-cmd",
+                    status=CommandStatus.DEPRECATED,
+                    help="Legacy",
+                ),
+                CommandMeta(
+                    name="disabled-cmd",
+                    status=CommandStatus.DISABLED,
+                ),
+            ]
+        )
         return reg
 
     def test_names(self):
         reg = self._populated_registry()
-        assert reg.names == sorted([
-            "build:compile", "build:link", "test:unit", "test:lint",
-            "doctor", "old-cmd", "disabled-cmd",
-        ])
+        assert reg.names == sorted(
+            [
+                "build:compile",
+                "build:link",
+                "test:unit",
+                "test:lint",
+                "doctor",
+                "old-cmd",
+                "disabled-cmd",
+            ]
+        )
 
     def test_all_excludes_hidden_by_default(self):
         reg = self._populated_registry()

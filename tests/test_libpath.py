@@ -10,7 +10,6 @@ import pytest
 from dekk.detect import PlatformInfo
 from dekk.libpath import LibraryPathInfo, LibraryPathResolver
 
-
 # ---------------------------------------------------------------------------
 # LibraryPathResolver construction
 # ---------------------------------------------------------------------------
@@ -83,12 +82,7 @@ class TestPrependAppend:
         assert first_idx < last_idx
 
     def test_chaining(self):
-        info = (
-            self.resolver
-            .prepend("/opt/lib")
-            .append("/fallback/lib")
-            .resolve()
-        )
+        info = self.resolver.prepend("/opt/lib").append("/fallback/lib").resolve()
         assert "/opt/lib" in info.paths
         assert "/fallback/lib" in info.paths
 
@@ -445,7 +439,9 @@ class TestLibpathToolchainIntegration:
     def test_libpath_then_cmake_toolchain(self):
         """LibraryPathResolver and CMakeToolchain can both contribute to the same builder."""
         from pathlib import Path as P
-        from dekk.toolchain import CMakeToolchain, EnvVarBuilder as TcBuilder
+
+        from dekk.toolchain import CMakeToolchain
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
 
         prefix = "/opt/conda/envs/apxm"
         resolver = LibraryPathResolver.for_platform("Linux")
@@ -458,6 +454,7 @@ class TestLibpathToolchainIntegration:
             resolver.configure_builder(builder)
             # Then, CMakeToolchain contributes
             from unittest.mock import patch as mpatch
+
             with mpatch("dekk.toolchain.platform.system", return_value="Linux"):
                 cmake = CMakeToolchain(prefix=P(prefix))
                 cmake.configure(builder)

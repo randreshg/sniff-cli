@@ -9,7 +9,6 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
 
 CACHE_TTL = 3600  # 1 hour
 
@@ -19,7 +18,7 @@ class CachedValidation:
     """Cached validation result."""
 
     timestamp: float
-    conda_prefix: Optional[str]
+    conda_prefix: str | None
     env_vars: dict[str, str]
     missing_tools: list[str]
 
@@ -27,7 +26,7 @@ class CachedValidation:
 class ValidationCache:
     """Fast disk cache for environment validation."""
 
-    def __init__(self, cache_dir: Optional[Path] = None):
+    def __init__(self, cache_dir: Path | None = None):
         self.cache_dir = cache_dir or (Path.home() / ".cache" / "dekk")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -36,7 +35,7 @@ class ValidationCache:
         safe_name = f"{project_path.name}_{conda_name}".replace("/", "_")
         return self.cache_dir / f"{safe_name}.json"
 
-    def get(self, project_path: Path, conda_name: str) -> Optional[CachedValidation]:
+    def get(self, project_path: Path, conda_name: str) -> CachedValidation | None:
         """Get cached validation if still valid."""
         cache_file = self._cache_file(project_path, conda_name)
         if not cache_file.exists():
@@ -58,7 +57,7 @@ class ValidationCache:
         self,
         project_path: Path,
         conda_name: str,
-        conda_prefix: Optional[Path],
+        conda_prefix: Path | None,
         env_vars: dict[str, str],
         missing_tools: list[str],
     ) -> None:

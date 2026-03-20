@@ -11,14 +11,14 @@ Pure data + logic -- no mutations to ``os.environ``, no subprocesses.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
-
 
 # ---------------------------------------------------------------------------
 # EnvSnapshot -- frozen capture
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class EnvSnapshot:
@@ -69,6 +69,7 @@ class EnvSnapshot:
 # ---------------------------------------------------------------------------
 # EnvVarBuilder -- composable builder
 # ---------------------------------------------------------------------------
+
 
 class EnvVarBuilder:
     """Composable builder for constructing environment variable sets.

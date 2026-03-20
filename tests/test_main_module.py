@@ -22,7 +22,10 @@ def test_main_formats_dekk_error_for_users() -> None:
     with (
         patch("sys.argv", ["dekk"]),
         patch("dekk.cli.main._app", None),
-        patch("dekk.cli.main._make_app", side_effect=NotFoundError("Missing config", hint="Run 'dekk init'")),
+        patch(
+            "dekk.cli.main._make_app",
+            side_effect=NotFoundError("Missing config", hint="Run 'dekk init'"),
+        ),
         patch("dekk.cli.styles.print_error") as mock_error,
         patch("dekk.cli.styles.print_info") as mock_info,
     ):

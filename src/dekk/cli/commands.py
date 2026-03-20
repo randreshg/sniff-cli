@@ -3,20 +3,113 @@
 from __future__ import annotations
 
 import importlib.resources as resources
-import os
 import re
-import sys
 from pathlib import Path
-from typing import Optional
+from typing import Final
 
 try:
     import typer
-except ImportError:
-    raise ImportError("typer is required. Install or repair the package with: pip install --upgrade dekk")
+except ImportError as err:
+    raise ImportError(
+        "typer is required. Install or repair the package with: pip install --upgrade dekk"
+    ) from err
 
 from dekk.cli.errors import ConfigError, NotFoundError
-from dekk.cli.styles import print_error, print_info, print_next_steps, print_success, print_warning
+from dekk.cli.styles import print_error, print_info, print_next_steps, print_success
 
+DEFAULT_DIRECTORY_ARGUMENT: Final = typer.Argument(
+    Path("."),
+    help="Directory to initialize",
+)
+TARGET_ARGUMENT: Final = typer.Argument(
+    ...,
+    help="Script or binary to install",
+)
+WRAP_NAME_ARGUMENT: Final = typer.Argument(
+    ...,
+    help="Name for the wrapper binary",
+)
+WRAP_TARGET_ARGUMENT: Final = typer.Argument(
+    ...,
+    help="Binary or script to wrap",
+)
+UNINSTALL_NAME_ARGUMENT: Final = typer.Argument(
+    ...,
+    help="Name of the wrapper to remove",
+)
+EXAMPLE_TEMPLATE_ARGUMENT: Final = typer.Argument(
+    "quickstart",
+    help="Built-in template name",
+)
+NAME_OPTION: Final = typer.Option(None, "--name", "-n", help="Project name")
+EXAMPLE_OPTION: Final = typer.Option(
+    None,
+    "--example",
+    help="Start from a built-in template (quickstart, minimal, or conda)",
+)
+FORCE_OPTION: Final = typer.Option(
+    False,
+    "--force",
+    "-f",
+    help="Overwrite existing .dekk.toml",
+)
+SHELL_OPTION: Final = typer.Option(
+    None,
+    "--shell",
+    help="Target shell for activation output (bash, zsh, fish, tcsh, powershell, pwsh)",
+)
+PYTHON_OPTION: Final = typer.Option(
+    None,
+    "--python",
+    help="Python interpreter for script targets",
+)
+INSTALL_DIR_OPTION: Final = typer.Option(
+    None,
+    "--install-dir",
+    "-d",
+    help="Installation directory (default: ./.install)",
+)
+UNINSTALL_DIR_OPTION: Final = typer.Option(
+    None,
+    "--install-dir",
+    "-d",
+    help="Directory to look in (default: ./.install)",
+)
+SPEC_OPTION: Final = typer.Option(
+    None,
+    "--spec",
+    "-s",
+    help="Path to .dekk.toml (default: auto-detect near the target)",
+)
+WRAP_SPEC_OPTION: Final = typer.Option(
+    None,
+    "--spec",
+    "-s",
+    help="Path to .dekk.toml (default: auto-detect)",
+)
+REMOVE_PATH_OPTION: Final = typer.Option(
+    False,
+    "--remove-path",
+    help="Also remove this project's PATH export from the shell config",
+)
+EXAMPLE_OUTPUT_OPTION: Final = typer.Option(
+    None,
+    "--output",
+    "-o",
+    help="Write the example to a file instead of stdout",
+)
+EXAMPLE_NAME_OPTION: Final = typer.Option(
+    None,
+    "--name",
+    "-n",
+    help="Project name to inject into the template",
+)
+EXAMPLE_FORCE_OPTION: Final = typer.Option(
+    False,
+    "--force",
+    "-f",
+    help="Overwrite the output file if it exists",
+)
 
 # ---------------------------------------------------------------------------
 # activate
@@ -24,11 +117,7 @@ from dekk.cli.styles import print_error, print_info, print_next_steps, print_suc
 
 
 def activate(
-    shell: Optional[str] = typer.Option(
-        None,
-        "--shell",
-        help="Target shell for activation output (bash, zsh, fish, tcsh, powershell, pwsh)",
-    ),
+    shell: str | None = SHELL_OPTION,
 ) -> None:
     """Activate project environment from .dekk.toml.
 
@@ -89,7 +178,7 @@ EXAMPLE_TEMPLATES = {
 }
 
 
-def _load_example_template(template_name: str, project_name: Optional[str] = None) -> str:
+def _load_example_template(template_name: str, project_name: str | None = None) -> str:
     """Load a built-in example template and optionally rewrite the project name."""
     template_file = EXAMPLE_TEMPLATES.get(template_name)
     if template_file is None:
@@ -100,7 +189,8 @@ def _load_example_template(template_name: str, project_name: Optional[str] = Non
         )
 
     try:
-        content = resources.files("dekk").joinpath("templates", template_file).read_text(encoding="utf-8")
+        template_path = resources.files("dekk").joinpath("templates", template_file)
+        content = template_path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise ConfigError(
             f"Built-in template is missing: {template_name}",
@@ -118,14 +208,10 @@ def _load_example_template(template_name: str, project_name: Optional[str] = Non
 
 
 def init(
-    directory: Path = typer.Argument(Path("."), help="Directory to initialize"),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Project name"),
-    example: Optional[str] = typer.Option(
-        None,
-        "--example",
-        help="Start from a built-in template (quickstart, minimal, or conda)",
-    ),
-    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing .dekk.toml"),
+    directory: Path = DEFAULT_DIRECTORY_ARGUMENT,
+    name: str | None = NAME_OPTION,
+    example: str | None = EXAMPLE_OPTION,
+    force: bool = FORCE_OPTION,
 ) -> None:
     """Initialize .dekk.toml for automatic environment setup."""
     target_dir = directory.resolve()
@@ -145,18 +231,20 @@ def init(
 
     spec_file.write_text(content, encoding="utf-8")
     print_success(f"Created {spec_file} - edit it and run 'dekk activate'")
-    print_next_steps([
-        f"Review {spec_file.name} and adjust tools, env vars, or conda settings",
-        "Run dekk activate --shell bash (or --shell powershell on Windows)",
-        "Generate a launcher with dekk wrap <name> <target> when your target exists",
-    ])
+    print_next_steps(
+        [
+            f"Review {spec_file.name} and adjust tools, env vars, or conda settings",
+            "Run dekk activate --shell bash (or --shell powershell on Windows)",
+            "Generate a launcher with dekk wrap <name> <target> when your target exists",
+        ]
+    )
 
 
 def example(
-    template: str = typer.Argument("quickstart", help="Built-in template name"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write the example to a file instead of stdout"),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Project name to inject into the template"),
-    force: bool = typer.Option(False, "--force", "-f", help="Overwrite the output file if it exists"),
+    template: str = EXAMPLE_TEMPLATE_ARGUMENT,
+    output: Path | None = EXAMPLE_OUTPUT_OPTION,
+    name: str | None = EXAMPLE_NAME_OPTION,
+    force: bool = EXAMPLE_FORCE_OPTION,
 ) -> None:
     """Print or write a built-in .dekk.toml example."""
     content = _load_example_template(template, project_name=name)
@@ -182,15 +270,9 @@ def example(
 
 
 def uninstall(
-    name: str = typer.Argument(..., help="Name of the wrapper to remove"),
-    install_dir: Optional[Path] = typer.Option(
-        None, "--install-dir", "-d", help="Directory to look in (default: ./.install)"
-    ),
-    remove_path: bool = typer.Option(
-        False,
-        "--remove-path",
-        help="Also remove this project's PATH export from the shell config",
-    ),
+    name: str = UNINSTALL_NAME_ARGUMENT,
+    install_dir: Path | None = UNINSTALL_DIR_OPTION,
+    remove_path: bool = REMOVE_PATH_OPTION,
 ) -> None:
     """Remove an installed wrapper script.
 
@@ -216,11 +298,11 @@ def uninstall(
 
 
 def install(
-    target: Path = typer.Argument(..., help="Script or binary to install"),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Installed command name"),
-    python: Optional[Path] = typer.Option(None, "--python", help="Python interpreter for script targets"),
-    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: ./.install)"),
-    spec_file: Optional[Path] = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml (default: auto-detect near the target)"),
+    target: Path = TARGET_ARGUMENT,
+    name: str | None = typer.Option(None, "--name", "-n", help="Installed command name"),
+    python: Path | None = PYTHON_OPTION,
+    install_dir: Path | None = INSTALL_DIR_OPTION,
+    spec_file: Path | None = SPEC_OPTION,
 ) -> None:
     """Install a runnable project command with the right environment behavior.
 
@@ -233,9 +315,9 @@ def install(
       which environment variables and PATH entries to bake into the wrapper.
     """
     from dekk.conda import CondaDetector
+    from dekk.dekk_os import get_dekk_os
     from dekk.envspec import EnvironmentSpec, find_envspec
     from dekk.install import BinaryInstaller
-    from dekk.dekk_os import get_dekk_os
 
     target = target.resolve()
     if not target.exists():
@@ -269,10 +351,15 @@ def install(
         print_success(result.message)
         if not result.in_path:
             print_info(f"Add {result.bin_path.parent} to your PATH")
-        print_next_steps([
-            f"Run {install_name} --help",
-            "The first run will create or refresh the local .venv from pyproject.toml if needed",
-        ])
+        print_next_steps(
+            [
+                f"Run {install_name} --help",
+                (
+                    "The first run will create or refresh the local .venv "
+                    "from pyproject.toml if needed"
+                ),
+            ]
+        )
         return
 
     if not target_is_python and spec is None:
@@ -292,10 +379,12 @@ def install(
     print_success(result.message)
     if not result.in_path:
         print_info(f"Add {result.bin_path.parent} to your PATH")
-    print_next_steps([
-        f"Run {install_name} --help",
-        "Re-run dekk install after changing .dekk.toml, conda, or the wrapped target path",
-    ])
+    print_next_steps(
+        [
+            f"Run {install_name} --help",
+            "Re-run dekk install after changing .dekk.toml, conda, or the wrapped target path",
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -303,9 +392,8 @@ def install(
 # ---------------------------------------------------------------------------
 
 
-def test(extra_args: Optional[list[str]] = None) -> None:
+def test(extra_args: list[str] | None = None) -> None:
     """Run the project's default test command."""
-    from dekk.cli.errors import ExitCodes
     from dekk.cli.styles import print_info
     from dekk.test_runner import resolve_test_plan, run_test_plan
 
@@ -321,11 +409,11 @@ def test(extra_args: Optional[list[str]] = None) -> None:
 
 
 def wrap(
-    name: str = typer.Argument(..., help="Name for the wrapper binary"),
-    target: Path = typer.Argument(..., help="Binary or script to wrap"),
-    python: Optional[Path] = typer.Option(None, "--python", help="Python interpreter for script targets"),
-    install_dir: Optional[Path] = typer.Option(None, "--install-dir", "-d", help="Installation directory (default: ./.install)"),
-    spec_file: Optional[Path] = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml (default: auto-detect)"),
+    name: str = WRAP_NAME_ARGUMENT,
+    target: Path = WRAP_TARGET_ARGUMENT,
+    python: Path | None = PYTHON_OPTION,
+    install_dir: Path | None = INSTALL_DIR_OPTION,
+    spec_file: Path | None = WRAP_SPEC_OPTION,
 ) -> None:
     """Generate a self-contained wrapper that activates your environment automatically.
 
@@ -337,8 +425,8 @@ def wrap(
         dekk wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
         dekk wrap myapp .\\dist\\myapp.exe --install-dir .\\.install
     """
+    from dekk.envspec import find_envspec
     from dekk.wrapper import WrapperGenerator
-    from dekk.envspec import EnvironmentSpec, find_envspec
 
     if spec_file:
         if not spec_file.exists():
@@ -367,6 +455,6 @@ def wrap(
         print_success(result.message)
         if not result.in_path:
             print_info(f"Add {result.bin_path.parent} to your PATH")
-    except Exception as e:
-        print_error(f"Failed to generate wrapper: {e}")
-        raise typer.Exit(1)
+    except Exception as err:
+        print_error(f"Failed to generate wrapper: {err}")
+        raise typer.Exit(1) from err

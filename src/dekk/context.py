@@ -13,14 +13,12 @@ import hashlib
 import json
 import os
 import platform
-import re
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
-
 
 GIT_DIR_NAME: Final = ".git"
 PROJECT_ROOT_MARKERS: Final = (
@@ -170,6 +168,7 @@ class ContextDiff:
 
 # -- Internal helpers --------------------------------------------------------
 
+
 def _detect_git_info(root: Path) -> GitInfo | None:
     """Detect git state at the given root. Returns None on failure."""
     git_dir = root / GIT_DIR_NAME
@@ -179,25 +178,43 @@ def _detect_git_info(root: Path) -> GitInfo | None:
     try:
         sha = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5, cwd=str(root), check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(root),
+            check=False,
         )
         branch = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, timeout=5, cwd=str(root), check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(root),
+            check=False,
         )
         dirty = subprocess.run(
             ["git", "status", "--porcelain"],
-            capture_output=True, text=True, timeout=5, cwd=str(root), check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(root),
+            check=False,
         )
         remote = subprocess.run(
             ["git", "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5, cwd=str(root), check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(root),
+            check=False,
         )
 
         commit_sha = sha.stdout.strip() if sha.returncode == 0 else ""
         branch_name = branch.stdout.strip() if branch.returncode == 0 else ""
         is_dirty = bool(dirty.stdout.strip()) if dirty.returncode == 0 else False
-        remote_url = remote.stdout.strip() if remote.returncode == 0 and remote.stdout.strip() else None
+        remote_url = (
+            remote.stdout.strip() if remote.returncode == 0 and remote.stdout.strip() else None
+        )
 
         return GitInfo(
             commit_sha=commit_sha,
@@ -309,7 +326,10 @@ def _detect_cpu_info() -> CPUInfo:
         try:
             result = subprocess.run(
                 ["sysctl", "-n", "machdep.cpu.brand_string"],
-                capture_output=True, text=True, timeout=5, check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
             )
             if result.returncode == 0 and result.stdout.strip():
                 model = result.stdout.strip()
@@ -340,7 +360,10 @@ def _detect_nvidia_gpus() -> list[GPUInfo]:
                 "--query-gpu=name,memory.total,driver_version",
                 "--format=csv,noheader,nounits",
             ],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if result.returncode != 0:
             return []
@@ -354,12 +377,14 @@ def _detect_nvidia_gpus() -> list[GPUInfo]:
                     mem = int(float(parts[1]))
                 except (ValueError, IndexError):
                     pass
-                gpus.append(GPUInfo(
-                    vendor="nvidia",
-                    model=parts[0],
-                    memory_mb=mem,
-                    driver_version=parts[2] if parts[2] else None,
-                ))
+                gpus.append(
+                    GPUInfo(
+                        vendor="nvidia",
+                        model=parts[0],
+                        memory_mb=mem,
+                        driver_version=parts[2] if parts[2] else None,
+                    )
+                )
         return gpus
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -375,13 +400,19 @@ def _detect_amd_gpus() -> list[GPUInfo]:
     try:
         result = subprocess.run(
             ["rocm-smi", "--showproductname", "--showmeminfo", "vram", "--csv"],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if result.returncode != 0:
             # Try simpler fallback
             result2 = subprocess.run(
                 ["rocm-smi", "--showproductname"],
-                capture_output=True, text=True, timeout=10, check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
             )
             if result2.returncode != 0:
                 return []
@@ -389,12 +420,14 @@ def _detect_amd_gpus() -> list[GPUInfo]:
             for line in result2.stdout.strip().splitlines():
                 line = line.strip()
                 if line and not line.startswith("=") and "GPU" not in line.split()[0:1]:
-                    gpus.append(GPUInfo(
-                        vendor="amd",
-                        model=line,
-                        memory_mb=None,
-                        driver_version=None,
-                    ))
+                    gpus.append(
+                        GPUInfo(
+                            vendor="amd",
+                            model=line,
+                            memory_mb=None,
+                            driver_version=None,
+                        )
+                    )
             return gpus
 
         gpus = []
@@ -403,12 +436,14 @@ def _detect_amd_gpus() -> list[GPUInfo]:
                 continue
             parts = [p.strip() for p in line.split(",")]
             if parts:
-                gpus.append(GPUInfo(
-                    vendor="amd",
-                    model=parts[0] if parts else "unknown",
-                    memory_mb=None,
-                    driver_version=None,
-                ))
+                gpus.append(
+                    GPUInfo(
+                        vendor="amd",
+                        model=parts[0] if parts else "unknown",
+                        memory_mb=None,
+                        driver_version=None,
+                    )
+                )
         return gpus
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -436,12 +471,14 @@ def _detect_intel_gpus() -> list[GPUInfo]:
                     label_path = device_dir / "label"
                     if label_path.exists():
                         model = label_path.read_text().strip()
-                    gpus.append(GPUInfo(
-                        vendor="intel",
-                        model=model,
-                        memory_mb=None,
-                        driver_version=None,
-                    ))
+                    gpus.append(
+                        GPUInfo(
+                            vendor="intel",
+                            model=model,
+                            memory_mb=None,
+                            driver_version=None,
+                        )
+                    )
             except OSError:
                 continue
     except OSError:
@@ -531,8 +568,8 @@ def _detect_installed_packages() -> dict[str, str]:
 
         packages: dict[str, str] = {}
         for dist in distributions():
-            name = dist.metadata.get("Name")
-            version = dist.metadata.get("Version")
+            name = dist.metadata["Name"] if "Name" in dist.metadata else None
+            version = dist.metadata["Version"] if "Version" in dist.metadata else None
             if name and version:
                 packages[name] = version
         return packages
@@ -562,6 +599,7 @@ def _serialize_value(obj: Any) -> Any:
 
 
 # -- ExecutionContext --------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ExecutionContext:
@@ -613,9 +651,9 @@ class ExecutionContext:
         Returns:
             Complete ExecutionContext snapshot.
         """
-        from dekk.detect import PlatformDetector
-        from dekk.conda import CondaDetector
         from dekk.ci import CIDetector
+        from dekk.conda import CondaDetector
+        from dekk.detect import PlatformDetector
 
         platform_info = PlatformDetector().detect()
         conda_env = CondaDetector().find_active()
@@ -668,7 +706,7 @@ class ExecutionContext:
             env_vars=env_vars,
             command_line=list(sys.argv),
             working_dir=working_dir,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -694,7 +732,7 @@ class ExecutionContext:
             result["ci_info"] = str(self.ci_info)
 
         # Workspace
-        ws = {
+        ws: dict[str, Any] = {
             "root": str(self.workspace.root),
             "git_info": None,
             "build_artifacts": [str(p) for p in self.workspace.build_artifacts],
@@ -799,7 +837,7 @@ class ExecutionContext:
         if ts_str:
             timestamp = datetime.fromisoformat(ts_str)
         else:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
         return cls(
             platform=data.get("platform", {}),
@@ -835,7 +873,9 @@ class ExecutionContext:
         # Conda
         if self.conda_env is not None:
             if hasattr(self.conda_env, "__dataclass_fields__"):
-                h.update(json.dumps(_serialize_value(asdict(self.conda_env)), sort_keys=True).encode())
+                h.update(
+                    json.dumps(_serialize_value(asdict(self.conda_env)), sort_keys=True).encode()
+                )
             else:
                 h.update(json.dumps(self.conda_env, sort_keys=True, default=str).encode())
 
@@ -853,7 +893,9 @@ class ExecutionContext:
         """Compare two contexts, return differences."""
         # Platform comparison
         platform_changed = False
-        if hasattr(self.platform, "__dataclass_fields__") and hasattr(other.platform, "__dataclass_fields__"):
+        if hasattr(self.platform, "__dataclass_fields__") and hasattr(
+            other.platform, "__dataclass_fields__"
+        ):
             platform_changed = asdict(self.platform) != asdict(other.platform)
         else:
             platform_changed = self.platform != other.platform
@@ -864,7 +906,9 @@ class ExecutionContext:
             conda_env_changed = False
         elif self.conda_env is None or other.conda_env is None:
             conda_env_changed = True
-        elif hasattr(self.conda_env, "__dataclass_fields__") and hasattr(other.conda_env, "__dataclass_fields__"):
+        elif hasattr(self.conda_env, "__dataclass_fields__") and hasattr(
+            other.conda_env, "__dataclass_fields__"
+        ):
             conda_env_changed = asdict(self.conda_env) != asdict(other.conda_env)
         else:
             conda_env_changed = self.conda_env != other.conda_env
@@ -898,9 +942,7 @@ class ExecutionContext:
         self_gpu_models = sorted(g.model for g in self.gpu_info)
         other_gpu_models = sorted(g.model for g in other.gpu_info)
         if self_gpu_models != other_gpu_models:
-            hardware_changes.append(
-                f"GPU: {self_gpu_models} -> {other_gpu_models}"
-            )
+            hardware_changes.append(f"GPU: {self_gpu_models} -> {other_gpu_models}")
 
         # Git changes
         git_changes: dict[str, Any] = {}

@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
+import builtins
+
 import pytest
 
 from dekk.cli.errors import (
     ConfigError,
+    DekkError,
     DependencyError,
     ExitCodes,
     NotFoundError,
     PermissionError,
     RuntimeError,
-    DekkError,
     TimeoutError,
     ValidationError,
 )
-
 
 # ---------------------------------------------------------------------------
 # ExitCodes Enum
@@ -118,7 +119,11 @@ class TestDekkError:
 
     def test_to_dict_no_extra_keys(self):
         err = DekkError("broken")
-        assert set(d.keys()) == {"error", "message", "hint", "exit_code"} if not (d := err.to_dict()) else True
+        assert (
+            set(d.keys()) == {"error", "message", "hint", "exit_code"}
+            if not (d := err.to_dict())
+            else True
+        )
         d = err.to_dict()
         assert "error" in d
         assert "message" in d
@@ -299,8 +304,5 @@ class TestEdgeCases:
         assert isinstance(err, DekkError)
         assert not isinstance(err, builtins_PermissionError)
 
-
-# We need to import builtins for the shadowing test
-import builtins
 
 builtins_PermissionError = builtins.PermissionError

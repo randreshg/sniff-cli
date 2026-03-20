@@ -22,8 +22,8 @@ Usage::
 from __future__ import annotations
 
 import json
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 from dekk.cli.styles import (
     print_error,
@@ -33,9 +33,11 @@ from dekk.cli.styles import (
     print_warning,
 )
 
+if TYPE_CHECKING:
+    from dekk.deps import DependencyResult
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format options for CLI commands.
 
     Attributes:
@@ -129,6 +131,7 @@ class OutputFormatter:
                 value_str = str(value)
             table.add_row(str(key), value_str)
         from dekk.cli.styles import _get_console
+
         _get_console().print(table)
 
     # ------------------------------------------------------------------
@@ -178,7 +181,7 @@ class OutputFormatter:
 
 
 def print_dep_results(
-    results: list,
+    results: list[DependencyResult],
     *,
     skip_names: set[str] | frozenset[str] | None = None,
 ) -> list[str]:

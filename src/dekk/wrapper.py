@@ -28,14 +28,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from .activation import ActivationResult, EnvironmentActivator
 from .cli.errors import NotFoundError, ValidationError
-from .envspec import EnvironmentSpec, find_envspec
-from .install import DEFAULT_INSTALL_DIRNAME, InstallResult
 from .dekk_os import get_dekk_os
-
+from .envspec import EnvironmentSpec
+from .install import DEFAULT_INSTALL_DIRNAME, InstallResult
 
 # ---------------------------------------------------------------------------
 # Shell-safe quoting
@@ -45,6 +43,7 @@ from .dekk_os import get_dekk_os
 # is handled by replacing ' with '\'' (end quote, escaped literal quote, start
 # quote again).  We use single-quoting because it is the most predictable
 # strategy for #!/bin/sh scripts -- only single-quote itself needs escaping.
+
 
 def _sh_quote(value: str) -> str:
     """Quote *value* for safe embedding in a POSIX ``#!/bin/sh`` script.
@@ -99,8 +98,8 @@ class WrapperGenerator:
         path_prepends: list[str],
         project_name: str,
         *,
-        prepend_vars: Optional[dict[str, str]] = None,
-        python: Optional[Path] = None,
+        prepend_vars: dict[str, str] | None = None,
+        python: Path | None = None,
     ) -> str:
         """Generate a self-contained wrapper script for the current platform.
 
@@ -160,7 +159,7 @@ class WrapperGenerator:
         project_root: Path,
         target: Path,
         *,
-        python: Optional[Path] = None,
+        python: Path | None = None,
     ) -> str:
         """Generate a wrapper from a ``.dekk.toml`` spec (or ``EnvironmentSpec``).
 
@@ -204,7 +203,7 @@ class WrapperGenerator:
         target: Path,
         project_name: str,
         *,
-        python: Optional[Path] = None,
+        python: Path | None = None,
     ) -> str:
         """Generate a wrapper from an existing :class:`ActivationResult`.
 
@@ -236,7 +235,7 @@ class WrapperGenerator:
         script: str,
         name: str,
         *,
-        install_dir: Optional[Path] = None,
+        install_dir: Path | None = None,
     ) -> InstallResult:
         """Write a wrapper script to disk and make it executable.
 
@@ -292,7 +291,7 @@ class WrapperGenerator:
     def uninstall(
         name: str,
         *,
-        install_dir: Optional[Path] = None,
+        install_dir: Path | None = None,
     ) -> InstallResult:
         """Remove a previously installed wrapper script.
 
@@ -321,7 +320,9 @@ class WrapperGenerator:
         else:
             message = f"Wrapper '{wrapper_name}' not found in {install_dir} (nothing to remove)"
 
-        return InstallResult(bin_path=wrapper_path, in_path=_dir_in_path(install_dir), message=message)
+        return InstallResult(
+            bin_path=wrapper_path, in_path=_dir_in_path(install_dir), message=message
+        )
 
     # ------------------------------------------------------------------ #
     # Convenience: from_spec + install in one shot
@@ -334,9 +335,9 @@ class WrapperGenerator:
         target: Path,
         name: str,
         *,
-        python: Optional[Path] = None,
-        install_dir: Optional[Path] = None,
-        project_root: Optional[Path] = None,
+        python: Path | None = None,
+        install_dir: Path | None = None,
+        project_root: Path | None = None,
     ) -> InstallResult:
         """Generate a wrapper from a spec and install it in one step.
 
@@ -372,7 +373,9 @@ class WrapperGenerator:
             python=python,
         )
 
-        return cls.install(script, name, install_dir=install_dir or (root / DEFAULT_INSTALL_DIRNAME))
+        return cls.install(
+            script, name, install_dir=install_dir or (root / DEFAULT_INSTALL_DIRNAME)
+        )
 
     # ------------------------------------------------------------------ #
     # Internal helpers
@@ -385,7 +388,7 @@ class WrapperGenerator:
         target: Path,
         project_name: str,
         *,
-        python: Optional[Path] = None,
+        python: Path | None = None,
     ) -> str:
         """Translate an ``ActivationResult`` into ``generate()`` arguments.
 
@@ -399,7 +402,13 @@ class WrapperGenerator:
         prepend_vars: dict[str, str] = {}
 
         # Variables that should be prepended to existing values, not hard-set.
-        _PREPEND_KEYS = {"PATH", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PYTHONPATH", "PKG_CONFIG_PATH"}
+        _PREPEND_KEYS = {
+            "PATH",
+            "LD_LIBRARY_PATH",
+            "DYLD_LIBRARY_PATH",
+            "PYTHONPATH",
+            "PKG_CONFIG_PATH",
+        }
 
         # Extract PATH entries from the env dict (the activator merges them
         # into a single colon-separated value under the "PATH" key).
@@ -447,8 +456,8 @@ def _sh_escape_double(value: str) -> str:
     """
     result: list[str] = []
     for ch in value:
-        if ch in ('$', '`', '"', '\\'):
-            result.append('\\')
+        if ch in ("$", "`", '"', "\\"):
+            result.append("\\")
         result.append(ch)
     return "".join(result)
 
@@ -469,8 +478,8 @@ def _generate_cmd_script(
     env_vars: dict[str, str],
     path_prepends: list[str],
     project_name: str,
-    prepend_vars: Optional[dict[str, str]],
-    python: Optional[Path],
+    prepend_vars: dict[str, str] | None,
+    python: Path | None,
     timestamp: str,
 ) -> str:
     """Generate a Windows ``.cmd`` wrapper."""
@@ -507,7 +516,7 @@ def _generate_cmd_script(
     if path_prepends:
         joined = ";".join(_cmd_escape_value(path) for path in path_prepends)
         lines.append("REM --- PATH ---")
-        lines.append('if defined PATH (')
+        lines.append("if defined PATH (")
         lines.append(f'  set "PATH={joined};%PATH%"')
         lines.append(") else (")
         lines.append(f'  set "PATH={joined}"')

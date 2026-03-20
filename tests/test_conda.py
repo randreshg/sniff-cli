@@ -1,10 +1,9 @@
 """Tests for conda environment detection."""
 
 import json
-import os
 import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,10 +14,10 @@ from dekk.conda import (
     CondaValidation,
 )
 
-
 # ---------------------------------------------------------------------------
 # COMMON_INSTALL_PATHS constant
 # ---------------------------------------------------------------------------
+
 
 class TestCommonInstallPaths:
     def test_is_tuple(self):
@@ -34,6 +33,7 @@ class TestCommonInstallPaths:
 # ---------------------------------------------------------------------------
 # CondaEnvironment dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCondaEnvironment:
     def test_basic_creation(self):
@@ -62,6 +62,7 @@ class TestCondaEnvironment:
 # ---------------------------------------------------------------------------
 # CondaValidation dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestCondaValidation:
     def test_ok_when_found_no_missing(self):
@@ -100,6 +101,7 @@ class TestCondaValidation:
 # CondaDetector.find_active
 # ---------------------------------------------------------------------------
 
+
 class TestFindActive:
     def test_returns_none_without_conda_prefix(self, monkeypatch):
         monkeypatch.delenv("CONDA_PREFIX", raising=False)
@@ -132,6 +134,7 @@ class TestFindActive:
 # CondaDetector.find_prefix
 # ---------------------------------------------------------------------------
 
+
 class TestFindPrefix:
     def test_returns_active_prefix_when_name_matches(self, monkeypatch):
         monkeypatch.setenv("CONDA_PREFIX", "/home/user/miniconda3/envs/apxm")
@@ -145,8 +148,10 @@ class TestFindPrefix:
         monkeypatch.setenv("CONDA_PREFIX", "/home/user/miniconda3/envs/other")
         monkeypatch.setenv("CONDA_DEFAULT_ENV", "other")
         detector = CondaDetector()
-        with patch.object(detector, "_get_python_version", return_value=None), \
-             patch.object(detector, "find_environment", return_value=None):
+        with (
+            patch.object(detector, "_get_python_version", return_value=None),
+            patch.object(detector, "find_environment", return_value=None),
+        ):
             result = detector.find_prefix("apxm", probe_common=False)
         assert result is None
 
@@ -168,12 +173,14 @@ class TestFindPrefix:
         fake_env = tmp_path / "miniforge3" / "envs" / "myenv"
         fake_env.mkdir(parents=True)
 
-        with patch.object(detector, "find_environment", return_value=None), \
-             patch.object(
-                 CondaDetector,
-                 "_common_prefix_candidates",
-                 return_value=[fake_env],
-             ):
+        with (
+            patch.object(detector, "find_environment", return_value=None),
+            patch.object(
+                CondaDetector,
+                "_common_prefix_candidates",
+                return_value=[fake_env],
+            ),
+        ):
             result = detector.find_prefix("myenv")
         assert result == fake_env
 
@@ -191,12 +198,14 @@ class TestFindPrefix:
         detector = CondaDetector()
         # Use a path inside tmp_path that does not exist
         bogus = tmp_path / "does_not_exist" / "envs" / "apxm"
-        with patch.object(detector, "find_environment", return_value=None), \
-             patch.object(
-                 CondaDetector,
-                 "_common_prefix_candidates",
-                 return_value=[bogus],
-             ):
+        with (
+            patch.object(detector, "find_environment", return_value=None),
+            patch.object(
+                CondaDetector,
+                "_common_prefix_candidates",
+                return_value=[bogus],
+            ),
+        ):
             result = detector.find_prefix("apxm")
         assert result is None
 
@@ -204,6 +213,7 @@ class TestFindPrefix:
 # ---------------------------------------------------------------------------
 # CondaDetector._common_prefix_candidates
 # ---------------------------------------------------------------------------
+
 
 class TestCommonPrefixCandidates:
     def test_generates_expected_paths(self):
@@ -227,6 +237,7 @@ class TestCommonPrefixCandidates:
 # ---------------------------------------------------------------------------
 # CondaDetector.validate
 # ---------------------------------------------------------------------------
+
 
 class TestValidate:
     def test_not_found(self, monkeypatch):
@@ -254,8 +265,10 @@ class TestValidate:
         monkeypatch.delenv("CONDA_PREFIX", raising=False)
         monkeypatch.delenv("CONDA_DEFAULT_ENV", raising=False)
         detector = CondaDetector()
-        with patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")), \
-             patch.object(detector, "_check_packages", return_value=[]):
+        with (
+            patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")),
+            patch.object(detector, "_check_packages", return_value=[]),
+        ):
             result = detector.validate("myenv", required_packages=["numpy", "scipy"])
         assert result.ok is True
         assert result.missing_packages == ()
@@ -264,8 +277,10 @@ class TestValidate:
         monkeypatch.delenv("CONDA_PREFIX", raising=False)
         monkeypatch.delenv("CONDA_DEFAULT_ENV", raising=False)
         detector = CondaDetector()
-        with patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")), \
-             patch.object(detector, "_check_packages", return_value=["scipy"]):
+        with (
+            patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")),
+            patch.object(detector, "_check_packages", return_value=["scipy"]),
+        ):
             result = detector.validate("myenv", required_packages=["numpy", "scipy"])
         assert not result.ok
         assert "scipy" in result.missing_packages
@@ -274,8 +289,10 @@ class TestValidate:
         monkeypatch.setenv("CONDA_PREFIX", "/envs/myenv")
         monkeypatch.setenv("CONDA_DEFAULT_ENV", "myenv")
         detector = CondaDetector()
-        with patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")), \
-             patch.object(detector, "_get_python_version", return_value=None):
+        with (
+            patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")),
+            patch.object(detector, "_get_python_version", return_value=None),
+        ):
             result = detector.validate("myenv")
         assert result.is_active is True
 
@@ -283,8 +300,10 @@ class TestValidate:
         monkeypatch.setenv("CONDA_PREFIX", "/envs/other")
         monkeypatch.setenv("CONDA_DEFAULT_ENV", "other")
         detector = CondaDetector()
-        with patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")), \
-             patch.object(detector, "_get_python_version", return_value=None):
+        with (
+            patch.object(detector, "find_prefix", return_value=Path("/envs/myenv")),
+            patch.object(detector, "_get_python_version", return_value=None),
+        ):
             result = detector.validate("myenv")
         assert result.is_active is False
 
@@ -293,30 +312,37 @@ class TestValidate:
 # CondaDetector._check_packages
 # ---------------------------------------------------------------------------
 
+
 class TestCheckPackages:
     def test_all_installed(self):
         detector = CondaDetector()
-        installed_json = json.dumps([
-            {"name": "numpy", "version": "1.26"},
-            {"name": "scipy", "version": "1.12"},
-        ])
+        installed_json = json.dumps(
+            [
+                {"name": "numpy", "version": "1.26"},
+                {"name": "scipy", "version": "1.12"},
+            ]
+        )
         mock_result = MagicMock(returncode=0, stdout=installed_json)
-        with patch("shutil.which", return_value="/usr/bin/conda"), \
-             patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("shutil.which", return_value="/usr/bin/conda"),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             missing = detector._check_packages(Path("/envs/test"), ["numpy", "scipy"])
         assert missing == []
 
     def test_some_missing(self):
         detector = CondaDetector()
-        installed_json = json.dumps([
-            {"name": "numpy", "version": "1.26"},
-        ])
+        installed_json = json.dumps(
+            [
+                {"name": "numpy", "version": "1.26"},
+            ]
+        )
         mock_result = MagicMock(returncode=0, stdout=installed_json)
-        with patch("shutil.which", return_value="/usr/bin/conda"), \
-             patch("subprocess.run", return_value=mock_result):
-            missing = detector._check_packages(
-                Path("/envs/test"), ["numpy", "scipy", "pandas"]
-            )
+        with (
+            patch("shutil.which", return_value="/usr/bin/conda"),
+            patch("subprocess.run", return_value=mock_result),
+        ):
+            missing = detector._check_packages(Path("/envs/test"), ["numpy", "scipy", "pandas"])
         assert missing == ["scipy", "pandas"]
 
     def test_no_conda_returns_all(self):
@@ -328,23 +354,29 @@ class TestCheckPackages:
     def test_subprocess_failure_returns_all(self):
         detector = CondaDetector()
         mock_result = MagicMock(returncode=1, stdout="")
-        with patch("shutil.which", return_value="/usr/bin/conda"), \
-             patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("shutil.which", return_value="/usr/bin/conda"),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             missing = detector._check_packages(Path("/envs/test"), ["a", "b"])
         assert missing == ["a", "b"]
 
     def test_json_error_returns_all(self):
         detector = CondaDetector()
         mock_result = MagicMock(returncode=0, stdout="not json")
-        with patch("shutil.which", return_value="/usr/bin/conda"), \
-             patch("subprocess.run", return_value=mock_result):
+        with (
+            patch("shutil.which", return_value="/usr/bin/conda"),
+            patch("subprocess.run", return_value=mock_result),
+        ):
             missing = detector._check_packages(Path("/envs/test"), ["pkg"])
         assert missing == ["pkg"]
 
     def test_timeout_returns_all(self):
         detector = CondaDetector()
-        with patch("shutil.which", return_value="/usr/bin/conda"), \
-             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("conda", 10)):
+        with (
+            patch("shutil.which", return_value="/usr/bin/conda"),
+            patch("subprocess.run", side_effect=subprocess.TimeoutExpired("conda", 10)),
+        ):
             missing = detector._check_packages(Path("/envs/test"), ["pkg"])
         assert missing == ["pkg"]
 
@@ -352,6 +384,7 @@ class TestCheckPackages:
 # ---------------------------------------------------------------------------
 # Backward compatibility: existing find_active / find_environment still work
 # ---------------------------------------------------------------------------
+
 
 class TestBackwardCompatibility:
     def test_find_active_still_works(self, monkeypatch):
@@ -370,7 +403,8 @@ class TestBackwardCompatibility:
         assert result is None
 
     def test_importable_from_top_level(self):
-        from dekk import CondaDetector, CondaEnvironment, CondaValidation, COMMON_INSTALL_PATHS
+        from dekk import COMMON_INSTALL_PATHS, CondaDetector, CondaEnvironment, CondaValidation
+
         assert CondaDetector is not None
         assert CondaEnvironment is not None
         assert CondaValidation is not None

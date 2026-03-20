@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from dekk.build import BuildSystem
 from dekk.cli.errors import NotFoundError
 from dekk.test_runner import resolve_test_plan
 

@@ -1,4 +1,4 @@
-"""CI/CD provider detection - identify CI environment, extract metadata, detect runner capabilities."""
+"""CI/CD provider detection and metadata extraction."""
 
 from __future__ import annotations
 
@@ -211,9 +211,9 @@ class CIDetector:
         branch = None
         tag = None
         if ref.startswith("refs/heads/"):
-            branch = ref[len("refs/heads/"):]
+            branch = ref[len("refs/heads/") :]
         elif ref.startswith("refs/tags/"):
-            tag = ref[len("refs/tags/"):]
+            tag = ref[len("refs/tags/") :]
         elif ref.startswith("refs/pull/"):
             # PR ref: refs/pull/123/merge
             branch = env.get("GITHUB_HEAD_REF")
@@ -248,17 +248,13 @@ class CIDetector:
                 commit_sha=sha,
                 commit_short=sha[:7] if sha else None,
                 tag=tag,
-                default_branch=env.get("GITHUB_EVENT_NAME") == "push"
-                and branch
-                or None,
+                default_branch=env.get("GITHUB_EVENT_NAME") == "push" and branch or None,
             ),
             pull_request=CIPullRequest(
                 number=pr_number,
                 source_branch=env.get("GITHUB_HEAD_REF"),
                 target_branch=env.get("GITHUB_BASE_REF"),
-                url=f"{server_url}/{repo}/pull/{pr_number}"
-                if repo and pr_number
-                else None,
+                url=f"{server_url}/{repo}/pull/{pr_number}" if repo and pr_number else None,
             ),
             build=CIBuildInfo(
                 build_id=run_id,
@@ -266,9 +262,7 @@ class CIDetector:
                 job_id=env.get("GITHUB_JOB"),
                 job_name=env.get("GITHUB_JOB"),
                 pipeline_id=env.get("GITHUB_WORKFLOW"),
-                build_url=f"{server_url}/{repo}/actions/runs/{run_id}"
-                if repo and run_id
-                else None,
+                build_url=f"{server_url}/{repo}/actions/runs/{run_id}" if repo and run_id else None,
             ),
             runner=runner,
             event_name=env.get("GITHUB_EVENT_NAME"),
@@ -308,9 +302,7 @@ class CIDetector:
                 number=mr_iid,
                 source_branch=env.get("CI_MERGE_REQUEST_SOURCE_BRANCH_NAME"),
                 target_branch=env.get("CI_MERGE_REQUEST_TARGET_BRANCH_NAME"),
-                url=f"{project_url}/-/merge_requests/{mr_iid}"
-                if project_url and mr_iid
-                else None,
+                url=f"{project_url}/-/merge_requests/{mr_iid}" if project_url and mr_iid else None,
             ),
             build=CIBuildInfo(
                 build_id=env.get("CI_JOB_ID"),
@@ -408,7 +400,9 @@ class CIDetector:
                 build_url=env.get("CIRCLE_BUILD_URL"),
             ),
             runner=runner,
-            repository=f"{env.get('CIRCLE_PROJECT_USERNAME', '')}/{env.get('CIRCLE_PROJECT_REPONAME', '')}"
+            repository=(
+                f"{env.get('CIRCLE_PROJECT_USERNAME', '')}/{env.get('CIRCLE_PROJECT_REPONAME', '')}"
+            )
             if env.get("CIRCLE_PROJECT_USERNAME")
             else None,
         )
@@ -510,9 +504,9 @@ class CIDetector:
         parsed_branch = None
         tag = None
         if branch.startswith("refs/heads/"):
-            parsed_branch = branch[len("refs/heads/"):]
+            parsed_branch = branch[len("refs/heads/") :]
         elif branch.startswith("refs/tags/"):
-            tag = branch[len("refs/tags/"):]
+            tag = branch[len("refs/tags/") :]
         else:
             parsed_branch = branch or None
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from dekk._compat import tomllib, walk_up
 
@@ -15,7 +15,7 @@ class CondaSpec:
     """Conda environment specification."""
 
     name: str
-    file: Optional[str] = None
+    file: str | None = None
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class ToolSpec:
     """Tool dependency specification."""
 
     command: str
-    version: Optional[str] = None
+    version: str | None = None
     optional: bool = False
 
 
@@ -31,8 +31,8 @@ class ToolSpec:
 class PythonSpec:
     """Python environment specification."""
 
-    pyproject: Optional[str] = None
-    script: Optional[str] = None
+    pyproject: str | None = None
+    script: str | None = None
 
 
 @dataclass
@@ -40,11 +40,11 @@ class EnvironmentSpec:
     """Environment specification from .dekk.toml."""
 
     project_name: str
-    conda: Optional[CondaSpec] = None
+    conda: CondaSpec | None = None
     tools: dict[str, ToolSpec] = field(default_factory=dict)
     env_vars: dict[str, str] = field(default_factory=dict)
     paths: dict[str, list[str]] = field(default_factory=dict)
-    python: Optional[PythonSpec] = None
+    python: PythonSpec | None = None
 
     @classmethod
     def from_file(cls, path: Path) -> EnvironmentSpec:
@@ -61,10 +61,10 @@ class EnvironmentSpec:
         try:
             with open(path, "rb") as f:
                 data = tomllib.load(f)
-        except Exception as e:
+        except Exception as err:
             from dekk.cli.errors import ConfigError
 
-            raise ConfigError(f"Failed to parse {path}: {e}")
+            raise ConfigError(f"Failed to parse {path}: {err}") from err
 
         return cls._from_dict(data)
 
@@ -78,7 +78,7 @@ class EnvironmentSpec:
 
             raise ValidationError(
                 "Missing project.name",
-                hint="Add [project]\\nname = \"myproject\" to .dekk.toml",
+                hint='Add [project]\\nname = "myproject" to .dekk.toml',
             )
 
         # Conda (optional)
@@ -130,7 +130,9 @@ class EnvironmentSpec:
             python=python,
         )
 
-    def expand_placeholders(self, project_root: Path, conda_prefix: Optional[Path] = None) -> dict[str, str]:
+    def expand_placeholders(
+        self, project_root: Path, conda_prefix: Path | None = None
+    ) -> dict[str, str]:
         """Expand {project}, {conda}, {home} placeholders."""
         replacements = {
             "{project}": str(project_root),
@@ -158,6 +160,6 @@ class EnvironmentSpec:
         return result
 
 
-def find_envspec(start_dir: Optional[Path] = None) -> Optional[Path]:
+def find_envspec(start_dir: Path | None = None) -> Path | None:
     """Find .dekk.toml by walking up the directory tree."""
     return walk_up(Path(start_dir or Path.cwd()), ".dekk.toml")

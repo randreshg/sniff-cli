@@ -13,16 +13,15 @@ from __future__ import annotations
 import enum
 import os
 import platform
-import re
 import shutil
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
-
 
 # ---------------------------------------------------------------------------
 # Shell detection
 # ---------------------------------------------------------------------------
+
 
 class ShellKind(enum.Enum):
     """Known shell types."""
@@ -130,7 +129,11 @@ class ShellDetector:
         """
         if shell_override:
             kind = self._parse_shell_name(shell_override)
-            path = shell_override if "/" in shell_override or "\\" in shell_override else shutil.which(shell_override)
+            path = (
+                shell_override
+                if "/" in shell_override or "\\" in shell_override
+                else shutil.which(shell_override)
+            )
             return ShellInfo(
                 kind=kind,
                 path=path,
@@ -287,6 +290,7 @@ def _user_config_home(home: Path) -> Path:
 # ---------------------------------------------------------------------------
 # Activation script generation
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class EnvVar:
@@ -512,15 +516,17 @@ class ActivationScriptBuilder:
 
         # Save old values
         for var in config.env_vars:
-            lines.append(f'$env:_OLD_{var.name} = $env:{var.name}')
+            lines.append(f"$env:_OLD_{var.name} = $env:{var.name}")
 
         if config.path_prepends:
-            lines.append('$env:_OLD_PATH = $env:PATH')
+            lines.append("$env:_OLD_PATH = $env:PATH")
 
         # Set env vars
         for var in config.env_vars:
             if var.prepend_path:
-                lines.append(f'$env:{var.name} = "{var.value}" + [IO.Path]::PathSeparator + $env:{var.name}')
+                lines.append(
+                    f'$env:{var.name} = "{var.value}" + [IO.Path]::PathSeparator + $env:{var.name}'
+                )
             else:
                 lines.append(f'$env:{var.name} = "{var.value}"')
 
@@ -540,10 +546,22 @@ class ActivationScriptBuilder:
         lines.append(f"# Deactivation script for {label}")
 
         for var in config.env_vars:
-            lines.append(f"if ($env:_OLD_{var.name}) {{ $env:{var.name} = $env:_OLD_{var.name}; Remove-Item Env:_OLD_{var.name} }} else {{ Remove-Item Env:{var.name} -ErrorAction SilentlyContinue }}")
+            lines.append(
+
+                    f"if ($env:_OLD_{var.name}) "
+                    "{ "
+                    f"$env:{var.name} = $env:_OLD_{var.name}; "
+                    f"Remove-Item Env:_OLD_{var.name} "
+                    "} else { "
+                    f"Remove-Item Env:{var.name} -ErrorAction SilentlyContinue "
+                    "}"
+
+            )
 
         if config.path_prepends:
-            lines.append("if ($env:_OLD_PATH) { $env:PATH = $env:_OLD_PATH; Remove-Item Env:_OLD_PATH }")
+            lines.append(
+                "if ($env:_OLD_PATH) { $env:PATH = $env:_OLD_PATH; Remove-Item Env:_OLD_PATH }"
+            )
 
         return "\n".join(lines) + "\n"
 
@@ -571,14 +589,14 @@ class ActivationScriptBuilder:
 
         if config.path_prepends:
             joined = ";".join(config.path_prepends)
-            lines.append('if defined PATH (')
+            lines.append("if defined PATH (")
             lines.append(f'  set "PATH={joined};%PATH%"')
             lines.append(") else (")
             lines.append(f'  set "PATH={joined}"')
             lines.append(")")
 
         if config.banner:
-            lines.append(f'echo {config.banner}')
+            lines.append(f"echo {config.banner}")
 
         return "\n".join(lines) + "\n"
 
@@ -588,7 +606,13 @@ class ActivationScriptBuilder:
         lines.append(f"REM Deactivation script for {label}")
 
         for var in config.env_vars:
-            lines.append(f'if defined _OLD_{var.name} (set "{var.name}=%_OLD_{var.name}%") else set "{var.name}="')
+            lines.append(
+
+                    f"if defined _OLD_{var.name} "
+                    f'(set "{var.name}=%_OLD_{var.name}%") '
+                    f'else set "{var.name}="'
+
+            )
             lines.append(f'set "_OLD_{var.name}="')
 
         if config.path_prepends:
@@ -601,6 +625,7 @@ class ActivationScriptBuilder:
 # ---------------------------------------------------------------------------
 # Tab completion generation
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class CommandArg:
@@ -681,12 +706,12 @@ class CompletionGenerator:
 
         lines = [
             f"# Bash completion for {cmd}",
-            f"# Source this file or add to ~/.bash_completion.d/",
-            f"",
+            "# Source this file or add to ~/.bash_completion.d/",
+            "",
             f"{func}() {{",
-            f'    local cur prev words cword',
-            f'    _init_completion || return',
-            f'',
+            "    local cur prev words cword",
+            "    _init_completion || return",
+            "",
         ]
 
         # Build subcommand list
@@ -712,7 +737,7 @@ class CompletionGenerator:
 
         # Complete subcommands at top level
         lines.append('    if [ -z "$subcmd" ]; then')
-        lines.append(f'        COMPREPLY=($(compgen -W "$subcommands $global_flags" -- "$cur"))')
+        lines.append('        COMPREPLY=($(compgen -W "$subcommands $global_flags" -- "$cur"))')
         lines.append("        return")
         lines.append("    fi")
         lines.append("")
@@ -743,9 +768,9 @@ class CompletionGenerator:
             f"#compdef {cmd}",
             f"# Zsh completion for {cmd}",
             f"# Place in $fpath as _{cmd}",
-            f"",
+            "",
             f"_{cmd}() {{",
-            f"    local -a commands",
+            "    local -a commands",
         ]
 
         # Subcommands
@@ -808,7 +833,7 @@ class CompletionGenerator:
         lines = [
             f"# Fish completion for {cmd}",
             f"# Place in ~/.config/fish/completions/{cmd}.fish",
-            f"",
+            "",
         ]
 
         # Disable file completion by default
@@ -855,7 +880,12 @@ class CompletionGenerator:
                 if arg.file_completion:
                     lines.append(f"complete -c {cmd} -n '__fish_seen_subcommand_from {sc.name}' -F")
                 elif arg.choices:
-                    lines.append(f"complete -c {cmd} -n '__fish_seen_subcommand_from {sc.name}' -a '{' '.join(arg.choices)}'")
+                    choices = " ".join(arg.choices)
+                    lines.append(
+                        f"complete -c {cmd} "
+                        f"-n '__fish_seen_subcommand_from {sc.name}' "
+                        f"-a '{choices}'"
+                    )
 
         lines.append("")
         return "\n".join(lines)
@@ -865,10 +895,10 @@ class CompletionGenerator:
         cmd = spec.command
         lines = [
             f"# PowerShell completion for {cmd}",
-            f"",
+            "",
             f"Register-ArgumentCompleter -CommandName {cmd} -ScriptBlock {{",
-            f"    param($commandName, $wordToComplete, $cursorPosition)",
-            f"    $subcommands = @(",
+            "    param($commandName, $wordToComplete, $cursorPosition)",
+            "    $subcommands = @(",
         ]
 
         for sc in spec.subcommands:
@@ -881,8 +911,15 @@ class CompletionGenerator:
         lines.append("    $current = $words[-1]")
         lines.append("")
         lines.append("    # Complete subcommands")
-        lines.append("    $subcommands | Where-Object { $_.Name -like \"$current*\" } | ForEach-Object {")
-        lines.append("        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Description)")
+        lines.append(
+            '    $subcommands | Where-Object { $_.Name -like "$current*" } | ForEach-Object {'
+        )
+        lines.append(
+
+                "        [System.Management.Automation.CompletionResult]::new("
+                "$_.Name, $_.Name, 'ParameterValue', $_.Description)"
+
+        )
         lines.append("    }")
         lines.append("}")
         lines.append("")
@@ -893,6 +930,7 @@ class CompletionGenerator:
 # ---------------------------------------------------------------------------
 # Prompt integration
 # ---------------------------------------------------------------------------
+
 
 class PromptHelper:
     """Generate shell prompt integration snippets.
@@ -919,20 +957,16 @@ class PromptHelper:
         """
         if shell in (ShellKind.BASH, ShellKind.SH, ShellKind.DASH, ShellKind.KSH):
             inner = format_str.replace("{value}", f"${env_var}")
-            return f'${{${env_var}:+{inner}}}'
+            return f"${{${env_var}:+{inner}}}"
 
         if shell == ShellKind.ZSH:
             inner = format_str.replace("{value}", f"${env_var}")
-            return f'${{${env_var}:+{inner}}}'
+            return f"${{${env_var}:+{inner}}}"
 
         if shell == ShellKind.FISH:
             # Fish uses functions for prompt
             inner = format_str.replace("{value}", "$" + env_var)
-            return (
-                f"if set -q {env_var}\n"
-                f'    echo -n "{inner} "\n'
-                f"end"
-            )
+            return f'if set -q {env_var}\n    echo -n "{inner} "\nend'
 
         if shell == ShellKind.TCSH:
             return f'%{{$?{env_var} && echo "{format_str.replace("{value}", "$" + env_var)}" %}}'
@@ -947,6 +981,7 @@ class PromptHelper:
 # ---------------------------------------------------------------------------
 # Alias suggestions
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class AliasSuggestion:
@@ -981,29 +1016,35 @@ class AliasSuggestor:
         # Short alias for the base command
         if len(command) > 3:
             short = command[:2]
-            suggestions.append(AliasSuggestion(
-                alias=short,
-                command=command,
-                description=f"Short alias for {command}",
-            ))
+            suggestions.append(
+                AliasSuggestion(
+                    alias=short,
+                    command=command,
+                    description=f"Short alias for {command}",
+                )
+            )
 
         # Subcommand aliases
         for sub in subcommands:
             alias = f"{command[0]}{sub[0]}"
-            suggestions.append(AliasSuggestion(
-                alias=alias,
-                command=f"{command} {sub}",
-                description=f"{command} {sub}",
-            ))
+            suggestions.append(
+                AliasSuggestion(
+                    alias=alias,
+                    command=f"{command} {sub}",
+                    description=f"{command} {sub}",
+                )
+            )
 
         # Common flag combos
         if common_flags:
             for suffix, flags in common_flags.items():
-                suggestions.append(AliasSuggestion(
-                    alias=f"{command}{suffix}",
-                    command=f"{command} {flags}",
-                    description=f"{command} with {flags}",
-                ))
+                suggestions.append(
+                    AliasSuggestion(
+                        alias=f"{command}{suffix}",
+                        command=f"{command} {flags}",
+                        description=f"{command} with {flags}",
+                    )
+                )
 
         return suggestions
 
@@ -1025,7 +1066,13 @@ class AliasSuggestor:
 
         for s in suggestions:
             lines.append(f"# {s.description}")
-            if shell in (ShellKind.BASH, ShellKind.ZSH, ShellKind.SH, ShellKind.KSH, ShellKind.DASH):
+            if shell in (
+                ShellKind.BASH,
+                ShellKind.ZSH,
+                ShellKind.SH,
+                ShellKind.KSH,
+                ShellKind.DASH,
+            ):
                 lines.append(f"alias {s.alias}='{s.command}'")
             elif shell == ShellKind.FISH:
                 lines.append(f"alias {s.alias} '{s.command}'")

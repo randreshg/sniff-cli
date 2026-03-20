@@ -2,10 +2,10 @@
 
 import pytest
 
-from dekk.ci import CIInfo, CIProvider, CIRunnerInfo, CIBuildAdvisor, CIBuildHints
-
+from dekk.ci import CIBuildAdvisor, CIBuildHints, CIInfo, CIProvider, CIRunnerInfo
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
 
 def _ci_info(
     *,
@@ -21,6 +21,7 @@ def _ci_info(
 
 
 # ── Non-CI (local) ──────────────────────────────────────────────────
+
 
 class TestLocalEnvironment:
     """When not in CI, advisor should return permissive defaults."""
@@ -44,6 +45,7 @@ class TestLocalEnvironment:
 
 
 # ── CI parallelism capping ──────────────────────────────────────────
+
 
 class TestParallelism:
     """Parallelism should be capped on constrained runners."""
@@ -93,6 +95,7 @@ class TestParallelism:
 
 # ── Incremental builds ──────────────────────────────────────────────
 
+
 class TestIncremental:
     """CI should disable incremental builds; local should keep them."""
 
@@ -108,6 +111,7 @@ class TestIncremental:
 
 
 # ── Color support ────────────────────────────────────────────────────
+
 
 class TestColorSupport:
     """Color should be enabled for providers known to support ANSI."""
@@ -140,6 +144,7 @@ class TestColorSupport:
 
 # ── Output settings ──────────────────────────────────────────────────
 
+
 class TestOutputSettings:
     """CI should enable verbose and CI output mode."""
 
@@ -161,6 +166,7 @@ class TestOutputSettings:
 
 
 # ── Frozen dataclass ─────────────────────────────────────────────────
+
 
 class TestCIBuildHintsFrozen:
     """CIBuildHints should be immutable."""

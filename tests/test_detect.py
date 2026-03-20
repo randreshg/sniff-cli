@@ -2,8 +2,6 @@
 
 import platform
 
-import pytest
-
 from dekk.detect import PlatformDetector, PlatformInfo
 
 

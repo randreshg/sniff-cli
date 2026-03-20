@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Sequence
+from typing import Any
 
 from dekk._compat import tomllib
 
@@ -73,10 +73,7 @@ class LockfileInfo:
     def dependency_graph(self) -> dict[str, tuple[str, ...]]:
         """Build a name -> dependency names mapping."""
         known = set(self.package_names)
-        return {
-            p.name: tuple(d for d in p.dependencies if d in known)
-            for p in self.packages
-        }
+        return {p.name: tuple(d for d in p.dependencies if d in known) for p in self.packages}
 
     def find_outdated(self, latest: dict[str, str]) -> list[tuple[str, str, str]]:
         """Find packages where the locked version differs from latest.
@@ -199,13 +196,15 @@ class LockfileParser:
                     dep_name = dep.split()[0]
                     deps.append(dep_name)
 
-            packages.append(LockedDependency(
-                name=name,
-                version=ver,
-                source=source,
-                dependencies=tuple(deps),
-                checksum=checksum,
-            ))
+            packages.append(
+                LockedDependency(
+                    name=name,
+                    version=ver,
+                    source=source,
+                    dependencies=tuple(deps),
+                    checksum=checksum,
+                )
+            )
 
         return LockfileInfo(
             kind=kind,
@@ -234,7 +233,8 @@ class LockfileParser:
             if name_m and ver_m:
                 deps: list[str] = []
                 dep_section = re.search(
-                    r"^dependencies\s*=\s*\[(.*?)\]", block,
+                    r"^dependencies\s*=\s*\[(.*?)\]",
+                    block,
                     re.MULTILINE | re.DOTALL,
                 )
                 if dep_section:
@@ -242,13 +242,15 @@ class LockfileParser:
                         dep_name = dep_m.group(1).split()[0]
                         deps.append(dep_name)
 
-                packages.append(LockedDependency(
-                    name=name_m.group(1),
-                    version=ver_m.group(1),
-                    source=src_m.group(1) if src_m else None,
-                    dependencies=tuple(deps),
-                    checksum=chk_m.group(1) if chk_m else None,
-                ))
+                packages.append(
+                    LockedDependency(
+                        name=name_m.group(1),
+                        version=ver_m.group(1),
+                        source=src_m.group(1) if src_m else None,
+                        dependencies=tuple(deps),
+                        checksum=chk_m.group(1) if chk_m else None,
+                    )
+                )
 
         return LockfileInfo(
             kind=kind,
@@ -283,13 +285,15 @@ class LockfileParser:
                 dep_names = list(pkg_data.get("dependencies", {}).keys())
                 dep_names.extend(pkg_data.get("devDependencies", {}).keys())
 
-                packages.append(LockedDependency(
-                    name=name,
-                    version=version,
-                    source=resolved,
-                    dependencies=tuple(dep_names),
-                    checksum=integrity,
-                ))
+                packages.append(
+                    LockedDependency(
+                        name=name,
+                        version=version,
+                        source=resolved,
+                        dependencies=tuple(dep_names),
+                        checksum=integrity,
+                    )
+                )
         else:
             # npm v1 uses "dependencies" key
             self._parse_npm_v1_deps(data.get("dependencies", {}), packages)
@@ -302,7 +306,10 @@ class LockfileParser:
         )
 
     def _parse_npm_v1_deps(
-        self, deps: dict, packages: list[LockedDependency], _depth: int = 0
+        self,
+        deps: dict[str, Any],
+        packages: list[LockedDependency],
+        _depth: int = 0,
     ) -> None:
         """Recursively parse npm v1 lock format."""
         if _depth > 20:  # safety limit
@@ -313,13 +320,15 @@ class LockfileParser:
             integrity = info.get("integrity")
             sub_deps = list(info.get("requires", {}).keys())
 
-            packages.append(LockedDependency(
-                name=name,
-                version=version,
-                source=resolved,
-                dependencies=tuple(sub_deps),
-                checksum=integrity,
-            ))
+            packages.append(
+                LockedDependency(
+                    name=name,
+                    version=version,
+                    source=resolved,
+                    dependencies=tuple(sub_deps),
+                    checksum=integrity,
+                )
+            )
 
             # Nested dependencies
             nested = info.get("dependencies", {})
@@ -356,13 +365,15 @@ class LockfileParser:
             if line and not line[0].isspace() and not line.startswith("#"):
                 # Flush previous
                 if current_name and current_version:
-                    packages.append(LockedDependency(
-                        name=current_name,
-                        version=current_version,
-                        source=current_resolved,
-                        dependencies=tuple(current_deps),
-                        checksum=current_integrity,
-                    ))
+                    packages.append(
+                        LockedDependency(
+                            name=current_name,
+                            version=current_version,
+                            source=current_resolved,
+                            dependencies=tuple(current_deps),
+                            checksum=current_integrity,
+                        )
+                    )
 
                 # Parse: "name@version", "name@version":, "@scope/name@version":
                 header = line.rstrip(":")
@@ -384,7 +395,9 @@ class LockfileParser:
             stripped = line.strip()
 
             if stripped.startswith("version "):
-                current_version = stripped.split('"')[1] if '"' in stripped else stripped.split()[-1]
+                current_version = (
+                    stripped.split('"')[1] if '"' in stripped else stripped.split()[-1]
+                )
                 in_deps = False
             elif stripped.startswith("resolved "):
                 current_resolved = stripped.split('"')[1] if '"' in stripped else None
@@ -404,13 +417,15 @@ class LockfileParser:
 
         # Flush last package
         if current_name and current_version:
-            packages.append(LockedDependency(
-                name=current_name,
-                version=current_version,
-                source=current_resolved,
-                dependencies=tuple(current_deps),
-                checksum=current_integrity,
-            ))
+            packages.append(
+                LockedDependency(
+                    name=current_name,
+                    version=current_version,
+                    source=current_resolved,
+                    dependencies=tuple(current_deps),
+                    checksum=current_integrity,
+                )
+            )
 
         return LockfileInfo(
             kind=kind,
@@ -478,7 +493,7 @@ class LockfileParser:
 
                 if at_idx > 0:
                     name = entry[:at_idx]
-                    version = entry[at_idx + 1:]
+                    version = entry[at_idx + 1 :]
                     # Version might have extra qualifiers like (react@18.2.0)
                     version = version.split("(")[0]
                     packages.append(LockedDependency(name=name, version=version))
@@ -512,12 +527,14 @@ class LockfileParser:
 
             dep_names = list(pkg.get("dependencies", {}).keys())
 
-            packages.append(LockedDependency(
-                name=name,
-                version=version,
-                source=source_url,
-                dependencies=tuple(dep_names),
-            ))
+            packages.append(
+                LockedDependency(
+                    name=name,
+                    version=version,
+                    source=source_url,
+                    dependencies=tuple(dep_names),
+                )
+            )
 
         return LockfileInfo(
             kind=kind,
@@ -540,10 +557,12 @@ class LockfileParser:
             ver_m = re.search(r'^version\s*=\s*"([^"]+)"', block, re.MULTILINE)
 
             if name_m and ver_m:
-                packages.append(LockedDependency(
-                    name=name_m.group(1),
-                    version=ver_m.group(1),
-                ))
+                packages.append(
+                    LockedDependency(
+                        name=name_m.group(1),
+                        version=ver_m.group(1),
+                    )
+                )
 
         return LockfileInfo(
             kind=kind,
@@ -581,12 +600,14 @@ class LockfileParser:
                 elif isinstance(dep, str):
                     dep_names.append(dep.split()[0])
 
-            packages.append(LockedDependency(
-                name=name,
-                version=version,
-                source=source if isinstance(source, str) else None,
-                dependencies=tuple(dep_names),
-            ))
+            packages.append(
+                LockedDependency(
+                    name=name,
+                    version=version,
+                    source=source if isinstance(source, str) else None,
+                    dependencies=tuple(dep_names),
+                )
+            )
 
         return LockfileInfo(
             kind=kind,
@@ -620,10 +641,12 @@ class LockfileParser:
                 # Top-level gem: 4 spaces + name (version)
                 m = re.match(r"^    (\S+)\s+\((\S+)\)$", line)
                 if m:
-                    packages.append(LockedDependency(
-                        name=m.group(1),
-                        version=m.group(2),
-                    ))
+                    packages.append(
+                        LockedDependency(
+                            name=m.group(1),
+                            version=m.group(2),
+                        )
+                    )
 
         return LockfileInfo(
             kind=kind,

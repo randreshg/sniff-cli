@@ -9,7 +9,6 @@ from typer.testing import CliRunner
 
 from dekk.cli.main import _make_app
 
-
 runner = CliRunner()
 
 
@@ -139,6 +138,7 @@ class TestCliMain:
 
         assert result.exit_code == 0
         test_mock.assert_called_once_with(extra_args=["-q", "tests/test_detect.py"])
+
     def test_uninstall_passes_install_dir(self, tmp_path: Path):
         app = _make_app()
         install_dir = tmp_path / "bin"
@@ -153,6 +153,7 @@ class TestCliMain:
         uninstall_mock.assert_called_once_with(
             name="demo",
             install_dir=install_dir,
+            remove_path=False,
         )
 
     def test_example_passes_output_and_name(self, tmp_path: Path):

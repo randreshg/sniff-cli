@@ -3,104 +3,109 @@
 from __future__ import annotations
 
 import platform
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from rich.console import Console
 
-from dekk.context import (
-    CPUInfo,
-    ContextWorkspaceInfo,
-    ExecutionContext,
-    GitInfo,
-    GPUInfo,
-    MemoryInfo,
-)
 from dekk.ci import CIBuildInfo, CIInfo, CIProvider
-from dekk.detect import PlatformInfo
-from dekk.conda import CondaEnvironment
 from dekk.cli_commands import (
     run_doctor,
     run_env,
     run_version,
 )
-
+from dekk.conda import CondaEnvironment
+from dekk.context import (
+    ContextWorkspaceInfo,
+    CPUInfo,
+    ExecutionContext,
+    GPUInfo,
+    MemoryInfo,
+)
+from dekk.detect import PlatformInfo
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_platform(**overrides) -> PlatformInfo:
-    defaults = dict(os="Linux", arch="x86_64")
+    defaults = {"os": "Linux", "arch": "x86_64"}
     defaults.update(overrides)
     return PlatformInfo(**defaults)
 
 
 def _make_cpu(**overrides) -> CPUInfo:
-    defaults = dict(model="TestCPU", cores=8, threads=16, frequency_mhz=3600.0)
+    defaults = {"model": "TestCPU", "cores": 8, "threads": 16, "frequency_mhz": 3600.0}
     defaults.update(overrides)
     return CPUInfo(**defaults)
 
 
 def _make_memory(**overrides) -> MemoryInfo:
-    defaults = dict(total_mb=16384, available_mb=8192, used_mb=8192)
+    defaults = {"total_mb": 16384, "available_mb": 8192, "used_mb": 8192}
     defaults.update(overrides)
     return MemoryInfo(**defaults)
 
 
 def _make_gpu(**overrides) -> GPUInfo:
-    defaults = dict(vendor="nvidia", model="RTX 4090", memory_mb=24576, driver_version="535.0")
+    defaults = {
+        "vendor": "nvidia",
+        "model": "RTX 4090",
+        "memory_mb": 24576,
+        "driver_version": "535.0",
+    }
     defaults.update(overrides)
     return GPUInfo(**defaults)
 
 
 def _make_workspace(**overrides) -> ContextWorkspaceInfo:
-    defaults = dict(
-        root=Path("/tmp/project"),
-        git_info=None,
-        build_artifacts=[],
-        config_files=[],
-    )
+    defaults = {
+        "root": Path("/tmp/project"),
+        "git_info": None,
+        "build_artifacts": [],
+        "config_files": [],
+    }
     defaults.update(overrides)
     return ContextWorkspaceInfo(**defaults)
 
 
 def _make_ci_info(is_ci: bool = False, **overrides) -> CIInfo:
-    defaults = dict(
-        is_ci=is_ci,
-        provider=CIProvider(name="github_actions", display_name="GitHub Actions") if is_ci else None,
-        build=CIBuildInfo(build_id="12345") if is_ci else CIBuildInfo(),
-    )
+    defaults = {
+        "is_ci": is_ci,
+        "provider": CIProvider(name="github_actions", display_name="GitHub Actions")
+        if is_ci
+        else None,
+        "build": CIBuildInfo(build_id="12345") if is_ci else CIBuildInfo(),
+    }
     defaults.update(overrides)
     return CIInfo(**defaults)
 
 
 def _make_conda(**overrides) -> CondaEnvironment:
-    defaults = dict(name="myenv", prefix=Path("/opt/conda/envs/myenv"), is_active=True)
+    defaults = {"name": "myenv", "prefix": Path("/opt/conda/envs/myenv"), "is_active": True}
     defaults.update(overrides)
     return CondaEnvironment(**defaults)
 
 
 def _make_context(**overrides) -> ExecutionContext:
-    defaults = dict(
-        platform=_make_platform(),
-        conda_env=None,
-        ci_info=_make_ci_info(),
-        workspace=_make_workspace(),
-        build_system=None,
-        installed_packages={"numpy": "1.24.0", "pytest": "7.4.0"},
-        system_libraries=[],
-        cpu_info=_make_cpu(),
-        gpu_info=[],
-        memory_info=_make_memory(),
-        env_vars={"PATH": "/usr/bin", "HOME": "/home/user"},
-        command_line=["python", "-m", "myapp"],
-        working_dir=Path("/tmp/project"),
-        timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc),
-    )
+    defaults = {
+        "platform": _make_platform(),
+        "conda_env": None,
+        "ci_info": _make_ci_info(),
+        "workspace": _make_workspace(),
+        "build_system": None,
+        "installed_packages": {"numpy": "1.24.0", "pytest": "7.4.0"},
+        "system_libraries": [],
+        "cpu_info": _make_cpu(),
+        "gpu_info": [],
+        "memory_info": _make_memory(),
+        "env_vars": {"PATH": "/usr/bin", "HOME": "/home/user"},
+        "command_line": ["python", "-m", "myapp"],
+        "working_dir": Path("/tmp/project"),
+        "timestamp": datetime(2026, 1, 1, tzinfo=UTC),
+    }
     defaults.update(overrides)
     return ExecutionContext(**defaults)
 
@@ -110,6 +115,7 @@ def _capture_output(func, *args, **kwargs) -> str:
     buf = StringIO()
     test_console = Console(file=buf, no_color=True, highlight=False, width=200)
     import dekk.cli.styles as _styles_mod
+
     orig_console = _styles_mod.console
     orig_internal = _styles_mod._console
     _styles_mod.console = test_console
@@ -126,6 +132,7 @@ def _capture_output(func, *args, **kwargs) -> str:
 # ===========================================================================
 # run_doctor
 # ===========================================================================
+
 
 class TestRunDoctor:
     def test_shows_platform_info(self):
@@ -285,6 +292,7 @@ class TestRunDoctor:
 # run_version
 # ===========================================================================
 
+
 class TestRunVersion:
     def _capture(self, app_name, version, context) -> str:
         return _capture_output(run_version, app_name, version, context)
@@ -345,6 +353,7 @@ class TestRunVersion:
 # ===========================================================================
 # run_env
 # ===========================================================================
+
 
 class TestRunEnv:
     def _capture(self, context) -> str:
@@ -421,6 +430,7 @@ class TestRunEnv:
 # ===========================================================================
 # Integration / edge cases
 # ===========================================================================
+
 
 class TestEdgeCases:
     def test_run_doctor_returns_none(self):

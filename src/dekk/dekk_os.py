@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import platform
 import stat
 import subprocess
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 def _generated_timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _sh_quote(value: str) -> str:
@@ -25,8 +25,8 @@ def _sh_quote(value: str) -> str:
 def _sh_escape_double(value: str) -> str:
     result: list[str] = []
     for ch in value:
-        if ch in ('$', '`', '"', '\\'):
-            result.append('\\')
+        if ch in ("$", "`", '"', "\\"):
+            result.append("\\")
         result.append(ch)
     return "".join(result)
 
@@ -40,8 +40,11 @@ def _cmd_escape(value: str) -> str:
 class DekkOS(Protocol):
     """OS-specific strategy surface for dekk."""
 
-    name: str
-    path_separator: str
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def path_separator(self) -> str: ...
 
     def wrapper_filename(self, name: str) -> str: ...
     def conda_runtime_paths(self, prefix: Path) -> tuple[Path, ...]: ...
@@ -92,12 +95,7 @@ class PosixDekkOS:
         return self.venv_bin_dir(venv_path) / "pip"
 
     def make_wrapper_executable(self, path: Path) -> None:
-        path.chmod(
-            path.stat().st_mode
-            | stat.S_IXUSR
-            | stat.S_IXGRP
-            | stat.S_IXOTH
-        )
+        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     def render_wrapper(
         self,

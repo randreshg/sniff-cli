@@ -1,17 +1,13 @@
 """Tests for CI/CD provider detection."""
 
-import os
-
 import pytest
 
 from dekk.ci import (
-    CIBuildInfo,
     CIDetector,
     CIGitInfo,
     CIInfo,
-    CIPullRequest,
     CIProvider,
-    CIRunnerInfo,
+    CIPullRequest,
 )
 
 
@@ -24,10 +20,21 @@ def detector():
 def clean_env(monkeypatch):
     """Remove all CI-related env vars so detection starts clean."""
     ci_vars = [
-        "CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "CIRCLECI",
-        "BUILDKITE", "TRAVIS", "TF_BUILD", "AZURE_PIPELINES",
-        "BITBUCKET_PIPELINE_UUID", "TEAMCITY_VERSION", "CODEBUILD_BUILD_ID",
-        "DRONE", "WOODPECKER_CI", "HEROKU_TEST_RUN_ID",
+        "CI",
+        "GITHUB_ACTIONS",
+        "GITLAB_CI",
+        "JENKINS_URL",
+        "CIRCLECI",
+        "BUILDKITE",
+        "TRAVIS",
+        "TF_BUILD",
+        "AZURE_PIPELINES",
+        "BITBUCKET_PIPELINE_UUID",
+        "TEAMCITY_VERSION",
+        "CODEBUILD_BUILD_ID",
+        "DRONE",
+        "WOODPECKER_CI",
+        "HEROKU_TEST_RUN_ID",
     ]
     for var in ci_vars:
         monkeypatch.delenv(var, raising=False)

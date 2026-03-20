@@ -17,14 +17,19 @@ Usage::
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from rich.console import Console
+    from rich.theme import Theme
 
 # ---------------------------------------------------------------------------
 # Enums (pure Python, no Rich dependency)
 # ---------------------------------------------------------------------------
 
 
-class Colors(str, Enum):
+class Colors(StrEnum):
     """Semantic color styles for CLI output.
 
     Values are Rich markup style strings that can be used directly in
@@ -51,61 +56,65 @@ class Symbols:
     These are used as prefix icons in the ``print_*`` helper functions.
     """
 
-    PASS = "\u2713"      # checkmark
-    FAIL = "\u2717"      # ballot x
-    SKIP = "\u25cb"      # white circle
-    TIMEOUT = "\u23f1"   # stopwatch
-    RUNNING = "\u25cf"   # black circle
-    INFO = "\u2139"      # information source
-    WARNING = "\u26a0"   # warning sign
+    PASS = "\u2713"  # checkmark
+    FAIL = "\u2717"  # ballot x
+    SKIP = "\u25cb"  # white circle
+    TIMEOUT = "\u23f1"  # stopwatch
+    RUNNING = "\u25cf"  # black circle
+    INFO = "\u2139"  # information source
+    WARNING = "\u26a0"  # warning sign
+
 
 # ---------------------------------------------------------------------------
 # Lazy Rich console singletons
 # ---------------------------------------------------------------------------
 
-_console = None
-_err_console = None
-_cli_theme = None
+_console: Console | None = None
+_err_console: Console | None = None
+_cli_theme: Theme | None = None
 
 
-def _get_theme():
+def _get_theme() -> Theme:
     global _cli_theme
     if _cli_theme is None:
         from rich.theme import Theme
+
         _cli_theme = Theme({c.name.lower(): c.value for c in Colors})
     return _cli_theme
 
 
-def _get_console():
+def _get_console() -> Console:
     global _console
     if _console is None:
         from rich.console import Console
+
         _console = Console(theme=_get_theme())
     return _console
 
 
-def _get_err_console():
+def _get_err_console() -> Console:
     global _err_console
     if _err_console is None:
         from rich.console import Console
+
         _err_console = Console(theme=_get_theme(), stderr=True)
     return _err_console
 
 
 # Module-level __getattr__ for lazy access to console, err_console, CLI_THEME
-def __getattr__(name: str):  # noqa: N807
+def __getattr__(name: str) -> Any:  # noqa: N807
     if name == "console":
-        val = _get_console()
-        globals()["console"] = val
-        return val
+        console_value = _get_console()
+        globals()["console"] = console_value
+        return console_value
     if name == "err_console":
-        val = _get_err_console()
-        globals()["err_console"] = val
-        return val
+        err_console_value = _get_err_console()
+        globals()["err_console"] = err_console_value
+        return err_console_value
     if name == "CLI_THEME":
-        val = _get_theme()
-        globals()["CLI_THEME"] = val
-        return val
+        theme_value = _get_theme()
+        globals()["CLI_THEME"] = theme_value
+        return theme_value
     raise AttributeError(f"module 'dekk.cli.styles' has no attribute {name!r}")
 
 
@@ -142,6 +151,7 @@ def print_debug(msg: str) -> None:
     """Print a debug message in dimmed style."""
     _get_console().print(f"  [{Colors.DEBUG}]{Symbols.SKIP} {msg}[/]")
 
+
 # ---------------------------------------------------------------------------
 # Structural Elements
 # ---------------------------------------------------------------------------
@@ -173,6 +183,7 @@ def print_section(title: str) -> None:
 def print_blank() -> None:
     """Print a blank line for visual spacing."""
     _get_console().print()
+
 
 # ---------------------------------------------------------------------------
 # Collections

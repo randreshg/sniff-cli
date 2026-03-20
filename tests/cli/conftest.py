@@ -25,7 +25,11 @@ def _patch_console(*, stderr: bool = False, highlight: bool = True, extra_target
 
     buf = io.StringIO()
     capture = Console(
-        file=buf, theme=CLI_THEME, force_terminal=True, width=120, highlight=highlight,
+        file=buf,
+        theme=CLI_THEME,
+        force_terminal=True,
+        width=120,
+        highlight=highlight,
     )
 
     if stderr:
@@ -41,7 +45,7 @@ def _patch_console(*, stderr: bool = False, highlight: bool = True, extra_target
 
     # Patch any extra module targets (e.g., dekk.cli.output.console)
     extra_originals = []
-    for mod, attr in (extra_targets or []):
+    for mod, attr in extra_targets or []:
         extra_originals.append((mod, attr, getattr(mod, attr, None)))
         setattr(mod, attr, capture)
 
@@ -69,36 +73,50 @@ def capture_console():
                 print_success("ok")
             assert "ok" in buf.getvalue()
     """
+
     @contextmanager
     def _capture(*, highlight=True, extra_targets=None):
         with _patch_console(stderr=False, highlight=highlight, extra_targets=extra_targets) as buf:
             yield buf
+
     return _capture
 
 
 @pytest.fixture
 def capture_err_console():
     """Fixture returning a context manager that captures stderr console output."""
+
     @contextmanager
     def _capture(*, highlight=True, extra_targets=None):
         with _patch_console(stderr=True, highlight=highlight, extra_targets=extra_targets) as buf:
             yield buf
+
     return _capture
 
 
 @pytest.fixture
 def capture_both_consoles():
     """Fixture returning a context manager that captures both stdout and stderr."""
+
     @contextmanager
     def _capture(*, highlight=True):
         import dekk.cli.styles as _mod
+
         stdout_buf = io.StringIO()
         stderr_buf = io.StringIO()
         stdout_console = Console(
-            file=stdout_buf, theme=CLI_THEME, force_terminal=True, width=120, highlight=highlight,
+            file=stdout_buf,
+            theme=CLI_THEME,
+            force_terminal=True,
+            width=120,
+            highlight=highlight,
         )
         stderr_console = Console(
-            file=stderr_buf, theme=CLI_THEME, force_terminal=True, width=120, highlight=highlight,
+            file=stderr_buf,
+            theme=CLI_THEME,
+            force_terminal=True,
+            width=120,
+            highlight=highlight,
         )
         orig_out = getattr(_mod, "console", None)
         orig_err = getattr(_mod, "err_console", None)
@@ -115,4 +133,5 @@ def capture_both_consoles():
             _mod._console = orig_out_internal
             _mod.err_console = orig_err
             _mod._err_console = orig_err_internal
+
     return _capture

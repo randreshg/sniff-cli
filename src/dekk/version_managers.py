@@ -10,7 +10,7 @@ import os
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -328,11 +328,13 @@ class VersionManagerDetector:
                         is_active = (candidate / "current").is_symlink() and (
                             (candidate / "current").resolve() == ver_dir.resolve()
                         )
-                        installed.append(ManagedVersion(
-                            f"{candidate.name}/{ver_dir.name}",
-                            ver_dir,
-                            is_active=is_active,
-                        ))
+                        installed.append(
+                            ManagedVersion(
+                                f"{candidate.name}/{ver_dir.name}",
+                                ver_dir,
+                                is_active=is_active,
+                            )
+                        )
 
         return VersionManagerInfo(
             name="sdkman",
@@ -356,10 +358,12 @@ class VersionManagerDetector:
                     continue
                 for ver_dir in sorted(plugin.iterdir()):
                     if ver_dir.is_dir():
-                        installed.append(ManagedVersion(
-                            f"{plugin.name}/{ver_dir.name}",
-                            ver_dir,
-                        ))
+                        installed.append(
+                            ManagedVersion(
+                                f"{plugin.name}/{ver_dir.name}",
+                                ver_dir,
+                            )
+                        )
 
         return VersionManagerInfo(
             name="asdf",
@@ -390,10 +394,12 @@ class VersionManagerDetector:
                     continue
                 for ver_dir in sorted(plugin.iterdir()):
                     if ver_dir.is_dir():
-                        installed.append(ManagedVersion(
-                            f"{plugin.name}/{ver_dir.name}",
-                            ver_dir,
-                        ))
+                        installed.append(
+                            ManagedVersion(
+                                f"{plugin.name}/{ver_dir.name}",
+                                ver_dir,
+                            )
+                        )
 
         return VersionManagerInfo(
             name="mise",

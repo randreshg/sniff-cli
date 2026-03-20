@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import os
-import textwrap
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from dekk.shell import (
     ActivationConfig,
     ActivationScriptBuilder,
     AliasSuggestor,
+    CommandArg,
     CommandFlag,
     CompletionGenerator,
     CompletionSpec,
@@ -22,9 +19,7 @@ from dekk.shell import (
     ShellInfo,
     ShellKind,
     Subcommand,
-    CommandArg,
 )
-
 
 # ---------------------------------------------------------------------------
 # ShellDetector
@@ -142,9 +137,9 @@ class TestActivationScriptBuilder:
 
     def test_posix_saves_old_values(self):
         script = self.builder.build(self.config, ShellKind.BASH)
-        assert '_OLD_MLIR_DIR=' in script
-        assert '_OLD_LLVM_DIR=' in script
-        assert '_OLD_PATH=' in script
+        assert "_OLD_MLIR_DIR=" in script
+        assert "_OLD_LLVM_DIR=" in script
+        assert "_OLD_PATH=" in script
 
     def test_posix_deactivation(self):
         script = self.builder.build_deactivate(self.config, ShellKind.BASH)
@@ -188,9 +183,7 @@ class TestActivationScriptBuilder:
 
     def test_prepend_path_var(self):
         config = ActivationConfig(
-            env_vars=(
-                EnvVar(name="LD_LIBRARY_PATH", value="/opt/lib", prepend_path=True),
-            ),
+            env_vars=(EnvVar(name="LD_LIBRARY_PATH", value="/opt/lib", prepend_path=True),),
             app_name="test",
         )
         script = self.builder.build(config, ShellKind.BASH)
@@ -235,7 +228,13 @@ class TestActivationScriptBuilder:
         )
 
         # Test all shells
-        for shell in (ShellKind.BASH, ShellKind.ZSH, ShellKind.FISH, ShellKind.TCSH, ShellKind.POWERSHELL):
+        for shell in (
+            ShellKind.BASH,
+            ShellKind.ZSH,
+            ShellKind.FISH,
+            ShellKind.TCSH,
+            ShellKind.POWERSHELL,
+        ):
             script = self.builder.build(config, shell)
             assert prefix in script
             assert "mlir" in script.lower() or "MLIR" in script
@@ -254,33 +253,59 @@ class TestCompletionGenerator:
             description="APxM CLI",
             flags=(
                 CommandFlag(long="--config", description="Config file path", takes_value=True),
-                CommandFlag(long="--trace", description="Enable tracing", takes_value=True,
-                           choices=("trace", "debug", "info", "warn", "error")),
+                CommandFlag(
+                    long="--trace",
+                    description="Enable tracing",
+                    takes_value=True,
+                    choices=("trace", "debug", "info", "warn", "error"),
+                ),
             ),
             subcommands=(
                 Subcommand(
                     name="compile",
                     description="Compile ApxmGraph to artifact",
                     flags=(
-                        CommandFlag(long="--output", short="-o", description="Output path", takes_value=True),
-                        CommandFlag(long="--opt-level", short="-O", description="Optimization level",
-                                   takes_value=True, choices=("0", "1", "2", "3")),
-                        CommandFlag(long="--emit-diagnostics", description="Emit diagnostics JSON", takes_value=True),
+                        CommandFlag(
+                            long="--output", short="-o", description="Output path", takes_value=True
+                        ),
+                        CommandFlag(
+                            long="--opt-level",
+                            short="-O",
+                            description="Optimization level",
+                            takes_value=True,
+                            choices=("0", "1", "2", "3"),
+                        ),
+                        CommandFlag(
+                            long="--emit-diagnostics",
+                            description="Emit diagnostics JSON",
+                            takes_value=True,
+                        ),
                     ),
                     args=(
-                        CommandArg(name="input", description="Input graph file", file_completion=True),
+                        CommandArg(
+                            name="input", description="Input graph file", file_completion=True
+                        ),
                     ),
                 ),
                 Subcommand(
                     name="execute",
                     description="Compile and run a graph",
                     flags=(
-                        CommandFlag(long="--opt-level", short="-O", description="Optimization level",
-                                   takes_value=True, choices=("0", "1", "2", "3")),
-                        CommandFlag(long="--emit-metrics", description="Emit metrics JSON", takes_value=True),
+                        CommandFlag(
+                            long="--opt-level",
+                            short="-O",
+                            description="Optimization level",
+                            takes_value=True,
+                            choices=("0", "1", "2", "3"),
+                        ),
+                        CommandFlag(
+                            long="--emit-metrics", description="Emit metrics JSON", takes_value=True
+                        ),
                     ),
                     args=(
-                        CommandArg(name="input", description="Input graph file", file_completion=True),
+                        CommandArg(
+                            name="input", description="Input graph file", file_completion=True
+                        ),
                     ),
                 ),
                 Subcommand(name="doctor", description="Diagnose dependencies"),
@@ -288,8 +313,12 @@ class TestCompletionGenerator:
                     name="activate",
                     description="Print shell env exports",
                     flags=(
-                        CommandFlag(long="--shell", description="Shell format",
-                                   takes_value=True, choices=("sh", "bash", "zsh", "fish", "tcsh")),
+                        CommandFlag(
+                            long="--shell",
+                            description="Shell format",
+                            takes_value=True,
+                            choices=("sh", "bash", "zsh", "fish", "tcsh"),
+                        ),
                     ),
                 ),
                 Subcommand(name="install", description="Install conda environment"),

@@ -28,19 +28,45 @@ def detector() -> ProjectTypeDetector:
 @pytest.mark.parametrize(
     ("files", "expected_language", "expected_framework"),
     [
-        ({"pyproject.toml": '[project]\nname = "app"\n'}, ProjectLanguage.PYTHON, ProjectFramework.NONE),
-        ({"setup.py": "from setuptools import setup\n"}, ProjectLanguage.PYTHON, ProjectFramework.SETUPTOOLS),
+        (
+            {"pyproject.toml": '[project]\nname = "app"\n'},
+            ProjectLanguage.PYTHON,
+            ProjectFramework.NONE,
+        ),
+        (
+            {"setup.py": "from setuptools import setup\n"},
+            ProjectLanguage.PYTHON,
+            ProjectFramework.SETUPTOOLS,
+        ),
         ({"Cargo.toml": '[package]\nname = "app"\n'}, ProjectLanguage.RUST, ProjectFramework.CARGO),
-        ({"package.json": json.dumps({"name": "app"})}, ProjectLanguage.JAVASCRIPT, ProjectFramework.NONE),
-        ({"package.json": json.dumps({"name": "app"}), "tsconfig.json": "{}"}, ProjectLanguage.TYPESCRIPT, ProjectFramework.NONE),
+        (
+            {"package.json": json.dumps({"name": "app"})},
+            ProjectLanguage.JAVASCRIPT,
+            ProjectFramework.NONE,
+        ),
+        (
+            {"package.json": json.dumps({"name": "app"}), "tsconfig.json": "{}"},
+            ProjectLanguage.TYPESCRIPT,
+            ProjectFramework.NONE,
+        ),
         ({"go.mod": "module example.com/app\n"}, ProjectLanguage.GO, ProjectFramework.GO_MODULE),
         ({"pom.xml": "<project></project>"}, ProjectLanguage.JAVA, ProjectFramework.MAVEN),
         ({"build.gradle": "plugins { id 'java' }"}, ProjectLanguage.JAVA, ProjectFramework.GRADLE),
-        ({"CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)"}, ProjectLanguage.CPP, ProjectFramework.CMAKE),
-        ({"Gemfile": 'source "https://rubygems.org"\n'}, ProjectLanguage.RUBY, ProjectFramework.BUNDLER),
+        (
+            {"CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)"},
+            ProjectLanguage.CPP,
+            ProjectFramework.CMAKE,
+        ),
+        (
+            {"Gemfile": 'source "https://rubygems.org"\n'},
+            ProjectLanguage.RUBY,
+            ProjectFramework.BUNDLER,
+        ),
     ],
 )
-def test_detector_identifies_primary_language_markers(tmp_path, detector, files, expected_language, expected_framework):
+def test_detector_identifies_primary_language_markers(
+    tmp_path, detector, files, expected_language, expected_framework
+):
     for relative_path, content in files.items():
         target = tmp_path / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -104,7 +130,13 @@ def test_detector_captures_project_characteristics(tmp_path, detector):
     [
         ({"Cargo.toml": '[workspace]\nmembers = ["crates/*"]\n'}, True),
         ({"package.json": json.dumps({"name": "root", "workspaces": ["packages/*"]})}, True),
-        ({"package.json": json.dumps({"name": "root"}), "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n"}, True),
+        (
+            {
+                "package.json": json.dumps({"name": "root"}),
+                "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n",
+            },
+            True,
+        ),
         ({"pyproject.toml": '[project]\nname = "app"\n'}, False),
     ],
 )
@@ -172,7 +204,11 @@ def test_template_registry_merges_builtin_and_provider_results():
     class RustProvider:
         def get_templates(self, language, framework=ProjectFramework.NONE):
             if language is ProjectLanguage.RUST:
-                return [TemplateSet(name="rust-wasm", description="Rust WASM", language=ProjectLanguage.RUST)]
+                return [
+                    TemplateSet(
+                        name="rust-wasm", description="Rust WASM", language=ProjectLanguage.RUST
+                    )
+                ]
             return []
 
     registry = TemplateRegistry()
@@ -211,7 +247,9 @@ def test_setup_script_derived_views_and_shell_rendering():
         steps=(
             SetupStep(name="install", command="pip install -e ."),
             SetupStep(name="lint", command="ruff check .", optional=True),
-            SetupStep(name="migrate", command="python manage.py migrate", condition="[ -f manage.py ]"),
+            SetupStep(
+                name="migrate", command="python manage.py migrate", condition="[ -f manage.py ]"
+            ),
             SetupStep(name="frontend", command="npm run build", working_dir="frontend"),
         ),
         env_vars=(("PYTHONDONTWRITEBYTECODE", "1"),),
@@ -235,12 +273,31 @@ def test_setup_script_derived_views_and_shell_rendering():
 def test_setup_script_builder_covers_language_framework_and_platform_steps():
     builder = SetupScriptBuilder()
 
-    python_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.PYTHON)).steps]
-    rust_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.RUST)).steps]
+    python_steps = [
+        step.name for step in builder.build(ProjectType(language=ProjectLanguage.PYTHON)).steps
+    ]
+    rust_steps = [
+        step.name for step in builder.build(ProjectType(language=ProjectLanguage.RUST)).steps
+    ]
     go_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.GO)).steps]
-    poetry_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.PYTHON, framework=ProjectFramework.POETRY)).steps]
-    django_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.PYTHON, framework=ProjectFramework.DJANGO)).steps]
-    cmake_steps = [step.name for step in builder.build(ProjectType(language=ProjectLanguage.CPP, framework=ProjectFramework.CMAKE)).steps]
+    poetry_steps = [
+        step.name
+        for step in builder.build(
+            ProjectType(language=ProjectLanguage.PYTHON, framework=ProjectFramework.POETRY)
+        ).steps
+    ]
+    django_steps = [
+        step.name
+        for step in builder.build(
+            ProjectType(language=ProjectLanguage.PYTHON, framework=ProjectFramework.DJANGO)
+        ).steps
+    ]
+    cmake_steps = [
+        step.name
+        for step in builder.build(
+            ProjectType(language=ProjectLanguage.CPP, framework=ProjectFramework.CMAKE)
+        ).steps
+    ]
     platform_script = builder.build_with_platform(
         ProjectType(language=ProjectLanguage.CPP, framework=ProjectFramework.CMAKE),
         os_name="Darwin",
@@ -255,4 +312,3 @@ def test_setup_script_builder_covers_language_framework_and_platform_steps():
     assert {"cmake-configure", "cmake-build"} <= set(cmake_steps)
     assert platform_script.steps[0].name == "install-system-deps"
     assert "brew install" in platform_script.steps[0].command
-

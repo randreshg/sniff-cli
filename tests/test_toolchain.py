@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import platform
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +15,6 @@ from dekk.toolchain import (
     EnvVarBuilder,
     ToolchainProfile,
 )
-
 
 # ---------------------------------------------------------------------------
 # EnvVarBuilder
@@ -386,8 +384,13 @@ class TestApxmIntegration:
         config = builder.build()
 
         script_builder = ActivationScriptBuilder()
-        for shell in (ShellKind.BASH, ShellKind.ZSH, ShellKind.FISH,
-                      ShellKind.TCSH, ShellKind.POWERSHELL):
+        for shell in (
+            ShellKind.BASH,
+            ShellKind.ZSH,
+            ShellKind.FISH,
+            ShellKind.TCSH,
+            ShellKind.POWERSHELL,
+        ):
             script = script_builder.build(config, shell)
             assert str(prefix) in script
             assert len(script) > 20

@@ -3,18 +3,18 @@
 import pytest
 
 from dekk.version import (
+    ConstraintOp,
     Version,
     VersionConstraint,
     VersionSpec,
-    ConstraintOp,
     compare_versions,
     version_satisfies,
 )
 
-
 # ---------------------------------------------------------------------------
 # Version parsing
 # ---------------------------------------------------------------------------
+
 
 class TestVersionParsing:
     def test_simple_semver(self):
@@ -69,6 +69,7 @@ class TestVersionParsing:
 # ---------------------------------------------------------------------------
 # Version comparison
 # ---------------------------------------------------------------------------
+
 
 class TestVersionComparison:
     def test_equal(self):
@@ -128,6 +129,7 @@ class TestVersionComparison:
 # Version utility methods
 # ---------------------------------------------------------------------------
 
+
 class TestVersionUtility:
     def test_base(self):
         v = Version(1, 2, 3, pre="alpha", build="b1")
@@ -146,6 +148,7 @@ class TestVersionUtility:
 # ---------------------------------------------------------------------------
 # VersionConstraint
 # ---------------------------------------------------------------------------
+
 
 class TestVersionConstraint:
     def test_eq(self):
@@ -231,6 +234,7 @@ class TestVersionConstraint:
 # ---------------------------------------------------------------------------
 # VersionSpec
 # ---------------------------------------------------------------------------
+
 
 class TestVersionSpec:
     def test_parse_gte(self):
@@ -344,6 +348,7 @@ class TestVersionSpec:
 # Convenience functions
 # ---------------------------------------------------------------------------
 
+
 class TestConvenienceFunctions:
     def test_compare_versions_lt(self):
         assert compare_versions("1.0.0", "2.0.0") == -1
@@ -374,6 +379,7 @@ class TestConvenienceFunctions:
 # ---------------------------------------------------------------------------
 # APXM integration scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestAPXMScenarios:
     """Tests modeled on APXM's actual dependency version requirements."""

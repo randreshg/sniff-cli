@@ -1,8 +1,6 @@
 """Tests for dependency checking."""
 
-import pytest
-
-from dekk.deps import DependencyChecker, DependencySpec, DependencyResult
+from dekk.deps import DependencyChecker, DependencyResult, DependencySpec
 
 
 def test_dependency_spec_creation():

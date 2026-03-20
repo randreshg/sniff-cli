@@ -444,4 +444,3 @@ def test_remediator_registry_handles_dry_run_unmatched_and_invalid_fixers():
 
     with pytest.raises(TypeError):
         registry.register("not-a-remediator")  # type: ignore[arg-type]
-

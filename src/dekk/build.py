@@ -20,10 +20,11 @@ from __future__ import annotations
 
 import enum
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
-from dekk._compat import load_toml, load_json
+from dekk._compat import load_json, load_toml
 
 
 class BuildSystem(enum.Enum):
@@ -188,57 +189,69 @@ class BuildSystemDetector:
         for bin_entry in data.get("bin", []):
             name = bin_entry.get("name", pkg.get("name", ""))
             path = bin_entry.get("path")
-            targets.append(BuildTarget(
-                name=name,
-                kind="binary",
-                path=root / path if path else None,
-            ))
+            targets.append(
+                BuildTarget(
+                    name=name,
+                    kind="binary",
+                    path=root / path if path else None,
+                )
+            )
 
         # Extract [[lib]] target
         lib = data.get("lib")
         if isinstance(lib, dict):
             name = lib.get("name", pkg.get("name", ""))
             path = lib.get("path")
-            targets.append(BuildTarget(
-                name=name,
-                kind="library",
-                path=root / path if path else None,
-            ))
+            targets.append(
+                BuildTarget(
+                    name=name,
+                    kind="library",
+                    path=root / path if path else None,
+                )
+            )
 
         # Extract [[bench]] targets
         for bench in data.get("bench", []):
             name = bench.get("name", "")
             path = bench.get("path")
-            targets.append(BuildTarget(
-                name=name,
-                kind="bench",
-                path=root / path if path else None,
-            ))
+            targets.append(
+                BuildTarget(
+                    name=name,
+                    kind="bench",
+                    path=root / path if path else None,
+                )
+            )
 
         # Extract [[example]] targets
         for example in data.get("example", []):
             name = example.get("name", "")
             path = example.get("path")
-            targets.append(BuildTarget(
-                name=name,
-                kind="example",
-                path=root / path if path else None,
-            ))
+            targets.append(
+                BuildTarget(
+                    name=name,
+                    kind="example",
+                    path=root / path if path else None,
+                )
+            )
 
         # Default targets from conventional paths
         if not targets:
             if (root / "src" / "main.rs").exists():
-                targets.append(BuildTarget(
-                    name=pkg.get("name", root.name),
-                    kind="binary",
-                    path=root / "src" / "main.rs",
-                ))
+                targets.append(
+                    BuildTarget(
+                        name=pkg.get("name", root.name),
+                        kind="binary",
+                        path=root / "src" / "main.rs",
+                    )
+                )
             if (root / "src" / "lib.rs").exists():
-                targets.append(BuildTarget(
-                    name=pkg.get("name", root.name),
-                    kind="library",
-                    path=root / "src" / "lib.rs",
-                ))
+                targets.append(
+                    BuildTarget(
+                        name=pkg.get("name", root.name),
+                        kind="library",
+                        path=root / "src" / "lib.rs",
+                    )
+                )
 
         return BuildSystemInfo(
             system=BuildSystem.CARGO,
@@ -405,8 +418,10 @@ class BuildSystemDetector:
             return None
 
         # Skip if another JS package manager is primary
-        if any((root / f).exists() for f in ("pnpm-workspace.yaml", "pnpm-lock.yaml",
-                                               "bun.lockb", "bun.lock")):
+        if any(
+            (root / f).exists()
+            for f in ("pnpm-workspace.yaml", "pnpm-lock.yaml", "bun.lockb", "bun.lock")
+        ):
             return None
         if (root / ".yarnrc.yml").exists() or (root / "yarn.lock").exists():
             return None
@@ -508,7 +523,7 @@ class BuildSystemDetector:
 
     # --- Node.js shared ---
 
-    def _parse_npm_scripts(self, data: dict) -> list[BuildTarget]:
+    def _parse_npm_scripts(self, data: dict[str, Any]) -> list[BuildTarget]:
         targets: list[BuildTarget] = []
         scripts = data.get("scripts", {})
         for name in scripts:
@@ -717,7 +732,7 @@ class BuildSystemDetector:
 
     # --- Python shared ---
 
-    def _parse_python_targets(self, data: dict) -> list[BuildTarget]:
+    def _parse_python_targets(self, data: dict[str, Any]) -> list[BuildTarget]:
         targets: list[BuildTarget] = []
 
         # PEP 621 scripts (console_scripts equivalent)
@@ -756,21 +771,25 @@ class BuildSystemDetector:
             try:
                 for child in sorted(cmd_dir.iterdir()):
                     if child.is_dir():
-                        targets.append(BuildTarget(
-                            name=child.name,
-                            kind="binary",
-                            path=child,
-                        ))
+                        targets.append(
+                            BuildTarget(
+                                name=child.name,
+                                kind="binary",
+                                path=child,
+                            )
+                        )
             except OSError:
                 pass
 
         # Check root main.go
         if (root / "main.go").exists():
-            targets.append(BuildTarget(
-                name=root.name,
-                kind="binary",
-                path=root / "main.go",
-            ))
+            targets.append(
+                BuildTarget(
+                    name=root.name,
+                    kind="binary",
+                    path=root / "main.go",
+                )
+            )
 
         is_workspace = (root / "go.work").exists()
 

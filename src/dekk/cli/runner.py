@@ -6,9 +6,9 @@ Imports of Rich/styles/progress are deferred to first use of run_logged.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 __all__ = [
     "RunResult",

@@ -7,7 +7,6 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # ToolChecker -- low-level tool detection
 # ---------------------------------------------------------------------------
@@ -186,7 +185,9 @@ class DependencyChecker:
         self, command: str, version_arg: str, version_pattern: str | None
     ) -> str | None:
         """Extract version from command output. Delegates to ToolChecker."""
-        return self._tool_checker.get_version(command, version_arg=version_arg, pattern=version_pattern)
+        return self._tool_checker.get_version(
+            command, version_arg=version_arg, pattern=version_pattern
+        )
 
     def _compare_versions(self, version: str, minimum: str) -> bool:
         """Compare version strings using dekk.version.Version."""

@@ -9,7 +9,6 @@ import pytest
 
 from dekk.env import EnvSnapshot, EnvVarBuilder
 
-
 # ---------------------------------------------------------------------------
 # EnvSnapshot
 # ---------------------------------------------------------------------------
@@ -83,12 +82,7 @@ class TestEnvVarBuilder:
         assert snap.get("CC") == "gcc"
 
     def test_set_overwrite(self):
-        snap = (
-            EnvVarBuilder()
-            .set("CC", "gcc")
-            .set("CC", "clang")
-            .build()
-        )
+        snap = EnvVarBuilder().set("CC", "gcc").set("CC", "clang").build()
         assert snap.get("CC") == "clang"
 
     def test_set_default(self):
@@ -113,44 +107,27 @@ class TestEnvVarBuilder:
         assert snap.get("CC") is None
 
     def test_set_from_path(self):
-        snap = (
-            EnvVarBuilder()
-            .set_from_path("PATH", ["/usr/bin", "/bin"])
-            .build()
-        )
+        snap = EnvVarBuilder().set_from_path("PATH", ["/usr/bin", "/bin"]).build()
         value = snap.get("PATH")
         assert value is not None
         assert "/usr/bin" in value
         assert "/bin" in value
 
     def test_set_from_path_custom_sep(self):
-        snap = (
-            EnvVarBuilder()
-            .set_from_path("INCLUDE", ["/inc/a", "/inc/b"], sep=";")
-            .build()
-        )
+        snap = EnvVarBuilder().set_from_path("INCLUDE", ["/inc/a", "/inc/b"], sep=";").build()
         assert snap.get("INCLUDE") == "/inc/a;/inc/b"
 
     def test_set_from_path_with_pathlib(self):
         from pathlib import Path
-        snap = (
-            EnvVarBuilder()
-            .set_from_path("LIB", [Path("/opt/lib"), Path("/usr/lib")])
-            .build()
-        )
+
+        snap = EnvVarBuilder().set_from_path("LIB", [Path("/opt/lib"), Path("/usr/lib")]).build()
         value = snap.get("LIB")
         assert value is not None
         assert "/opt/lib" in value
         assert "/usr/lib" in value
 
     def test_unset(self):
-        snap = (
-            EnvVarBuilder()
-            .set("CC", "gcc")
-            .set("CXX", "g++")
-            .unset("CC")
-            .build()
-        )
+        snap = EnvVarBuilder().set("CC", "gcc").set("CXX", "g++").unset("CC").build()
         assert snap.get("CC") is None
         assert snap.get("CXX") == "g++"
 
@@ -180,12 +157,7 @@ class TestEnvVarBuilder:
         assert result.get("B") == "2"
 
     def test_merge_dict(self):
-        result = (
-            EnvVarBuilder()
-            .set("X", "1")
-            .merge({"X": "2", "Y": "3"})
-            .build()
-        )
+        result = EnvVarBuilder().set("X", "1").merge({"X": "2", "Y": "3"}).build()
         assert result.get("X") == "1"  # existing wins
         assert result.get("Y") == "3"
 
@@ -214,13 +186,7 @@ class TestEnvVarBuilder:
         assert snap.get("PATH") is not None
 
     def test_build_produces_sorted_vars(self):
-        snap = (
-            EnvVarBuilder()
-            .set("Z", "z")
-            .set("A", "a")
-            .set("M", "m")
-            .build()
-        )
+        snap = EnvVarBuilder().set("Z", "z").set("A", "a").set("M", "m").build()
         assert snap.names() == ("A", "M", "Z")
 
     def test_empty_builder(self):
@@ -253,11 +219,14 @@ class TestEnvIntegration:
     def test_top_level_import(self):
         """EnvSnapshot is importable from the top-level dekk package."""
         from dekk import EnvSnapshot as ES
+
         assert ES is EnvSnapshot
 
     def test_direct_module_import(self):
         """Both types are importable from dekk.env."""
-        from dekk.env import EnvSnapshot as ES, EnvVarBuilder as EVB
+        from dekk.env import EnvSnapshot as ES
+        from dekk.env import EnvVarBuilder as EVB
+
         assert ES is EnvSnapshot
         assert EVB is EnvVarBuilder
 
@@ -272,9 +241,10 @@ class TestEnvToolchainIntegration:
 
     def test_toolchain_env_dict_into_env_builder(self):
         """Toolchain's to_env_dict can be merged into an env.EnvVarBuilder."""
-        from dekk.toolchain import CondaToolchain, CMakeToolchain
-        from dekk.toolchain import EnvVarBuilder as TcBuilder
         from pathlib import Path
+
+        from dekk.toolchain import CMakeToolchain, CondaToolchain
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
 
         prefix = Path("/opt/conda/envs/apxm")
         tc_builder = TcBuilder()
@@ -293,9 +263,10 @@ class TestEnvToolchainIntegration:
 
     def test_env_snapshot_as_toolchain_base(self):
         """EnvSnapshot can be merged with toolchain overrides."""
+        from pathlib import Path
+
         from dekk.toolchain import CondaToolchain
         from dekk.toolchain import EnvVarBuilder as TcBuilder
-        from pathlib import Path
 
         # Simulate captured env
         base = EnvSnapshot.from_dict({"HOME": "/home/user", "LANG": "en_US.UTF-8"})

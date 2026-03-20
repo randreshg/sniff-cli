@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import shutil
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +14,6 @@ from dekk.validate import (
     EnvironmentValidator,
     ValidationReport,
 )
-
 
 # ---------------------------------------------------------------------------
 # CheckStatus enum
@@ -128,10 +125,7 @@ class TestCheckResult:
 
 class TestValidationReport:
     def _make_report(self, *statuses: CheckStatus) -> ValidationReport:
-        results = tuple(
-            CheckResult(name=f"check_{i}", status=s)
-            for i, s in enumerate(statuses)
-        )
+        results = tuple(CheckResult(name=f"check_{i}", status=s) for i, s in enumerate(statuses))
         return ValidationReport(results=results, elapsed_ms=42.0)
 
     def test_empty_report(self):
@@ -144,9 +138,7 @@ class TestValidationReport:
         assert report.issues() == []
 
     def test_all_passed(self):
-        report = self._make_report(
-            CheckStatus.PASSED, CheckStatus.PASSED, CheckStatus.PASSED
-        )
+        report = self._make_report(CheckStatus.PASSED, CheckStatus.PASSED, CheckStatus.PASSED)
         assert report.passed == 3
         assert report.ok is True
 
@@ -297,32 +289,24 @@ class TestCheckEnvVar:
 
     def test_var_expected_match(self):
         with patch.dict(os.environ, {"SNIFF_TEST_VAR": "correct"}):
-            result = self.validator.check_env_var(
-                "SNIFF_TEST_VAR", expected="correct"
-            )
+            result = self.validator.check_env_var("SNIFF_TEST_VAR", expected="correct")
         assert result.status is CheckStatus.PASSED
 
     def test_var_expected_mismatch(self):
         with patch.dict(os.environ, {"SNIFF_TEST_VAR": "wrong"}):
-            result = self.validator.check_env_var(
-                "SNIFF_TEST_VAR", expected="correct"
-            )
+            result = self.validator.check_env_var("SNIFF_TEST_VAR", expected="correct")
         assert result.status is CheckStatus.WARNING
         assert "wrong" in result.message
         assert "correct" in result.message
 
     def test_custom_name(self):
         with patch.dict(os.environ, {"SNIFF_TEST_VAR": "hello"}):
-            result = self.validator.check_env_var(
-                "SNIFF_TEST_VAR", name="Test Variable"
-            )
+            result = self.validator.check_env_var("SNIFF_TEST_VAR", name="Test Variable")
         assert result.name == "Test Variable"
 
     def test_custom_category(self):
         with patch.dict(os.environ, {"SNIFF_TEST_VAR": "hello"}):
-            result = self.validator.check_env_var(
-                "SNIFF_TEST_VAR", category="config"
-            )
+            result = self.validator.check_env_var("SNIFF_TEST_VAR", category="config")
         assert result.category == "config"
 
 
@@ -449,9 +433,10 @@ class TestRunChecks:
 
     def test_exception_handling(self):
         v = EnvironmentValidator()
-        checks = [
+        [
             lambda: (_ for _ in ()).throw(RuntimeError("fail")),  # type: ignore
         ]
+
         # Actually use a proper callable
         def raises():
             raise RuntimeError("fail")
@@ -488,11 +473,7 @@ class TestValidationPipeline:
             )
         )
         with patch.dict(os.environ, {"SNIFF_TEST": "wrong"}):
-            v.add_check(
-                lambda: v.check_env_var(
-                    "SNIFF_TEST", expected="correct", name="Test Var"
-                )
-            )
+            v.add_check(lambda: v.check_env_var("SNIFF_TEST", expected="correct", name="Test Var"))
             report = v.run_all()
 
         assert not report.ok  # at least one failure
@@ -514,7 +495,9 @@ class TestValidationPipeline:
 
     def test_top_level_import(self):
         """ValidationReport and EnvironmentValidator are importable from dekk."""
-        from dekk import ValidationReport as VR, EnvironmentValidator as EV
+        from dekk import EnvironmentValidator as EV
+        from dekk import ValidationReport as VR
+
         assert VR is ValidationReport
         assert EV is EnvironmentValidator
 
@@ -565,7 +548,8 @@ class TestValidateToolchainIntegration:
 
     def test_validate_conda_env_var(self, tmp_path):
         """After CondaToolchain configures env vars, validate they're set."""
-        from dekk.toolchain import CondaToolchain, EnvVarBuilder as TcBuilder
+        from dekk.toolchain import CondaToolchain
+        from dekk.toolchain import EnvVarBuilder as TcBuilder
 
         prefix = tmp_path / "miniforge3" / "envs" / "apxm"
         prefix.mkdir(parents=True)
@@ -577,12 +561,8 @@ class TestValidateToolchainIntegration:
 
         v = EnvironmentValidator()
         with patch.dict(os.environ, env_dict, clear=False):
-            v.add_check(
-                lambda: v.check_env_var("CONDA_PREFIX", expected=str(prefix))
-            )
-            v.add_check(
-                lambda: v.check_env_var("CONDA_DEFAULT_ENV", expected="apxm")
-            )
+            v.add_check(lambda: v.check_env_var("CONDA_PREFIX", expected=str(prefix)))
+            v.add_check(lambda: v.check_env_var("CONDA_DEFAULT_ENV", expected="apxm"))
             report = v.run_all()
 
         assert report.ok is True
@@ -601,21 +581,12 @@ class TestValidateEnvIntegration:
         """Build an env from EnvVarBuilder, then validate with EnvironmentValidator."""
         from dekk.env import EnvVarBuilder as EnvBuilder
 
-        snap = (
-            EnvBuilder()
-            .set("MY_VAR", "my_value")
-            .set("OTHER_VAR", "other")
-            .build()
-        )
+        snap = EnvBuilder().set("MY_VAR", "my_value").set("OTHER_VAR", "other").build()
 
         v = EnvironmentValidator()
         with patch.dict(os.environ, snap.to_dict(), clear=False):
-            v.add_check(
-                lambda: v.check_env_var("MY_VAR", expected="my_value")
-            )
-            v.add_check(
-                lambda: v.check_env_var("OTHER_VAR", expected="other")
-            )
+            v.add_check(lambda: v.check_env_var("MY_VAR", expected="my_value"))
+            v.add_check(lambda: v.check_env_var("OTHER_VAR", expected="other"))
             report = v.run_all()
 
         assert report.ok is True

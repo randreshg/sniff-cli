@@ -16,9 +16,10 @@ a typer/click/rich import chain.
 from __future__ import annotations
 
 import functools
-import sys
+import importlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Final
+from typing import Any, Final, cast
 
 # Typer is loaded lazily on first use
 _typer = None
@@ -42,12 +43,13 @@ PREPEND_ENV_VARS: Final = {
 }
 
 
-def _get_typer():
+def _get_typer() -> Any:
     """Import typer on first use."""
     global _typer, _TYPER_AVAILABLE
     if _TYPER_AVAILABLE is None:
         try:
             import typer as _t
+
             _typer = _t
             _TYPER_AVAILABLE = True
         except ImportError:
@@ -61,7 +63,7 @@ def _get_typer():
 
 
 # Module-level __getattr__ for lazy Option, Argument, Exit access
-def __getattr__(name: str):  # noqa: N807
+def __getattr__(name: str) -> Any:  # noqa: N807
     if name in TYPER_EXPORTS:
         t = _get_typer()
         val = getattr(t, name)
@@ -184,17 +186,18 @@ class Typer:
     def _auto_activation_hook(self, ctx: Any) -> None:
         """Auto-activate environment from .dekk.toml before each command."""
         import os
+
         from dekk.activation import EnvironmentActivator
-        from dekk.envspec import find_envspec
-        from dekk.cli.errors import NotFoundError, DependencyError
+        from dekk.cli.errors import DependencyError, NotFoundError
         from dekk.cli.styles import print_error
+        from dekk.envspec import find_envspec
 
         spec_file = find_envspec()
         if not spec_file:
             if self._fail_fast:
                 raise NotFoundError(
                     f"No {AUTO_ACTIVATE_SPEC_NAME} found for auto-activation",
-                    hint="Run 'dekk init' or set auto_activate=False"
+                    hint="Run 'dekk init' or set auto_activate=False",
                 )
             return
 
@@ -230,7 +233,7 @@ class Typer:
         capture_env: bool | None = None,
         catch_errors: bool = True,
         **kwargs: Any,
-    ) -> Any:
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Enhanced command decorator with optional tracking and error handling."""
         should_track = track if track is not None else self._enable_tracking
         should_capture = capture_env if capture_env is not None else self._auto_capture_env
@@ -270,7 +273,7 @@ class Typer:
                             if exc.hint:
                                 print_info(f"Hint: {exc.hint}")
                             t = _get_typer()
-                            raise t.Exit(exc.exit_code)
+                            raise t.Exit(exc.exit_code) from exc
 
                     raise
                 finally:
@@ -278,7 +281,8 @@ class Typer:
                     for hook in self._after_hooks:
                         hook(after_ctx)
 
-            return base_decorator(wrapper)
+            decorated = cast(Callable[..., Any], base_decorator(wrapper))
+            return decorated
 
         return enhanced_decorator
 
@@ -302,8 +306,8 @@ class Typer:
         """Get or create the Tully client."""
         if self._tully_client is None:
             try:
-                from tully import TullyClient  # type: ignore[import-untyped]
-
+                tully_module = importlib.import_module("tully")
+                TullyClient = tully_module.TullyClient
                 self._tully_client = TullyClient(db_path=self._tully_db_path)
             except ImportError:
                 return None
@@ -320,12 +324,11 @@ class Typer:
             experiment_name=self._tully_experiment_name,
             environment=context.to_dict(),
         )
-        self._current_run_id = run_id
-        return run_id
+        run_id_str = str(run_id)
+        self._current_run_id = run_id_str
+        return run_id_str
 
-    def _complete_tracking(
-        self, run_id: str, status: str, error: str | None = None
-    ) -> None:
+    def _complete_tracking(self, run_id: str, status: str, error: str | None = None) -> None:
         """Complete a Tully tracking run."""
         client = self._get_tully_client()
         if client is not None:

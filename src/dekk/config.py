@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dekk._compat import tomllib, load_toml, deep_merge, walk_up
+from dekk._compat import deep_merge, load_toml, walk_up
 
 
 class ConfigManager:
@@ -84,7 +84,7 @@ class ConfigManager:
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 # Convert ENV_SECTION_KEY to section.key
-                config_key = key[len(prefix):].lower().replace("_", ".")
+                config_key = key[len(prefix) :].lower().replace("_", ".")
                 self.set(config_key, value)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -136,6 +136,7 @@ class ConfigManager:
 # ConfigSource -- frozen record of a single config value origin
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ConfigSource:
     """Where a config value came from."""
@@ -151,6 +152,7 @@ class ConfigSource:
 # ---------------------------------------------------------------------------
 # ConfigReconciler -- multi-source config debugging
 # ---------------------------------------------------------------------------
+
 
 class ConfigReconciler:
     """Reconcile configuration from multiple sources.
@@ -191,6 +193,8 @@ class ConfigReconciler:
                 lines.append(f"  {source.source}: {source.value}")
 
         final = self.resolve(key)
+        if final is None:
+            return f"{key}: not found"
         lines.append(f"  → Final value: {final.value} (from {final.source})")
         return "\n".join(lines)
 
