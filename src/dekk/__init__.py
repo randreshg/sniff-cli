@@ -30,9 +30,12 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "CondaSpec",
         "ToolSpec",
         "CommandSpec",
+        "NpmSpec",
         "AgentsSpec",
         "find_envspec",
     ],
+    # -- Project Setup --
+    "dekk.setup": ["SetupResult", "run_setup"],
     # -- Agent Config Management --
     "dekk.agents": [
         "AgentConfigManager",

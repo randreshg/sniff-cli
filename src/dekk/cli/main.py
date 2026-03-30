@@ -177,6 +177,40 @@ def _make_app() -> typer.Typer:
             remove_path=remove_path,
         )
 
+    @app.command()
+    def setup(
+        force: bool = typer.Option(False, "--force", "-f", help="Recreate conda env even if it exists"),
+    ) -> None:
+        """Set up project environment (conda packages, npm tools) from .dekk.toml."""
+        from dekk.cli.styles import print_error, print_info, print_success, print_warning
+        from dekk.setup import run_setup
+
+        project_root = Path.cwd().resolve()
+        result = run_setup(project_root, force=force)
+
+        if result.conda_created:
+            print_success(f"Created conda env: {result.conda_prefix.name}")
+            if result.conda_packages:
+                print_info(f"  Packages: {', '.join(result.conda_packages)}")
+        elif result.conda_prefix:
+            print_info(f"Conda env already exists: {result.conda_prefix.name}")
+
+        for pkg in result.npm_installed:
+            print_success(f"  npm: {pkg}")
+        if result.npm_installed:
+            print_info(f"Installed {len(result.npm_installed)} npm package(s)")
+
+        for err in result.errors:
+            print_error(err)
+
+        if not result.ok:
+            raise typer.Exit(1)
+
+        if result.conda_prefix:
+            conda_bin = result.conda_prefix / "bin"
+            print_info(f"Tools available at: {conda_bin}")
+            print_info(f"Activate with: eval \"$(dekk activate --shell bash)\"")
+
     # -- Agent config management sub-app --
     from dekk.agents.app import create_agents_app
     from dekk.agents.constants import DEFAULT_SOURCE_DIR

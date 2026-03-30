@@ -16,6 +16,15 @@ class CondaSpec:
 
     name: str
     file: str | None = None
+    packages: tuple[str, ...] = ()
+    channel: str = "conda-forge"
+
+
+@dataclass(frozen=True)
+class NpmSpec:
+    """Npm package dependencies (installed globally in conda env)."""
+
+    packages: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -61,6 +70,7 @@ class EnvironmentSpec:
     env_vars: dict[str, str] = field(default_factory=dict)
     paths: dict[str, list[str]] = field(default_factory=dict)
     python: PythonSpec | None = None
+    npm: NpmSpec | None = None
     commands: dict[str, CommandSpec] = field(default_factory=dict)
     agents: AgentsSpec | None = None
 
@@ -102,9 +112,14 @@ class EnvironmentSpec:
         # Conda (optional)
         conda = None
         if conda_data := data.get("conda"):
+            packages = conda_data.get("packages", [])
+            if isinstance(packages, str):
+                packages = [packages]
             conda = CondaSpec(
                 name=conda_data.get("name", project["name"]),
                 file=conda_data.get("file"),
+                packages=tuple(packages),
+                channel=conda_data.get("channel", "conda-forge"),
             )
 
         # Tools
@@ -139,6 +154,14 @@ class EnvironmentSpec:
                 script=python_data.get("script"),
             )
 
+        # Npm packages (optional)
+        npm = None
+        if npm_data := data.get("npm"):
+            npm_packages = {}
+            for pkg_name, pkg_version in npm_data.items():
+                npm_packages[pkg_name] = str(pkg_version) if pkg_version else "latest"
+            npm = NpmSpec(packages=npm_packages)
+
         # Commands (optional)
         commands = {}
         for cmd_name, cmd_spec in data.get("commands", {}).items():
@@ -166,6 +189,7 @@ class EnvironmentSpec:
             env_vars=env_vars or {},
             paths=paths,
             python=python,
+            npm=npm,
             commands=commands,
             agents=agents,
         )
