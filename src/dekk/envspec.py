@@ -35,6 +35,22 @@ class PythonSpec:
     script: str | None = None
 
 
+@dataclass(frozen=True)
+class CommandSpec:
+    """A project command that can be auto-converted to an agent skill."""
+
+    run: str
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class AgentsSpec:
+    """Configuration for agent config generation."""
+
+    source: str = ".agents"
+    targets: tuple[str, ...] = ("claude", "codex", "copilot", "cursor")
+
+
 @dataclass
 class EnvironmentSpec:
     """Environment specification from .dekk.toml."""
@@ -45,6 +61,8 @@ class EnvironmentSpec:
     env_vars: dict[str, str] = field(default_factory=dict)
     paths: dict[str, list[str]] = field(default_factory=dict)
     python: PythonSpec | None = None
+    commands: dict[str, CommandSpec] = field(default_factory=dict)
+    agents: AgentsSpec | None = None
 
     @classmethod
     def from_file(cls, path: Path) -> EnvironmentSpec:
@@ -121,6 +139,26 @@ class EnvironmentSpec:
                 script=python_data.get("script"),
             )
 
+        # Commands (optional)
+        commands = {}
+        for cmd_name, cmd_spec in data.get("commands", {}).items():
+            if isinstance(cmd_spec, dict):
+                commands[cmd_name] = CommandSpec(
+                    run=cmd_spec.get("run", cmd_name),
+                    description=cmd_spec.get("description", ""),
+                )
+            elif isinstance(cmd_spec, str):
+                commands[cmd_name] = CommandSpec(run=cmd_spec)
+
+        # Agents config (optional)
+        agents = None
+        if agents_data := data.get("agents"):
+            targets = agents_data.get("targets", ["claude", "codex", "copilot", "cursor"])
+            agents = AgentsSpec(
+                source=agents_data.get("source", ".agents"),
+                targets=tuple(targets),
+            )
+
         return cls(
             project_name=project["name"],
             conda=conda,
@@ -128,6 +166,8 @@ class EnvironmentSpec:
             env_vars=env_vars or {},
             paths=paths,
             python=python,
+            commands=commands,
+            agents=agents,
         )
 
     def expand_placeholders(

@@ -177,6 +177,13 @@ def _make_app() -> typer.Typer:
             remove_path=remove_path,
         )
 
+    # -- Agent config management sub-app --
+    from dekk.agents.app import create_agents_app
+    from dekk.agents.constants import DEFAULT_SOURCE_DIR
+
+    agents_sub = create_agents_app(source_dir=DEFAULT_SOURCE_DIR)
+    app.add_typer(agents_sub, name="agents")
+
     return app
 
 

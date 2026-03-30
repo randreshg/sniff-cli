@@ -1,0 +1,17 @@
+# Example .dekk.toml with agent configuration.
+# Commands defined here auto-become agent skills via `dekk agents init`.
+
+[project]
+name = "myproject"
+
+# Commands are converted to agent skills (SKILL.md templates).
+# Each command gets a skills/<name>/SKILL.md file that the agent discovers.
+[commands]
+build = { run = "make", description = "Build from source" }
+test = { run = "make test", description = "Run test suite" }
+# lint = { run = "clang-format --dry-run src/**/*.cpp", description = "Check code style" }
+
+# Agent config generation settings (all values shown are defaults).
+[agents]
+source = ".agents"                                     # Source-of-truth directory
+targets = ["claude", "codex", "copilot", "cursor"]     # Targets to generate

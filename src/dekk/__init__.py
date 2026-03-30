@@ -25,7 +25,26 @@ except PackageNotFoundError:
 
 _MODULE_ATTRS: dict[str, list[str]] = {
     # -- Automatic Environment Setup --
-    "dekk.envspec": ["EnvironmentSpec", "CondaSpec", "ToolSpec", "find_envspec"],
+    "dekk.envspec": [
+        "EnvironmentSpec",
+        "CondaSpec",
+        "ToolSpec",
+        "CommandSpec",
+        "AgentsSpec",
+        "find_envspec",
+    ],
+    # -- Agent Config Management --
+    "dekk.agents": [
+        "AgentConfigManager",
+        "RuleDefinition",
+        "SkillDefinition",
+        "create_agents_app",
+        "discover_rules",
+        "discover_skills",
+        "install_codex_skills",
+        "parse_frontmatter",
+        "scaffold_agents_dir",
+    ],
     "dekk.activation": ["EnvironmentActivator", "ActivationResult"],
     "dekk.install": ["BinaryInstaller", "InstallResult"],
     "dekk.wrapper": ["WrapperGenerator"],

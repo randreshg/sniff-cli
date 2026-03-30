@@ -232,15 +232,25 @@ class Typer:
         track: bool | None = None,
         capture_env: bool | None = None,
         catch_errors: bool = True,
+        agent_skill: bool = False,
         **kwargs: Any,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        """Enhanced command decorator with optional tracking and error handling."""
+        """Enhanced command decorator with optional tracking and error handling.
+
+        Args:
+            agent_skill: If True, marks this command for agent skill generation.
+                When ``dekk agents init`` introspects this app, only commands
+                with ``agent_skill=True`` are converted into SKILL.md templates.
+        """
         should_track = track if track is not None else self._enable_tracking
         should_capture = capture_env if capture_env is not None else self._auto_capture_env
 
         base_decorator = self._app.command(*args, **kwargs)
 
         def enhanced_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            if agent_skill:
+                func._dekk_agent_skill = True  # type: ignore[attr-defined]
+
             @functools.wraps(func)
             def wrapper(*inner_args: Any, **inner_kwargs: Any) -> Any:
                 ctx = self.context if should_capture else None
