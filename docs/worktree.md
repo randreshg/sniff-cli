@@ -17,7 +17,7 @@ full `worktree` sub-app.
 <cli> worktree prune                         # clean stale references
 ```
 
-Replace `<cli>` with your project's CLI name (e.g., `apxm worktree list`).
+Replace `<cli>` with your project's CLI name (e.g., `myapp worktree list`).
 
 ## Enabling in Your CLI
 

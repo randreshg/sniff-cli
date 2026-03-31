@@ -69,7 +69,7 @@ CLIs built with `dekk.Typer` inherit built-in commands. Enable them via flags:
 from dekk import Typer
 
 app = Typer(
-    name="apxm",
+    name="myapp",
     auto_activate=True,
     add_doctor_command=True,
     add_version_command=True,
@@ -81,10 +81,10 @@ app = Typer(
 ### Worktrees
 
 ```bash
-apxm worktree create feature-x --base main
-apxm worktree list
-apxm worktree remove feature-x
-apxm worktree prune
+myapp worktree create feature-x --base main
+myapp worktree list
+myapp worktree remove feature-x
+myapp worktree prune
 ```
 
 Worktrees with `.dekk.toml` get automatic environment setup on creation.
@@ -95,10 +95,10 @@ Auto-scaffolded as an agent skill via `agents init` for git repos.
 Source of truth: `.agents/`
 
 ```bash
-apxm agents init
-apxm agents generate --target all
-apxm agents clean --target codex
-apxm agents install        # optional (installs Codex skills to ~/.codex/skills)
+myapp agents init
+myapp agents generate --target all
+myapp agents clean --target codex
+myapp agents install        # optional (installs Codex skills to ~/.codex/skills)
 ```
 
 Generated files: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents.json`

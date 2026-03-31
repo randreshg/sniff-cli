@@ -6,7 +6,7 @@ target-specific outputs for Claude Code, Codex, Cursor, Copilot, and a
 machine-readable manifest.
 
 > **Note:** Throughout this doc, `<cli>` refers to your project's CLI name
-> (e.g., `apxm`, `carts`). Enable with `Typer(add_agents_command=True)`.
+> (e.g., `myapp`). Enable with `Typer(add_agents_command=True)`.
 
 ## Data Flow
 
