@@ -5,6 +5,14 @@ All constants and the ``create_app`` factory now live in
 from ``dekk.project.subcommands`` continue to work.
 """
 
-from dekk.tools import AGENTS, CLI_NAME, NAMES, WORKTREE, create_tool_app as create_app
+from dekk.tools import (
+    AGENTS,
+    CLI_NAME,
+    NAMES,
+    WORKTREE,
+)
+from dekk.tools import (
+    create_tool_app as create_app,
+)
 
 __all__ = ["AGENTS", "CLI_NAME", "NAMES", "WORKTREE", "create_app"]

@@ -3,7 +3,7 @@
 from dekk.tools.worktree.core import (
     WorktreeCreateResult,
     WorktreeInfo,
-    _parse_porcelain,
+    _parse_porcelain,  # noqa: F401 (re-exported for tests)
     create_worktree,
     find_git_root,
     list_worktrees,

@@ -12,7 +12,8 @@ from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
 from dekk.environment.spec import EnvironmentSpec, find_envspec
-from dekk.project.subcommands import CLI_NAME, NAMES as BUILTIN_PROJECT_SUBCOMMANDS
+from dekk.project.subcommands import CLI_NAME
+from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
 
 PREPEND_ENV_VARS = {
     "PATH",
