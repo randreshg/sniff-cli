@@ -1,19 +1,35 @@
 # Git Worktree Management
 
-`dekk worktree` wraps `git worktree` with automatic environment setup and
-agent skill discovery.
+dekk provides worktree management as a built-in command that downstream CLIs
+inherit. Any CLI built with `dekk.Typer(add_worktree_command=True)` gets the
+full `worktree` sub-app.
 
 ## Commands
 
 ```bash
-dekk worktree list                          # list all worktrees
-dekk worktree create <branch>               # new worktree + branch from HEAD
-dekk worktree create <branch> --base main   # branch from main
-dekk worktree create <branch> --existing    # checkout existing branch
-dekk worktree create <branch> --no-setup    # skip dekk setup
-dekk worktree remove <name>                 # remove worktree
-dekk worktree remove <name> --force         # force-remove with modifications
-dekk worktree prune                         # clean stale references
+<cli> worktree list                          # list all worktrees
+<cli> worktree create <branch>               # new worktree + branch from HEAD
+<cli> worktree create <branch> --base main   # branch from main
+<cli> worktree create <branch> --existing    # checkout existing branch
+<cli> worktree create <branch> --no-setup    # skip dekk setup
+<cli> worktree remove <name>                 # remove worktree
+<cli> worktree remove <name> --force         # force-remove with modifications
+<cli> worktree prune                         # clean stale references
+```
+
+Replace `<cli>` with your project's CLI name (e.g., `apxm worktree list`).
+
+## Enabling in Your CLI
+
+```python
+from dekk import Typer
+
+app = Typer(
+    name="myapp",
+    add_worktree_command=True,   # adds `myapp worktree` sub-app
+    add_agents_command=True,     # adds `myapp agents` sub-app
+    add_doctor_command=True,
+)
 ```
 
 ## Automatic Environment Setup
@@ -30,8 +46,8 @@ By default, worktrees are created at `../<repo>-worktrees/<branch>`:
 ~/projects/
   myapp/                          # main worktree
   myapp-worktrees/
-    feature-login/                # dekk worktree create feature/login
-    bugfix-crash/                 # dekk worktree create bugfix-crash
+    feature-login/                # worktree create feature/login
+    bugfix-crash/                 # worktree create bugfix-crash
 ```
 
 Branch names with slashes (e.g., `feature/login`) are sanitized to hyphens
@@ -41,14 +57,14 @@ in the directory name.
 
 Worktrees are fully integrated with dekk's project command system:
 
-- `dekk` walks up from the current directory to find the nearest `.dekk.toml`
-- All project commands (`dekk <app> <cmd>`) work from any worktree
+- The CLI walks up from the current directory to find the nearest `.dekk.toml`
+- All project commands work from any worktree
 - Each worktree gets its own working directory for builds, tests, etc.
 - The `.agents/` source of truth is shared across worktrees (same git repo)
 
 ## Agent Skill
 
-`dekk agents init` auto-scaffolds a `worktree` skill for git repos. This
+`<cli> agents init` auto-scaffolds a `worktree` skill for git repos. This
 teaches AI coding agents about worktree management so they can create
 parallel work environments when appropriate.
 

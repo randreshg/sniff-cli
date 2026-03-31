@@ -92,6 +92,8 @@ class Typer:
         add_doctor_command: bool = False,
         add_version_command: bool = False,
         add_env_command: bool = False,
+        add_worktree_command: bool = False,
+        add_agents_command: bool = False,
         project_version: str | None = None,
         **typer_kwargs: Any,
     ) -> None:
@@ -127,6 +129,10 @@ class Typer:
             self._add_version_command()
         if add_env_command:
             self._add_env_command()
+        if add_worktree_command:
+            self._add_worktree_command()
+        if add_agents_command:
+            self._add_agents_command()
 
     # -- Proxy to underlying typer.Typer for compatibility --------------------
 
@@ -378,3 +384,15 @@ class Typer:
             from dekk.cli.cli_commands import run_env
 
             run_env(self.context)
+
+    def _add_worktree_command(self) -> None:
+        """Register the built-in ``worktree`` sub-app."""
+        from dekk.cli.worktree_commands import create_worktree_app
+
+        self.add_typer(create_worktree_app(), name="worktree")
+
+    def _add_agents_command(self) -> None:
+        """Register the built-in ``agents`` sub-app."""
+        from dekk.agents import create_agents_app
+
+        self.add_typer(create_agents_app(parent_app=self._app), name="agents")

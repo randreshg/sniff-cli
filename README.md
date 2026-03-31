@@ -61,30 +61,47 @@ That means `dekk myapp server` works correctly from a repo root, a nested
 subpackage, or a separate Git worktree for the same project, without relying
 on global shell state.
 
-## Worktrees
+## Inherited Commands
 
-```bash
-dekk worktree create feature-x --base main
-dekk worktree list
-dekk worktree remove feature-x
-dekk worktree prune
+CLIs built with `dekk.Typer` inherit built-in commands. Enable them via flags:
+
+```python
+from dekk import Typer
+
+app = Typer(
+    name="apxm",
+    auto_activate=True,
+    add_doctor_command=True,
+    add_version_command=True,
+    add_worktree_command=True,
+    add_agents_command=True,
+)
 ```
 
-Worktrees with `.dekk.toml` get automatic `dekk setup` on creation.
-Auto-scaffolded as an agent skill via `dekk agents init` for git repos.
+### Worktrees
 
-## Agents
+```bash
+apxm worktree create feature-x --base main
+apxm worktree list
+apxm worktree remove feature-x
+apxm worktree prune
+```
+
+Worktrees with `.dekk.toml` get automatic environment setup on creation.
+Auto-scaffolded as an agent skill via `agents init` for git repos.
+
+### Agents
 
 Source of truth: `.agents/`
 
 ```bash
-dekk agents init
-dekk agents generate --target all
-dekk agents clean --target codex
-dekk agents install        # optional (installs Codex skills to ~/.codex/skills)
+apxm agents init
+apxm agents generate --target all
+apxm agents clean --target codex
+apxm agents install        # optional (installs Codex skills to ~/.codex/skills)
 ```
 
-Generated files (examples): `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents.json`
+Generated files: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.agents.json`
 
 ## Docs
 
