@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from dekk._compat import deep_merge, load_toml
-from dekk.paths import find_project_config_file, site_config_file, user_config_file
+from dekk.core.paths import find_project_config_file, site_config_file, user_config_file
 
 
 class ConfigManager:

@@ -27,6 +27,8 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "print_numbered_list",
         "print_next_steps",
     ],
+    "dekk.cli.typer_app": ["Typer", "Option", "Argument", "Exit", "Context"],
+    "dekk.cli.cli_commands": ["run_doctor", "run_version", "run_env"],
 }
 
 _ATTR_TO_MODULE: dict[str, str] = {

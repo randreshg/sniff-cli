@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from dekk.scaffold import (
+from dekk.detection.scaffold import (
     FileTemplate,
     ProjectFramework,
     ProjectLanguage,

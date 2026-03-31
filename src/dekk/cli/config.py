@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from dekk._compat import deep_merge, load_toml, tomllib
-from dekk.paths import find_project_config_file, project_config_file, user_config_file
+from dekk.core.paths import find_project_config_file, project_config_file, user_config_file
 
 # TOML writing: prefer tomli_w when available, fall back to a small writer.
 try:

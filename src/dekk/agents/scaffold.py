@@ -28,7 +28,7 @@ from dekk.agents.constants import (
     TOML_RUN_KEY,
 )
 from dekk.detection.build import BuildSystem, BuildSystemDetector
-from dekk.scaffold import ProjectLanguage, ProjectTypeDetector
+from dekk.detection.scaffold import ProjectLanguage, ProjectTypeDetector
 
 BUILD_COMMAND_NAME = "build"
 TEST_COMMAND_NAME = "test"

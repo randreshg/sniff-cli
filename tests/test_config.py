@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from dekk.config import ConfigManager, ConfigReconciler, ConfigSource
-from dekk.paths import project_config_file, user_config_file
+from dekk.core.config import ConfigManager, ConfigReconciler, ConfigSource
+from dekk.core.paths import project_config_file, user_config_file
 
 # ===========================================================================
 # ConfigSource tests

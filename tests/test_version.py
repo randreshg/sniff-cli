@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.version import (
+from dekk.core.version import (
     ConstraintOp,
     Version,
     VersionConstraint,

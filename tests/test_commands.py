@@ -1,6 +1,6 @@
 """Tests for the command registry."""
 
-from dekk.commands import (
+from dekk.core.commands import (
     CommandMeta,
     CommandProvider,
     CommandRegistry,

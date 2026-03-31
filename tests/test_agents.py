@@ -592,7 +592,7 @@ class TestEnvspecExtensions:
 
 class TestTyperIntegration:
     def test_agent_skill_marker(self) -> None:
-        from dekk.typer_app import Typer
+        from dekk.cli.typer_app import Typer
 
         app = Typer(name="test")
 
@@ -609,7 +609,7 @@ class TestTyperIntegration:
 
     def test_discover_commands_from_typer(self) -> None:
         from dekk.agents.scaffold import discover_commands_from_typer
-        from dekk.typer_app import Typer
+        from dekk.cli.typer_app import Typer
 
         app = Typer(name="test")
 
@@ -633,7 +633,7 @@ class TestTyperIntegration:
 
     def test_discover_commands_run_format(self) -> None:
         from dekk.agents.scaffold import discover_commands_from_typer
-        from dekk.typer_app import Typer
+        from dekk.cli.typer_app import Typer
 
         app = Typer(name="myapp")
 

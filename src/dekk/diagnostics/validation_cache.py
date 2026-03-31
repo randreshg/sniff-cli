@@ -12,7 +12,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from dekk.paths import user_cache_dir
+from dekk.core.paths import user_cache_dir
 
 CACHE_TTL = 3600  # 1 hour
 DEKK_APP_NAME = "dekk"

@@ -191,7 +191,7 @@ class DependencyChecker:
 
     def _compare_versions(self, version: str, minimum: str) -> bool:
         """Compare version strings using dekk.version.Version."""
-        from dekk.version import Version
+        from dekk.core.version import Version
 
         v = Version.try_parse(version)
         m = Version.try_parse(minimum)

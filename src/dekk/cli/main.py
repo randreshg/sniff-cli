@@ -48,8 +48,8 @@ def _make_app() -> typer.Typer:
     @app.command()
     def doctor() -> None:
         """Run comprehensive system health check."""
-        from dekk.cli_commands import run_doctor
-        from dekk.context import ExecutionContext
+        from dekk.cli.cli_commands import run_doctor
+        from dekk.core.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_doctor(context)
@@ -58,8 +58,8 @@ def _make_app() -> typer.Typer:
     def version() -> None:
         """Show dekk version and platform information."""
         from dekk import __version__
-        from dekk.cli_commands import run_version
-        from dekk.context import ExecutionContext
+        from dekk.cli.cli_commands import run_version
+        from dekk.core.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_version(CLI_APP_NAME, __version__, context)
@@ -67,8 +67,8 @@ def _make_app() -> typer.Typer:
     @app.command()
     def env() -> None:
         """Show complete environment details."""
-        from dekk.cli_commands import run_env
-        from dekk.context import ExecutionContext
+        from dekk.cli.cli_commands import run_env
+        from dekk.core.context import ExecutionContext
 
         context = ExecutionContext.capture()
         run_env(context)

@@ -11,13 +11,13 @@ from unittest.mock import MagicMock, patch
 from rich.console import Console
 
 from dekk.detection.ci import CIBuildInfo, CIInfo, CIProvider
-from dekk.cli_commands import (
+from dekk.cli.cli_commands import (
     run_doctor,
     run_env,
     run_version,
 )
 from dekk.detection.conda import CondaEnvironment
-from dekk.context import (
+from dekk.core.context import (
     ContextWorkspaceInfo,
     CPUInfo,
     ExecutionContext,
@@ -121,7 +121,7 @@ def _capture_output(func, *args, **kwargs) -> str:
     _styles_mod.console = test_console
     _styles_mod._console = test_console
     try:
-        with patch("dekk.cli_commands.console", test_console):
+        with patch("dekk.cli.cli_commands.console", test_console):
             func(*args, **kwargs)
     finally:
         _styles_mod.console = orig_console

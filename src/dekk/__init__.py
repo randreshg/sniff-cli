@@ -65,13 +65,13 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "CondaValidation",
     ],
     # -- Configuration (core) --
-    "dekk.config": ["ConfigManager", "ConfigReconciler", "ConfigSource"],
+    "dekk.core.config": ["ConfigManager", "ConfigReconciler", "ConfigSource"],
     # -- CI --
     "dekk.detection.ci": ["CIDetector", "CIInfo", "CIProvider", "CIBuildAdvisor", "CIBuildHints"],
     # -- Workspace --
     "dekk.detection.workspace": ["WorkspaceDetector", "WorkspaceInfo", "WorkspaceKind", "SubProject"],
     # -- Versioning --
-    "dekk.version": [
+    "dekk.core.version": [
         "Version",
         "VersionSpec",
         "VersionConstraint",
@@ -118,7 +118,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     # -- Library Paths --
     "dekk.detection.libpath": ["LibraryPathInfo", "LibraryPathResolver"],
     # -- Commands --
-    "dekk.commands": [
+    "dekk.core.commands": [
         "CommandStatus",
         "CommandMeta",
         "CommandProvider",
@@ -137,7 +137,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "RemediatorRegistry",
     ],
     # -- Scaffold --
-    "dekk.scaffold": [
+    "dekk.detection.scaffold": [
         "ProjectLanguage",
         "ProjectFramework",
         "ProjectType",
@@ -150,7 +150,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "SetupScriptBuilder",
     ],
     # -- Execution Context --
-    "dekk.context": [
+    "dekk.core.context": [
         "ExecutionContext",
         "ContextWorkspaceInfo",
         "GitInfo",
@@ -161,9 +161,9 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "ContextDiff",
     ],
     # -- CLI Framework --
-    "dekk.typer_app": ["Typer", "Option", "Argument", "Exit", "Context"],
+    "dekk.cli.typer_app": ["Typer", "Option", "Argument", "Exit", "Context"],
     # -- CLI Commands --
-    "dekk.cli_commands": ["run_doctor", "run_version", "run_env"],
+    "dekk.cli.cli_commands": ["run_doctor", "run_version", "run_env"],
     # -- CLI Styling & Output --
     "dekk.cli.styles": [
         "console",
@@ -205,16 +205,6 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     "dekk.execution.runner": ["run_script"],
 }
 
-# Renamed/aliased exports: alias -> (module_path, real_name)
-_RENAMES: dict[str, tuple[str, str]] = {
-    "DiagnosticCheckStatus": ("dekk.diagnostics.diagnostic", "CheckStatus"),
-    "DiagnosticCheckResult": ("dekk.diagnostics.diagnostic", "CheckResult"),
-    # Backward-compatible aliases: bare names -> Dekk-prefixed canonical names
-    "TimeoutError": ("dekk.cli.errors", "DekkTimeoutError"),
-    "PermissionError": ("dekk.cli.errors", "DekkPermissionError"),
-    "RuntimeError": ("dekk.cli.errors", "DekkRuntimeError"),
-}
-
 # ---------------------------------------------------------------------------
 # Build reverse lookup: name -> module_path
 # ---------------------------------------------------------------------------
@@ -229,17 +219,6 @@ _ATTR_TO_MODULE: dict[str, str] = {
 
 
 def __getattr__(name: str) -> Any:  # noqa: N807
-    # Check renamed aliases first
-    if name in _RENAMES:
-        import importlib
-
-        mod_path, real_name = _RENAMES[name]
-        module = importlib.import_module(mod_path)
-        value = getattr(module, real_name)
-        globals()[name] = value
-        return value
-
-    # Check normal attributes
     if name in _ATTR_TO_MODULE:
         import importlib
 
@@ -257,7 +236,7 @@ def __getattr__(name: str) -> Any:  # noqa: N807
 
 
 def __dir__() -> list[str]:  # noqa: N807
-    return list(_ATTR_TO_MODULE.keys()) + list(_RENAMES.keys()) + ["__version__"]
+    return list(_ATTR_TO_MODULE.keys()) + ["__version__"]
 
 
-__all__ = sorted(set(list(_ATTR_TO_MODULE) + list(_RENAMES) + ["__version__"]))
+__all__ = sorted(set(list(_ATTR_TO_MODULE) + ["__version__"]))

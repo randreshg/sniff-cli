@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from dekk.cli.styles import console, print_section, print_table
 
 if TYPE_CHECKING:
-    from dekk.context import ExecutionContext
+    from dekk.core.context import ExecutionContext
 
 
 def run_doctor(context: ExecutionContext) -> None:

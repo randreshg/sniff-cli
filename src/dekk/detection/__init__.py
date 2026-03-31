@@ -9,6 +9,18 @@ from .deps import DependencyChecker, DependencyResult, DependencySpec, ToolCheck
 from .detect import PlatformDetector, PlatformInfo
 from .libpath import LibraryPathInfo, LibraryPathResolver
 from .lockfile import LockfileInfo, LockfileKind, LockfileParser, LockedDependency
+from .scaffold import (
+    FileTemplate,
+    ProjectFramework,
+    ProjectLanguage,
+    ProjectType,
+    ProjectTypeDetector,
+    SetupScript,
+    SetupScriptBuilder,
+    SetupStep,
+    TemplateRegistry,
+    TemplateSet,
+)
 from .version_managers import ManagedVersion, VersionManagerDetector, VersionManagerInfo
 from .workspace import SubProject, WorkspaceDetector, WorkspaceInfo, WorkspaceKind
 
@@ -35,6 +47,7 @@ __all__ = [
     "DependencyChecker",
     "DependencyResult",
     "DependencySpec",
+    "FileTemplate",
     "LibraryPathInfo",
     "LibraryPathResolver",
     "LockfileInfo",
@@ -44,7 +57,16 @@ __all__ = [
     "ManagedVersion",
     "PlatformDetector",
     "PlatformInfo",
+    "ProjectFramework",
+    "ProjectLanguage",
+    "ProjectType",
+    "ProjectTypeDetector",
+    "SetupScript",
+    "SetupScriptBuilder",
+    "SetupStep",
     "SubProject",
+    "TemplateRegistry",
+    "TemplateSet",
     "ToolChecker",
     "ToolchainInfo",
     "VersionManagerDetector",

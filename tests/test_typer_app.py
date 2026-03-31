@@ -9,9 +9,9 @@ import pytest
 import typer as base_typer
 from typer.testing import CliRunner
 
-from dekk import typer_app
+from dekk.cli import typer_app
 from dekk.cli.errors import DekkError, ExitCodes, NotFoundError, ValidationError
-from dekk.typer_app import Typer, _get_typer
+from dekk.cli.typer_app import Typer, _get_typer
 
 runner = CliRunner()
 
@@ -48,7 +48,7 @@ def test_get_typer_lazy_loads_and_wraps_base_typer():
     assert isinstance(app._app, base_typer.Typer)
 
 
-@patch("dekk.typer_app._TYPER_AVAILABLE", False)
+@patch("dekk.cli.typer_app._TYPER_AVAILABLE", False)
 def test_get_typer_raises_when_dependency_is_missing():
     with pytest.raises(ImportError, match="typer is required"):
         _get_typer()
@@ -85,7 +85,7 @@ def test_context_is_captured_once_and_shortcuts_proxy_to_it():
     app = Typer()
     fake_ctx = _make_fake_context(conda_env=MagicMock(name="conda"))
 
-    with patch("dekk.context.ExecutionContext.capture", return_value=fake_ctx) as capture:
+    with patch("dekk.core.context.ExecutionContext.capture", return_value=fake_ctx) as capture:
         assert app.context is fake_ctx
         assert app.context is fake_ctx
         assert app.platform is fake_ctx.platform
@@ -207,7 +207,7 @@ def test_tracking_starts_with_context_payload_and_completes():
 def test_tracking_returns_none_without_tully_client():
     app = Typer(enable_tracking=True)
 
-    with patch("dekk.typer_app.Typer._get_tully_client", return_value=None):
+    with patch("dekk.cli.typer_app.Typer._get_tully_client", return_value=None):
         assert app._start_tracking("cmd", _make_fake_context()) is None
 
 
@@ -290,16 +290,16 @@ def test_get_tully_client_caches_instance_and_handles_missing_package():
         (
             {"add_doctor_command": True},
             "doctor",
-            "dekk.cli_commands.run_doctor",
+            "dekk.cli.cli_commands.run_doctor",
             lambda ctx: (ctx,),
         ),
         (
             {"add_version_command": True, "project_version": "3.4.5", "name": "demo"},
             "version",
-            "dekk.cli_commands.run_version",
+            "dekk.cli.cli_commands.run_version",
             lambda ctx: ("demo", "3.4.5", ctx),
         ),
-        ({"add_env_command": True}, "env", "dekk.cli_commands.run_env", lambda ctx: (ctx,)),
+        ({"add_env_command": True}, "env", "dekk.cli.cli_commands.run_env", lambda ctx: (ctx,)),
     ],
 )
 def test_built_in_commands_register_and_dispatch(

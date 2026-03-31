@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dekk.cli.config import ConfigManager
-from dekk.paths import project_config_file, user_config_file
+from dekk.core.paths import project_config_file, user_config_file
 
 
 def test_config_manager_loads_defaults_without_mutating_source(tmp_path, monkeypatch):

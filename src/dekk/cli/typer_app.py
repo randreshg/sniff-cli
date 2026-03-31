@@ -69,7 +69,7 @@ def __getattr__(name: str) -> Any:  # noqa: N807
         val = getattr(t, name)
         globals()[name] = val
         return val
-    raise AttributeError(f"module 'dekk.typer_app' has no attribute {name!r}")
+    raise AttributeError(f"module 'dekk.cli.typer_app' has no attribute {name!r}")
 
 
 class Typer:
@@ -148,7 +148,7 @@ class Typer:
     def context(self) -> Any:
         """Execution context (lazy-loaded on first access)."""
         if self._context is None:
-            from dekk.context import ExecutionContext
+            from dekk.core.context import ExecutionContext
 
             self._context = ExecutionContext.capture()
         return self._context
@@ -353,7 +353,7 @@ class Typer:
         @self.command(name=BUILTIN_DOCTOR_COMMAND)
         def doctor() -> None:
             """Check system environment and dependencies."""
-            from dekk.cli_commands import run_doctor
+            from dekk.cli.cli_commands import run_doctor
 
             run_doctor(self.context)
 
@@ -365,7 +365,7 @@ class Typer:
         @self.command(name=BUILTIN_VERSION_COMMAND)
         def version_cmd() -> None:
             """Show version information."""
-            from dekk.cli_commands import run_version
+            from dekk.cli.cli_commands import run_version
 
             run_version(app_name, version, self.context)
 
@@ -375,6 +375,6 @@ class Typer:
         @self.command(name=BUILTIN_ENV_COMMAND)
         def env() -> None:
             """Show environment information."""
-            from dekk.cli_commands import run_env
+            from dekk.cli.cli_commands import run_env
 
             run_env(self.context)
