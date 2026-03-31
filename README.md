@@ -61,6 +61,18 @@ That means `dekk myapp server` works correctly from a repo root, a nested
 subpackage, or a separate Git worktree for the same project, without relying
 on global shell state.
 
+## Worktrees
+
+```bash
+dekk worktree create feature-x --base main
+dekk worktree list
+dekk worktree remove feature-x
+dekk worktree prune
+```
+
+Worktrees with `.dekk.toml` get automatic `dekk setup` on creation.
+Auto-scaffolded as an agent skill via `dekk agents init` for git repos.
+
 ## Agents
 
 Source of truth: `.agents/`
@@ -79,3 +91,4 @@ Generated files (examples): `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.github/c
 - [Getting Started](docs/getting-started.md)
 - [.dekk.toml Specification](docs/spec.md)
 - [Agent Workflows](docs/agents.md)
+- [Worktree Management](docs/worktree.md)
