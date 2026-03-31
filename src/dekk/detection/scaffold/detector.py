@@ -424,7 +424,9 @@ class ProjectTypeDetector:
                 try:
                     for pkg in src.iterdir():
                         if pkg.is_dir() and (pkg / "__main__.py").exists():
-                            candidates.append(str((pkg / "__main__.py").relative_to(root)))
+                            candidates.append(
+                                str((pkg / "__main__.py").relative_to(root)).replace("\\", "/")
+                            )
                 except OSError:
                     pass
 
