@@ -40,7 +40,7 @@ The generated wrapper looks like this on POSIX:
 #!/bin/sh
 export CONDA_PREFIX="/home/user/miniforge3/envs/myapp"
 export PATH="/home/user/miniforge3/envs/myapp/bin:/home/user/projects/myapp/bin:$PATH"
-export MLIR_DIR="/home/user/miniforge3/envs/myapp/lib/cmake/mlir"
+export CMAKE_PREFIX_PATH="/home/user/miniforge3/envs/myapp"
 exec "/home/user/miniforge3/envs/myapp/bin/python3" \
      "/home/user/projects/myapp/tools/cli.py" "$@"
 ```

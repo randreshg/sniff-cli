@@ -7,12 +7,12 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .cli.errors import NotFoundError
-from .conda import CondaDetector
-from .envspec import EnvironmentSpec, find_envspec
-from .shell import ActivationScriptBuilder, ShellDetector, ShellKind
-from .toolchain import CMakeToolchain, CondaToolchain, EnvVarBuilder
-from .validation_cache import get_cache
+from dekk.cli.errors import NotFoundError
+from dekk.environment.resolver import resolve_environment
+from dekk.environment.spec import EnvironmentSpec, find_envspec
+from dekk.shell import ActivationScriptBuilder, ShellDetector, ShellKind
+from dekk.execution.toolchain import EnvVarBuilder
+from dekk.diagnostics.validation_cache import get_cache
 
 
 @dataclass
@@ -34,39 +34,26 @@ class EnvironmentActivator:
     def activate(
         self, shell: str | ShellKind | None = None, use_cache: bool = True
     ) -> ActivationResult:
-        """Activate environment and return result.
-
-        Args:
-            shell: Shell type for activation script
-            use_cache: Use cached results for speed
-        """
-        # Try cache first
-        if use_cache and self.spec.conda:
-            if cached := get_cache().get(self.project_root, self.spec.conda.name):
+        """Activate environment and return result."""
+        resolved = resolve_environment(self.spec, project_root=self.project_root)
+        cache_key = str(resolved.prefix) if resolved else "no-environment"
+        if use_cache and resolved:
+            if cached := get_cache().get(self.project_root, cache_key):
                 return ActivationResult(
                     env_vars=cached.env_vars,
                     missing_tools=cached.missing_tools,
                 )
 
-        # Detect conda environment
-        conda_env = None
-        conda_prefix = None
-        if self.spec.conda:
-            conda_env = CondaDetector().find_environment(self.spec.conda.name)
-            if conda_env:
-                conda_prefix = conda_env.prefix
+        environment_prefix = None
+        if resolved and resolved.exists():
+            environment_prefix = resolved.prefix
 
-        # Build environment variables
         builder = EnvVarBuilder()
 
-        # Add conda toolchain
-        if conda_prefix:
-            CondaToolchain(conda_prefix, self.spec.project_name).configure(builder)
-            if any(k.lower() == "cmake" for k in self.spec.tools):
-                CMakeToolchain(conda_prefix).configure(builder)
+        if resolved and environment_prefix:
+            resolved.configure(builder, project_name=self.spec.project_name, tools=self.spec.tools)
 
-        # Add custom env vars and paths from .dekk.toml
-        for key, value in self.spec.expand_placeholders(self.project_root, conda_prefix).items():
+        for key, value in self.spec.expand_placeholders(self.project_root, environment_prefix).items():
             if key.upper() in ("PATH", "BIN"):
                 for path in value.split(os.pathsep):
                     builder.prepend_path(path)
@@ -78,7 +65,6 @@ class EnvironmentActivator:
 
         env_vars = builder.to_env_dict()
 
-        # Validate tools
         effective_path = os.environ.get("PATH", "")
         if path_prefix := env_vars.get("PATH"):
             effective_path = (
@@ -91,7 +77,6 @@ class EnvironmentActivator:
             if not spec.optional and not shutil.which(spec.command, path=effective_path)
         ]
 
-        # Generate shell script if requested
         activation_script = None
         if shell:
             shell_kind = (
@@ -101,12 +86,11 @@ class EnvironmentActivator:
             )
             activation_script = ActivationScriptBuilder().build(builder.build(), shell_kind)
 
-        # Cache for next time
-        if use_cache and self.spec.conda:
+        if use_cache and resolved:
             get_cache().set(
                 self.project_root,
-                self.spec.conda.name,
-                conda_prefix,
+                cache_key,
+                environment_prefix,
                 env_vars,
                 missing_tools,
             )
@@ -118,9 +102,9 @@ class EnvironmentActivator:
         )
 
     @classmethod
-    def from_cwd(cls) -> EnvironmentActivator:
-        """Create activator by finding .dekk.toml from current directory."""
-        spec_file = find_envspec()
+    def from_path(cls, start_dir: Path) -> EnvironmentActivator:
+        """Create an activator by locating .dekk.toml from *start_dir* upward."""
+        spec_file = find_envspec(start_dir)
         if not spec_file:
             raise NotFoundError(
                 "No .dekk.toml found",
@@ -128,6 +112,12 @@ class EnvironmentActivator:
             )
 
         spec = EnvironmentSpec.from_file(spec_file)
-        project_root = spec_file.parent
+        return cls(spec, spec_file.parent)
 
-        return cls(spec, project_root)
+    @classmethod
+    def from_cwd(cls) -> EnvironmentActivator:
+        """Create activator by finding .dekk.toml from current directory."""
+        return cls.from_path(Path.cwd())
+
+
+__all__ = ["ActivationResult", "EnvironmentActivator"]

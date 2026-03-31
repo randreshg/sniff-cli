@@ -14,7 +14,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from dekk.remediate import DetectedIssue, IssueSeverity
+from dekk.diagnostics.remediate import DetectedIssue, IssueSeverity
 
 
 class CheckStatus(enum.Enum):

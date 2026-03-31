@@ -295,8 +295,8 @@ def test_serialize_value_handles_nested_paths_dataclasses_and_datetimes():
 
 
 def _make_context(**overrides) -> ExecutionContext:
-    from dekk.ci import CIInfo
-    from dekk.detect import PlatformInfo
+    from dekk.detection.ci import CIInfo
+    from dekk.detection.detect import PlatformInfo
 
     defaults = {
         "platform": PlatformInfo(os="Linux", arch="x86_64"),
@@ -324,17 +324,17 @@ def _make_context(**overrides) -> ExecutionContext:
 
 
 def test_execution_context_capture_respects_optional_sections():
-    from dekk.ci import CIInfo
-    from dekk.detect import PlatformInfo
+    from dekk.detection.ci import CIInfo
+    from dekk.detection.detect import PlatformInfo
 
     workspace = ContextWorkspaceInfo(Path.cwd(), None, [], [])
     fake_platform = PlatformInfo(os="Linux", arch="x86_64")
     fake_ci = CIInfo(is_ci=False)
 
     with (
-        patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform),
-        patch("dekk.conda.CondaDetector.find_active", return_value=None),
-        patch("dekk.ci.CIDetector.detect", return_value=fake_ci),
+        patch("dekk.detection.detect.PlatformDetector.detect", return_value=fake_platform),
+        patch("dekk.detection.conda.CondaDetector.find_active", return_value=None),
+        patch("dekk.detection.ci.CIDetector.detect", return_value=fake_ci),
         patch("dekk.context._detect_workspace", return_value=workspace),
     ):
         ctx = ExecutionContext.capture(
@@ -351,8 +351,8 @@ def test_execution_context_capture_respects_optional_sections():
 
 
 def test_execution_context_capture_includes_requested_sections():
-    from dekk.ci import CIInfo
-    from dekk.detect import PlatformInfo
+    from dekk.detection.ci import CIInfo
+    from dekk.detection.detect import PlatformInfo
 
     fake_platform = PlatformInfo(os="Linux", arch="x86_64")
     fake_ci = CIInfo(is_ci=False)
@@ -362,9 +362,9 @@ def test_execution_context_capture_includes_requested_sections():
     memory = MemoryInfo(16384, 8192, 8192)
 
     with (
-        patch("dekk.detect.PlatformDetector.detect", return_value=fake_platform),
-        patch("dekk.conda.CondaDetector.find_active", return_value=None),
-        patch("dekk.ci.CIDetector.detect", return_value=fake_ci),
+        patch("dekk.detection.detect.PlatformDetector.detect", return_value=fake_platform),
+        patch("dekk.detection.conda.CondaDetector.find_active", return_value=None),
+        patch("dekk.detection.ci.CIDetector.detect", return_value=fake_ci),
         patch("dekk.context._detect_workspace", return_value=workspace),
         patch("dekk.context._detect_installed_packages", return_value={"pytest": "8.4.0"}),
         patch("dekk.context._detect_cpu_info", return_value=cpu),

@@ -34,39 +34,67 @@ src/dekk/
 ├── __init__.py          # PEP 562 lazy re-exports (auto-generated __all__)
 ├── _compat.py           # TOML compat, load_toml, load_json, deep_merge, walk_up
 │
-│   # ── Core Detection ────────────────────────────────────
-├── detect.py            # PlatformDetector, PlatformInfo
-├── deps.py              # DependencyChecker, DependencySpec, DependencyResult, ToolChecker
-├── conda.py             # CondaDetector, CondaEnvironment, CondaValidation
-├── ci.py                # CIDetector, CIInfo, CIProvider, CIBuildAdvisor, CIBuildHints
-├── workspace.py         # WorkspaceDetector, WorkspaceInfo, WorkspaceKind
+│   # ── Detection ─────────────────────────────────────────
+├── detection/
+│   ├── __init__.py      # Detection exports
+│   ├── detect.py        # PlatformDetector, PlatformInfo
+│   ├── deps.py          # DependencyChecker, DependencySpec, DependencyResult, ToolChecker
+│   ├── conda.py         # CondaDetector, CondaEnvironment, CondaValidation
+│   ├── ci.py            # CIDetector, CIInfo, CIProvider, CIBuildAdvisor, CIBuildHints
+│   ├── workspace.py     # WorkspaceDetector, WorkspaceInfo, WorkspaceKind
+│   ├── build.py         # BuildSystemDetector, BuildSystemInfo, BuildSystem
+│   ├── compiler.py      # CompilerDetector, CompilerFamily, CompilerInfo
+│   ├── cache.py         # BuildCacheDetector, BuildCacheInfo, CacheKind
+│   ├── version_managers.py  # VersionManagerDetector, VersionManagerInfo
+│   ├── lockfile.py      # LockfileParser, LockfileInfo, LockfileKind
+│   └── libpath.py       # LibraryPathInfo, LibraryPathResolver
 ├── config.py            # ConfigManager, ConfigReconciler, ConfigSource
-│
-│   # ── Extended Detection ────────────────────────────────
-├── build.py             # BuildSystemDetector, BuildSystemInfo, BuildSystem
-├── compiler.py          # CompilerDetector, CompilerFamily, CompilerInfo
-├── cache.py             # BuildCacheDetector, BuildCacheInfo, CacheKind
 ├── version.py           # Version, VersionSpec, VersionConstraint
-├── version_managers.py  # VersionManagerDetector, VersionManagerInfo
-├── lockfile.py          # LockfileParser, LockfileInfo, LockfileKind
 ├── shell.py             # ShellDetector, ShellInfo, ActivationScriptBuilder
-├── dekk_os.py          # Host OS interface: wrapper/venv/conda path behavior
-├── libpath.py           # LibraryPathInfo, LibraryPathResolver
 │
 │   # ── Environment Setup ─────────────────────────────────
-├── envspec.py           # EnvironmentSpec, CondaSpec, ToolSpec, find_envspec
-├── activation.py        # EnvironmentActivator, ActivationResult
-├── install.py           # BinaryInstaller, InstallResult
-├── wrapper.py           # WrapperGenerator
-├── toolchain.py         # ToolchainProfile, EnvVarBuilder, CMakeToolchain
-├── env.py               # EnvSnapshot
+├── environment/
+│   ├── __init__.py      # Environment exports
+│   ├── types.py         # EnvironmentKind, normalization helpers
+│   ├── spec.py          # EnvironmentSpec, ToolSpec, find_envspec
+│   ├── resolver.py      # Resolve a DekkEnv from config
+│   ├── providers/       # Per-environment implementations
+│   ├── activation.py    # EnvironmentActivator, ActivationResult
+│   └── setup.py         # SetupResult, run_setup
+├── execution/
+│   ├── __init__.py      # Execution exports
+│   ├── install.py       # BinaryInstaller, InstallResult
+│   ├── wrapper.py       # WrapperGenerator
+│   ├── runner.py        # Python script bootstrap runner
+│   ├── test_runner.py   # Project test planning and execution
+│   ├── toolchain/       # Builder + per-toolchain implementations
+│   ├── env.py           # EnvSnapshot
+│   └── os/              # Host OS interface + per-OS implementations
 ├── context.py           # ExecutionContext, CPUInfo, GPUInfo, MemoryInfo
+├── project/
+│   ├── __init__.py      # Project routing exports
+│   └── runner.py        # Worktree-safe command routing
 │
 │   # ── Frameworks ────────────────────────────────────────
-├── diagnostic.py        # DiagnosticReport, DiagnosticRunner, CheckRegistry
-├── diagnostic_checks.py # PlatformCheck, DependencyCheck, CIEnvironmentCheck
-├── validate.py          # EnvironmentValidator, ValidationReport
-├── remediate.py         # Remediator, RemediatorRegistry, DetectedIssue
+├── agents/
+│   ├── __init__.py      # Agent-facing public exports
+│   ├── app.py           # `dekk agents` subcommand factory
+│   ├── discovery.py     # Parse skills, rules, and frontmatter
+│   ├── generators.py    # Orchestrate agent providers + manifests
+│   ├── installer.py     # Install Codex skills into Codex home
+│   ├── providers/       # Per-agent implementations
+│   ├── scaffold.py      # Scaffold `.agents/` from repo metadata + commands
+│   ├── flows.py         # Generate reusable flow templates
+│   └── constants.py     # Shared filenames and defaults
+│
+│   # ── Diagnostics ───────────────────────────────────────
+├── diagnostics/
+│   ├── __init__.py      # Diagnostics exports
+│   ├── diagnostic.py    # DiagnosticReport, DiagnosticRunner, CheckRegistry
+│   ├── diagnostic_checks.py # PlatformCheck, DependencyCheck, CIEnvironmentCheck
+│   ├── validate.py      # EnvironmentValidator, ValidationReport
+│   ├── remediate.py     # Remediator, RemediatorRegistry, DetectedIssue
+│   └── validation_cache.py # Cached activation validation data
 ├── scaffold.py          # ProjectTypeDetector, TemplateRegistry, SetupScriptBuilder
 ├── commands.py          # CommandRegistry, CommandProvider
 │
@@ -94,8 +122,8 @@ and loaded on first access via PEP 562 `__getattr__`:
 
 ```python
 _MODULE_ATTRS = {
-    "dekk.detect": ["PlatformDetector", "PlatformInfo"],
-    "dekk.deps": ["DependencyChecker", "DependencySpec", ...],
+    "dekk.detection.detect": ["PlatformDetector", "PlatformInfo"],
+    "dekk.detection.deps": ["DependencyChecker", "DependencySpec", ...],
     ...
 }
 
@@ -123,10 +151,10 @@ Consolidated compatibility layer used by 6+ modules:
 
 ---
 
-## OS Abstraction (`dekk_os.py`)
+## OS Abstraction (`execution/os/`)
 
 Windows-specific behavior used to be scattered across wrapper generation,
-toolchain setup, runner bootstrap, and install-path defaults. `dekk_os.py`
+toolchain setup, runner bootstrap, and install-path defaults. `execution/os/`
 centralizes those decisions behind a small interface:
 
 - `PosixDekkOS` owns POSIX wrapper generation, `bin/` venv layout, and
@@ -138,13 +166,17 @@ centralizes those decisions behind a small interface:
 
 Modules that rely on this layer:
 
-- `wrapper.py` delegates launcher format, filename suffixes, and default
-  installation directories to `dekk_os`.
-- `runner.py` uses `dekk_os` to find `python` and `pip` inside a venv.
-- `toolchain.py` uses `dekk_os` for conda runtime paths and CMake layout.
+- `execution/wrapper.py` delegates launcher format, filename suffixes, and
+  default installation directories to `dekk_os`.
+- `execution/install.py` asks `dekk_os` for Python command candidates instead
+  of branching on platform strings directly.
+- `execution/runner.py` uses `dekk_os` to find `python` and `pip` inside a venv.
+- `execution/toolchain/` uses `dekk_os` for runtime paths, CMake layout, and
+  OS-specific library path behavior.
 
 The design rule is: platform-sensitive filesystem and launcher behavior lives
-in `dekk_os.py`; higher-level modules stay focused on environment semantics.
+in `execution/os/`; higher-level modules stay focused on environment
+semantics.
 
 ---
 
@@ -174,6 +206,11 @@ The CLI layer (included in the base `dekk` install) provides:
 
 dekk uses the **provider pattern**: dekk defines Protocol interfaces,
 consumers register implementations.
+
+Agent generation follows a different rule: `.agents/` is the source of truth,
+and generated files in the repo root are derived artifacts. The design goal is
+that project guidance is edited once and rendered into each agent ecosystem’s
+expected format.
 
 | Extension Point | Protocol | Registry | Use Case |
 |----------------|----------|----------|----------|

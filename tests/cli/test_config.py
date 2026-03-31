@@ -2,51 +2,8 @@
 
 from __future__ import annotations
 
-import builtins
-
-import pytest
-
-from dekk.cli.config import ConfigManager, _deep_copy, _deep_merge, _load_toml
-
-
-def test_deep_copy_copies_nested_dicts_and_lists_without_aliasing():
-    original = {"nested": {"items": [1, 2, 3]}, "flag": True}
-    copied = _deep_copy(original)
-
-    assert copied == original
-    assert copied is not original
-    assert copied["nested"] is not original["nested"]
-    assert copied["nested"]["items"] is not original["nested"]["items"]
-
-
-def test_deep_merge_merges_nested_values_and_replaces_shape_changes():
-    target = {"db": {"host": "localhost", "port": 5432}, "mode": {"debug": False}}
-    _deep_merge(target, {"db": {"port": 3306, "name": "app"}, "mode": "flat"})
-
-    assert target == {
-        "db": {"host": "localhost", "port": 3306, "name": "app"},
-        "mode": "flat",
-    }
-
-
-def test_load_toml_handles_valid_missing_invalid_and_disabled_cases(tmp_path):
-    valid = tmp_path / "valid.toml"
-    valid.write_text('[section]\nkey = "value"\n')
-    invalid = tmp_path / "invalid.toml"
-    invalid.write_text("not valid [toml")
-
-    assert _load_toml(valid) == {"section": {"key": "value"}}
-    assert _load_toml(tmp_path / "missing.toml") == {}
-    assert _load_toml(invalid) == {}
-
-    import dekk.cli.config as config_module
-
-    original = config_module.tomllib
-    config_module.tomllib = None
-    try:
-        assert _load_toml(valid) == {}
-    finally:
-        config_module.tomllib = original
+from dekk.cli.config import ConfigManager
+from dekk.paths import project_config_file, user_config_file
 
 
 def test_config_manager_loads_defaults_without_mutating_source(tmp_path, monkeypatch):
@@ -89,13 +46,13 @@ def test_config_manager_merges_user_project_and_env_precedence(tmp_path, monkeyp
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.chdir(child)
 
-    user_config = home / ".testapp"
-    user_config.mkdir()
-    (user_config / "config.toml").write_text('[tier]\nwho = "user"\n[build]\noptimize = false\n')
+    user_config = user_config_file("testapp")
+    user_config.parent.mkdir(parents=True)
+    user_config.write_text('[tier]\nwho = "user"\n[build]\noptimize = false\n')
 
-    project_config = project / ".testapp"
-    project_config.mkdir()
-    (project_config / "config.toml").write_text(
+    project_config = project_config_file("testapp", start_dir=project)
+    project_config.parent.mkdir()
+    project_config.write_text(
         '[tier]\nwho = "project"\n[build]\ntarget = "release"\n'
     )
 
@@ -140,19 +97,19 @@ def test_config_manager_save_roundtrips_user_and_project_config(tmp_path, monkey
     user_config = ConfigManager("testapp")
     user_config.set("build.optimize", True)
     user_config.save(user=True)
-    assert (home / ".testapp" / "config.toml").exists()
+    assert user_config_file("testapp").exists()
 
     project_config = ConfigManager("testapp")
     project_config.set("local.key", "value")
     project_config.save(user=False)
-    assert (project / ".testapp" / "config.toml").exists()
+    assert project_config_file("testapp", start_dir=project).exists()
 
     reloaded = ConfigManager("testapp")
     assert reloaded.get("build.optimize") is True
     assert reloaded.get("local.key") == "value"
 
 
-def test_config_manager_save_requires_tomli_w(tmp_path, monkeypatch):
+def test_config_manager_save_falls_back_without_tomli_w(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
 
@@ -163,7 +120,11 @@ def test_config_manager_save_requires_tomli_w(tmp_path, monkeypatch):
     try:
         config = ConfigManager("testapp")
         config.set("key", "value")
-        with pytest.raises(builtins.RuntimeError, match="tomli_w is required"):
-            config.save()
+        config.set("build.optimize", True)
+        config.save()
+
+        reloaded = ConfigManager("testapp")
+        assert reloaded.get("key") == "value"
+        assert reloaded.get("build.optimize") is True
     finally:
         config_module.tomli_w = original

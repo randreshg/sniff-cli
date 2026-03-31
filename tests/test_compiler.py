@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.compiler import CompilerDetector, CompilerFamily, CompilerInfo, ToolchainInfo
+from dekk.detection.compiler import CompilerDetector, CompilerFamily, CompilerInfo, ToolchainInfo
 
 
 def test_compiler_info_not_found():

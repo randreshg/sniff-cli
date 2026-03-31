@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from typing import Final
 
-from dekk.ci import CIDetector
-from dekk.deps import DependencyChecker, DependencySpec
-from dekk.detect import PlatformDetector
-from dekk.diagnostic import CheckResult, CheckStatus
+from dekk.detection.ci import CIDetector
+from dekk.detection.deps import DependencyChecker, DependencySpec
+from dekk.detection.detect import PlatformDetector
+from dekk.diagnostics.diagnostic import CheckResult, CheckStatus
 
 PLATFORM_CHECK_NAME: Final = "platform"
 PLATFORM_CHECK_CATEGORY: Final = "platform"

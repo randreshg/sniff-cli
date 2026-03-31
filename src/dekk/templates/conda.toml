@@ -1,10 +1,11 @@
-# Conda environment example
+# Environment (Conda) example
 
 [project]
 name = "ml-project"
 
-[conda]
-name = "ml-project"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]

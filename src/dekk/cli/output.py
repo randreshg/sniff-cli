@@ -34,7 +34,7 @@ from dekk.cli.styles import (
 )
 
 if TYPE_CHECKING:
-    from dekk.deps import DependencyResult
+    from dekk.detection.deps import DependencyResult
 
 
 class OutputFormat(StrEnum):
@@ -187,14 +187,14 @@ def print_dep_results(
 ) -> list[str]:
     """Print dependency check results and return a list of blocking issues.
 
-    Iterates over a list of :class:`~dekk.deps.DependencyResult` objects,
+    Iterates over a list of :class:`~dekk.detection.deps.DependencyResult` objects,
     prints a success/warning/error line for each one, and collects the names
     of required dependencies that are missing or need upgrading so the caller
     can include them in an action-required summary.
 
     Args:
         results: Iterable of ``DependencyResult`` objects (from
-            :class:`~dekk.deps.DependencyChecker`).
+            :class:`~dekk.detection.deps.DependencyChecker`).
         skip_names: Optional set of dependency *names* whose failures should
             not be added to the returned missing list. Use this when a later
             install stage will handle those deps in detail in a consumer CLI.

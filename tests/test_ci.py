@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.ci import (
+from dekk.detection.ci import (
     CIDetector,
     CIGitInfo,
     CIInfo,

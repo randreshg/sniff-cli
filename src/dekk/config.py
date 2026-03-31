@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dekk._compat import deep_merge, load_toml, walk_up
+from dekk._compat import deep_merge, load_toml
+from dekk.paths import find_project_config_file, site_config_file, user_config_file
 
 
 class ConfigManager:
@@ -17,8 +18,8 @@ class ConfigManager:
     Precedence (highest to lowest):
     1. Environment variables (APP_SECTION_KEY)
     2. Project config (.app/config.toml)
-    3. User config (~/.config/app/config.toml)
-    4. System config (/etc/app/config.toml) - Linux/macOS only
+    3. User config (platform-standard user config dir)
+    4. System config (platform-standard site config dir)
     5. Built-in defaults
     """
 
@@ -48,16 +49,15 @@ class ConfigManager:
     def _load(self) -> None:
         """Load configuration from all sources."""
         # Start with defaults
-        self._config = self.defaults.copy()
+        self._config = deep_merge({}, self.defaults)
 
-        # Load system config (Linux/macOS only)
-        if os.name != "nt":
-            system_config = Path(f"/etc/{self.app_name}/config.toml")
-            if system_config.exists():
-                self._merge(load_toml(system_config) or {})
+        # Load system config
+        system_config = site_config_file(self.app_name)
+        if system_config.exists():
+            self._merge(load_toml(system_config) or {})
 
         # Load user config
-        user_config = Path.home() / ".config" / self.app_name / "config.toml"
+        user_config = user_config_file(self.app_name)
         if user_config.exists():
             self._merge(load_toml(user_config) or {})
 
@@ -71,8 +71,7 @@ class ConfigManager:
 
     def _find_project_config(self) -> Path | None:
         """Find project config by walking up from cwd."""
-        marker = str(Path(self.config_dir) / "config.toml")
-        return walk_up(Path.cwd(), marker)
+        return find_project_config_file(self.app_name, config_dir_name=self.config_dir)
 
     def _merge(self, source: dict[str, Any]) -> None:
         """Deep merge source into config."""

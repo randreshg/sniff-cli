@@ -1,4 +1,4 @@
-"""Tests for dekk.env -- EnvSnapshot and EnvVarBuilder."""
+"""Tests for dekk.execution.env -- EnvSnapshot and EnvVarBuilder."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from dekk.env import EnvSnapshot, EnvVarBuilder
+from dekk.execution.env import EnvSnapshot, EnvVarBuilder
 
 # ---------------------------------------------------------------------------
 # EnvSnapshot
@@ -223,9 +223,9 @@ class TestEnvIntegration:
         assert ES is EnvSnapshot
 
     def test_direct_module_import(self):
-        """Both types are importable from dekk.env."""
-        from dekk.env import EnvSnapshot as ES
-        from dekk.env import EnvVarBuilder as EVB
+        """Both types are importable from dekk.execution.env."""
+        from dekk.execution.env import EnvSnapshot as ES
+        from dekk.execution.env import EnvVarBuilder as EVB
 
         assert ES is EnvSnapshot
         assert EVB is EnvVarBuilder
@@ -237,14 +237,14 @@ class TestEnvIntegration:
 
 
 class TestEnvToolchainIntegration:
-    """Tests combining dekk.env and dekk.toolchain modules."""
+    """Tests combining dekk.execution.env and dekk.execution.toolchain modules."""
 
     def test_toolchain_env_dict_into_env_builder(self):
         """Toolchain's to_env_dict can be merged into an env.EnvVarBuilder."""
         from pathlib import Path
 
-        from dekk.toolchain import CMakeToolchain, CondaToolchain
-        from dekk.toolchain import EnvVarBuilder as TcBuilder
+        from dekk.execution.toolchain import CMakeToolchain, CondaToolchain
+        from dekk.execution.toolchain import EnvVarBuilder as TcBuilder
 
         prefix = Path("/opt/conda/envs/apxm")
         tc_builder = TcBuilder()
@@ -259,14 +259,14 @@ class TestEnvToolchainIntegration:
 
         assert result.get("CUSTOM") == "value"
         assert result.get("CONDA_PREFIX") == str(prefix)
-        assert result.get("MLIR_DIR") is not None
+        assert result.get("CMAKE_PREFIX_PATH") == str(prefix)
 
     def test_env_snapshot_as_toolchain_base(self):
         """EnvSnapshot can be merged with toolchain overrides."""
         from pathlib import Path
 
-        from dekk.toolchain import CondaToolchain
-        from dekk.toolchain import EnvVarBuilder as TcBuilder
+        from dekk.execution.toolchain import CondaToolchain
+        from dekk.execution.toolchain import EnvVarBuilder as TcBuilder
 
         # Simulate captured env
         base = EnvSnapshot.from_dict({"HOME": "/home/user", "LANG": "en_US.UTF-8"})
@@ -290,11 +290,11 @@ class TestEnvToolchainIntegration:
 
 
 class TestEnvLibpathIntegration:
-    """Tests combining dekk.env and dekk.libpath modules."""
+    """Tests combining dekk.execution.env and dekk.detection.libpath modules."""
 
     def test_libpath_to_env_var_into_builder(self):
         """LibraryPathResolver.to_env_var() integrates with env.EnvVarBuilder."""
-        from dekk.libpath import LibraryPathResolver
+        from dekk.detection.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/lib", "/usr/local/lib")
@@ -308,7 +308,7 @@ class TestEnvLibpathIntegration:
 
     def test_env_snapshot_capture_includes_lib_path(self):
         """After libpath.apply(), the captured snapshot has the var."""
-        from dekk.libpath import LibraryPathResolver
+        from dekk.detection.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/snapshot/test/lib")

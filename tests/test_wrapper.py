@@ -1,4 +1,4 @@
-"""Tests for dekk.wrapper -- self-contained wrapper script generation."""
+"""Tests for dekk.execution.wrapper -- self-contained wrapper script generation."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 import pytest
 
-from dekk.activation import ActivationResult
-from dekk.dekk_os import WindowsDekkOS
-from dekk.install import InstallResult
-from dekk.wrapper import (
+from dekk.environment.activation import ActivationResult
+from dekk.execution.os import WindowsDekkOS
+from dekk.execution.install import InstallResult
+from dekk.execution.wrapper import (
     WrapperGenerator,
     _cmd_escape_value,
     _dir_in_path,
@@ -420,7 +420,7 @@ class TestInstall:
         assert result.bin_path.exists()
 
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
+        monkeypatch.setattr("dekk.execution.wrapper.get_dekk_os", lambda: WindowsDekkOS())
         monkeypatch.chdir(tmp_path)
         result = WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")
         expected = tmp_path / ".install" / "myapp.cmd"
@@ -442,7 +442,7 @@ class TestInstall:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
+        monkeypatch.setattr("dekk.execution.wrapper.get_dekk_os", lambda: WindowsDekkOS())
         custom = tmp_path / "custom_bin"
         result = WrapperGenerator.install(
             self.SAMPLE_SCRIPT,
@@ -562,7 +562,7 @@ class TestInstallFromSpec:
         install_dir = tmp_path / "install_bin"
         # Mock the EnvironmentActivator.activate to avoid needing a real conda env.
         with patch(
-            "dekk.wrapper.EnvironmentActivator.activate",
+            "dekk.execution.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={"MY_VAR": "val"}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -577,12 +577,12 @@ class TestInstallFromSpec:
         assert "MY_VAR" in content
 
     def test_with_environment_spec(self, tmp_path: Path, dummy_target: Path):
-        from dekk.envspec import EnvironmentSpec
+        from dekk.environment.spec import EnvironmentSpec
 
         spec = EnvironmentSpec(project_name="direct-spec")
         install_dir = tmp_path / "install_bin"
         with patch(
-            "dekk.wrapper.EnvironmentActivator.activate",
+            "dekk.execution.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ):
             result = WrapperGenerator.install_from_spec(
@@ -605,11 +605,11 @@ class TestInstallFromSpec:
         # When project_root is not given, it should be inferred from spec_file's parent.
         install_dir = tmp_path / "install_bin"
         with patch(
-            "dekk.wrapper.EnvironmentActivator.activate",
+            "dekk.execution.wrapper.EnvironmentActivator.activate",
             return_value=ActivationResult(env_vars={}),
         ):
             with patch(
-                "dekk.wrapper.EnvironmentActivator.__init__",
+                "dekk.execution.wrapper.EnvironmentActivator.__init__",
                 return_value=None,
             ) as mock_init:
                 mock_init.return_value = None
@@ -621,7 +621,7 @@ class TestInstallFromSpec:
 
         # Simpler approach: verify the root matches spec_file.parent.
         with patch(
-            "dekk.wrapper.EnvironmentActivator",
+            "dekk.execution.wrapper.EnvironmentActivator",
         ) as MockActivator:
             mock_instance = MockActivator.return_value
             mock_instance.activate.return_value = ActivationResult(env_vars={})
@@ -680,7 +680,7 @@ class TestUninstall:
         assert result.bin_path == tmp_path / ".install" / "myapp"
 
     def test_default_install_dir_windows(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        monkeypatch.setattr("dekk.wrapper.get_dekk_os", lambda: WindowsDekkOS())
+        monkeypatch.setattr("dekk.execution.wrapper.get_dekk_os", lambda: WindowsDekkOS())
         monkeypatch.chdir(tmp_path)
 
         WrapperGenerator.install(self.SAMPLE_SCRIPT, "myapp")

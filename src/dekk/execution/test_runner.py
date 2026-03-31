@@ -11,9 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from dekk.build import BuildSystem, BuildSystemDetector
+from dekk.detection.build import BuildSystem, BuildSystemDetector
 from dekk.cli.errors import NotFoundError, RuntimeError
-from dekk.envspec import find_envspec
+from dekk.environment.spec import find_envspec
 
 PYTHON_SYSTEMS: Final = {
     BuildSystem.POETRY,
@@ -184,10 +184,10 @@ def run_test_plan(plan: TestPlan) -> int:
     env = os.environ.copy()
     spec_file = find_envspec(plan.cwd)
     if spec_file is not None:
-        from dekk.activation import EnvironmentActivator
+        from dekk.environment.activation import EnvironmentActivator
         from dekk.cli.errors import DependencyError
 
-        result = EnvironmentActivator.from_cwd().activate()
+        result = EnvironmentActivator.from_path(plan.cwd).activate()
         if result.missing_tools:
             raise DependencyError(
                 "Missing required tools: " + ", ".join(result.missing_tools),

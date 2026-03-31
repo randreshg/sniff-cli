@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.ci import CIBuildAdvisor, CIBuildHints, CIInfo, CIProvider, CIRunnerInfo
+from dekk.detection.ci import CIBuildAdvisor, CIBuildHints, CIInfo, CIProvider, CIRunnerInfo
 
 # ── Helpers ──────────────────────────────────────────────────────────
 

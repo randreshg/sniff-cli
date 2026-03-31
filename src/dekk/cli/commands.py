@@ -15,7 +15,7 @@ except ImportError as err:
     ) from err
 
 from dekk.cli.errors import ConfigError, NotFoundError
-from dekk.cli.styles import print_error, print_info, print_next_steps, print_success
+from dekk.cli.styles import print_error, print_info, print_success
 
 DEFAULT_DIRECTORY_ARGUMENT: Final = typer.Argument(
     Path("."),
@@ -45,7 +45,7 @@ NAME_OPTION: Final = typer.Option(None, "--name", "-n", help="Project name")
 EXAMPLE_OPTION: Final = typer.Option(
     None,
     "--example",
-    help="Start from a built-in template (quickstart, minimal, or conda)",
+    help="Start from a built-in template (quickstart, minimal, conda, or agents)",
 )
 FORCE_OPTION: Final = typer.Option(
     False,
@@ -92,6 +92,11 @@ REMOVE_PATH_OPTION: Final = typer.Option(
     "--remove-path",
     help="Also remove this project's PATH export from the shell config",
 )
+UPDATE_SHELL_OPTION: Final = typer.Option(
+    False,
+    "--update-shell",
+    help="Add install directory to shell config (opt-in)",
+)
 EXAMPLE_OUTPUT_OPTION: Final = typer.Option(
     None,
     "--output",
@@ -110,6 +115,7 @@ EXAMPLE_FORCE_OPTION: Final = typer.Option(
     "-f",
     help="Overwrite the output file if it exists",
 )
+PROJECT_SPEC_FILENAME: Final = ".dekk.toml"
 
 # ---------------------------------------------------------------------------
 # activate
@@ -125,13 +131,13 @@ def activate(
         eval "$(dekk activate --shell bash)"
         Invoke-Expression (& dekk activate --shell powershell | Out-String)
     """
-    from dekk.activation import EnvironmentActivator
-    from dekk.envspec import find_envspec
+    from dekk.environment.activation import EnvironmentActivator
+    from dekk.environment.spec import find_envspec
     from dekk.shell import ShellDetector
 
     spec_file = find_envspec()
     if not spec_file:
-        raise NotFoundError("No .dekk.toml found", hint="Run 'dekk init'")
+        raise NotFoundError(f"No {PROJECT_SPEC_FILENAME} found", hint="Run 'dekk init'")
 
     # Auto-detect shell
     detector = ShellDetector()
@@ -163,7 +169,7 @@ name = "{project_name}"
 python = {{ command = "python", version = ">=3.10" }}
 
 [env]
-# Variables with {{project}}, {{conda}}, {{home}} placeholders
+# Variables with {{project}}, {{environment}}, {{home}} placeholders
 # MY_VAR = "{{project}}/data"
 
 [paths]
@@ -175,6 +181,7 @@ EXAMPLE_TEMPLATES = {
     "quickstart": "quickstart.toml",
     "minimal": "minimal.toml",
     "conda": "conda.toml",
+    "agents": "agents.toml",
 }
 
 
@@ -213,13 +220,13 @@ def init(
     example: str | None = EXAMPLE_OPTION,
     force: bool = FORCE_OPTION,
 ) -> None:
-    """Initialize .dekk.toml for automatic environment setup."""
+    """Initialize `.dekk.toml` from a chosen template."""
     target_dir = directory.resolve()
-    spec_file = target_dir / ".dekk.toml"
+    spec_file = target_dir / PROJECT_SPEC_FILENAME
 
     if spec_file.exists() and not force:
         raise ConfigError(
-            f".dekk.toml already exists: {spec_file}",
+            f"{PROJECT_SPEC_FILENAME} already exists: {spec_file}",
             hint="Use --force to overwrite",
         )
 
@@ -230,14 +237,7 @@ def init(
         content = TEMPLATE.format(project_name=project_name)
 
     spec_file.write_text(content, encoding="utf-8")
-    print_success(f"Created {spec_file} - edit it and run 'dekk activate'")
-    print_next_steps(
-        [
-            f"Review {spec_file.name} and adjust tools, env vars, or conda settings",
-            "Run dekk activate --shell bash (or --shell powershell on Windows)",
-            "Generate a launcher with dekk wrap <name> <target> when your target exists",
-        ]
-    )
+    print_success(f"Created {spec_file}")
 
 
 def example(
@@ -246,7 +246,7 @@ def example(
     name: str | None = EXAMPLE_NAME_OPTION,
     force: bool = EXAMPLE_FORCE_OPTION,
 ) -> None:
-    """Print or write a built-in .dekk.toml example."""
+    """Print or write a built-in `.dekk.toml` example."""
     content = _load_example_template(template, project_name=name)
 
     if output is None:
@@ -281,7 +281,7 @@ def uninstall(
         dekk uninstall myapp --install-dir ./.install
         dekk uninstall myapp --remove-path
     """
-    from dekk.install import BinaryInstaller
+    from dekk.execution.install import BinaryInstaller
 
     project_root = Path.cwd().resolve()
     result = BinaryInstaller(project_root=project_root).uninstall_wrapper(
@@ -303,88 +303,38 @@ def install(
     python: Path | None = PYTHON_OPTION,
     install_dir: Path | None = INSTALL_DIR_OPTION,
     spec_file: Path | None = SPEC_OPTION,
+    update_shell: bool = UPDATE_SHELL_OPTION,
 ) -> None:
     """Install a runnable project command with the right environment behavior.
 
-    Rules:
-    - Python scripts default to a self-bootstrapping shim driven by
-      ``python -m dekk`` so project dependencies are installed automatically.
-    - If a conda-backed ``.dekk.toml`` is present, dekk installs a full
-      environment wrapper instead.
-    - Non-Python targets require ``.dekk.toml`` because dekk must know
-      which environment variables and PATH entries to bake into the wrapper.
+    If `.dekk.toml` is missing, dekk writes a minimal starter config from the
+    detected project files before installing the wrapper.
     """
-    from dekk.conda import CondaDetector
-    from dekk.dekk_os import get_dekk_os
-    from dekk.envspec import EnvironmentSpec, find_envspec
-    from dekk.install import BinaryInstaller
+    from dekk.environment.bootstrap import ensure_envspec
+    from dekk.execution.install import BinaryInstaller
 
     target = target.resolve()
     if not target.exists():
         raise NotFoundError(f"Target not found: {target}", hint="Build it first or check the path")
 
-    resolved_spec_file = spec_file.resolve() if spec_file else find_envspec(target.parent)
-    spec = EnvironmentSpec.from_file(resolved_spec_file) if resolved_spec_file else None
-
+    bootstrap = ensure_envspec(target.parent, target=target) if spec_file is None else None
+    resolved_spec_file = spec_file.resolve() if spec_file else bootstrap.path
     install_name = name or target.stem
-    project_root = resolved_spec_file.parent if resolved_spec_file else target.parent
-    installer = BinaryInstaller(project_root=project_root)
-
-    inferred_python = python.resolve() if python else None
-    target_is_python = target.suffix.lower() == ".py"
-
-    if target_is_python and inferred_python is None and spec is not None and spec.conda is not None:
-        prefix = CondaDetector().find_prefix(spec.conda.name)
-        if prefix is not None:
-            inferred_python = get_dekk_os().conda_runtime_paths(prefix)[0] / "python"
-            if get_dekk_os().name == "windows":
-                inferred_python = prefix / "python.exe"
-            elif not inferred_python.exists():
-                inferred_python = prefix / "bin" / "python"
-
-    if target_is_python and inferred_python is None and (spec is None or spec.conda is None):
-        result = installer.install_python_shim(
-            target,
-            name=install_name,
-            install_dir=install_dir,
-        )
-        print_success(result.message)
-        if not result.in_path:
-            print_info(f"Add {result.bin_path.parent} to your PATH")
-        print_next_steps(
-            [
-                f"Run {install_name} --help",
-                (
-                    "The first run will create or refresh the local .venv "
-                    "from pyproject.toml if needed"
-                ),
-            ]
-        )
-        return
-
-    if not target_is_python and spec is None:
-        raise NotFoundError(
-            "No .dekk.toml found for a non-Python target",
-            hint="Run 'dekk init' first or pass --spec",
-        )
+    installer = BinaryInstaller(project_root=resolved_spec_file.parent)
 
     result = installer.install_wrapper(
         target=target,
-        spec=spec,
         spec_file=resolved_spec_file,
-        python=inferred_python,
+        python=python.resolve() if python else None,
         name=install_name,
         install_dir=install_dir,
+        update_shell=update_shell,
     )
+    if bootstrap is not None and bootstrap.created:
+        print_info(f"Created {bootstrap.path.name} from {bootstrap.source}")
     print_success(result.message)
     if not result.in_path:
         print_info(f"Add {result.bin_path.parent} to your PATH")
-    print_next_steps(
-        [
-            f"Run {install_name} --help",
-            "Re-run dekk install after changing .dekk.toml, conda, or the wrapped target path",
-        ]
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -395,7 +345,7 @@ def install(
 def test(extra_args: list[str] | None = None) -> None:
     """Run the project's default test command."""
     from dekk.cli.styles import print_info
-    from dekk.test_runner import resolve_test_plan, run_test_plan
+    from dekk.execution.test_runner import resolve_test_plan, run_test_plan
 
     args = extra_args or []
     plan = resolve_test_plan(Path.cwd(), args)
@@ -414,6 +364,7 @@ def wrap(
     python: Path | None = PYTHON_OPTION,
     install_dir: Path | None = INSTALL_DIR_OPTION,
     spec_file: Path | None = WRAP_SPEC_OPTION,
+    update_shell: bool = UPDATE_SHELL_OPTION,
 ) -> None:
     """Generate a self-contained wrapper that activates your environment automatically.
 
@@ -425,33 +376,35 @@ def wrap(
         dekk wrap myapp ./tools/cli.py --python /opt/conda/envs/myapp/bin/python3
         dekk wrap myapp .\\dist\\myapp.exe --install-dir .\\.install
     """
-    from dekk.envspec import find_envspec
-    from dekk.wrapper import WrapperGenerator
-
-    if spec_file:
-        if not spec_file.exists():
-            print_error(f"Spec file not found: {spec_file}")
-            raise typer.Exit(1)
-    else:
-        spec_file = find_envspec()
-        if not spec_file:
-            print_error("No .dekk.toml found")
-            print_info("Run 'dekk init' to create one, or pass --spec")
-            raise typer.Exit(1)
+    from dekk.environment.bootstrap import ensure_envspec
+    from dekk.execution.install import BinaryInstaller
 
     target = target.resolve()
     if not target.exists():
         print_error(f"Target not found: {target}")
         raise typer.Exit(1)
 
+    bootstrap = None
+    if spec_file:
+        if not spec_file.exists():
+            print_error(f"Spec file not found: {spec_file}")
+            raise typer.Exit(1)
+        resolved_spec_file = spec_file.resolve()
+    else:
+        bootstrap = ensure_envspec(target.parent, target=target)
+        resolved_spec_file = bootstrap.path
+
     try:
-        result = WrapperGenerator.install_from_spec(
-            spec_file=spec_file,
+        result = BinaryInstaller(project_root=resolved_spec_file.parent).install_wrapper(
             target=target,
+            spec_file=resolved_spec_file,
             python=python.resolve() if python else None,
             name=name,
             install_dir=install_dir,
+            update_shell=update_shell,
         )
+        if bootstrap is not None and bootstrap.created:
+            print_info(f"Created {bootstrap.path.name} from {bootstrap.source}")
         print_success(result.message)
         if not result.in_path:
             print_info(f"Add {result.bin_path.parent} to your PATH")

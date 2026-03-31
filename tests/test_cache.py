@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.cache import BuildCacheDetector, BuildCacheInfo, CacheKind
+from dekk.detection.cache import BuildCacheDetector, BuildCacheInfo, CacheKind
 
 
 @pytest.fixture

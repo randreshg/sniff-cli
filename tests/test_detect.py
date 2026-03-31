@@ -2,7 +2,7 @@
 
 import platform
 
-from dekk.detect import PlatformDetector, PlatformInfo
+from dekk.detection.detect import PlatformDetector, PlatformInfo
 
 
 def test_platform_detector_always_succeeds():

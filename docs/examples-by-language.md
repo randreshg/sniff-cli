@@ -11,8 +11,9 @@ with a wrapper generation example. Use `dekk` in the examples below.
 [project]
 name = "ml-pipeline"
 
-[conda]
-name = "ml-pipeline"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -23,7 +24,7 @@ jupyter = { command = "jupyter", optional = true }
 PYTHONPATH = "{project}/src"
 
 [paths]
-bin = ["{conda}/bin"]
+bin = ["{environment}/bin"]
 ```
 
 **Wrapper:**
@@ -64,8 +65,9 @@ dekk wrap my-rust-app ./target/release/my-rust-app
 [project]
 name = "physics-sim"
 
-[conda]
-name = "physics-sim"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -75,7 +77,7 @@ clang = { command = "clang", version = ">=17", optional = true }
 gcc   = { command = "gcc", optional = true }
 
 [env]
-CMAKE_PREFIX_PATH = "{conda}"
+CMAKE_PREFIX_PATH = "{environment}"
 CMAKE_BUILD_TYPE  = "Release"
 CMAKE_GENERATOR   = "Ninja"
 
@@ -170,7 +172,7 @@ java  = { command = "java", version = ">=17" }
 mvn   = { command = "mvn", version = ">=3.9" }
 
 [env]
-JAVA_HOME  = "{conda}/lib/jvm"
+JAVA_HOME  = "{environment}/lib/jvm"
 MAVEN_OPTS = "-Xmx2g"
 ```
 
@@ -185,7 +187,7 @@ java   = { command = "java", version = ">=17" }
 gradle = { command = "gradle", version = ">=8.0" }
 
 [env]
-JAVA_HOME   = "{conda}/lib/jvm"
+JAVA_HOME   = "{environment}/lib/jvm"
 GRADLE_OPTS = "-Xmx2g"
 ```
 
@@ -209,8 +211,9 @@ A project combining Python, Rust, and LLVM/MLIR (e.g., a compiler toolkit):
 [project]
 name = "compiler-toolkit"
 
-[conda]
-name = "compiler-toolkit"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -220,12 +223,11 @@ cmake  = { command = "cmake", version = ">=3.20" }
 ninja  = { command = "ninja" }
 
 [env]
-MLIR_DIR = "{conda}/lib/cmake/mlir"
-LLVM_DIR = "{conda}/lib/cmake/llvm"
+CMAKE_PREFIX_PATH = "{environment}"
 
 [paths]
 bin = [
-    "{conda}/bin",
+    "{environment}/bin",
     "{project}/bin",
     "{project}/target/release",
 ]
@@ -252,6 +254,19 @@ The smallest valid `.dekk.toml`:
 name = "hello"
 ```
 
+### Agent-enabled project
+
+Use the built-in template when the repo should generate checked-in agent files:
+
+```bash
+dekk init --example agents
+dekk agents init
+dekk agents generate --target all
+```
+
+The template adds `[commands]` and `[agents]` so `.agents/` can be scaffolded
+from project commands.
+
 ### Tools only (no conda)
 
 When you rely on system-installed tools:
@@ -274,8 +289,9 @@ When conda provides everything:
 [project]
 name = "data-science"
 
-[conda]
-name = "data-science"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [env]

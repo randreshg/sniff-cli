@@ -1,6 +1,6 @@
 """Tests for dependency checking."""
 
-from dekk.deps import DependencyChecker, DependencyResult, DependencySpec
+from dekk.detection.deps import DependencyChecker, DependencyResult, DependencySpec
 
 
 def test_dependency_spec_creation():

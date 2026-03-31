@@ -25,19 +25,23 @@ except PackageNotFoundError:
 
 _MODULE_ATTRS: dict[str, list[str]] = {
     # -- Automatic Environment Setup --
-    "dekk.envspec": [
+    "dekk.environment.spec": [
         "EnvironmentSpec",
-        "CondaSpec",
         "ToolSpec",
         "CommandSpec",
         "NpmSpec",
         "AgentsSpec",
+        "PythonSpec",
+        "RuntimeEnvironmentSpec",
         "find_envspec",
     ],
+    "dekk.environment.types": ["EnvironmentKind"],
+    "dekk.environment.providers": ["DekkEnv", "DekkEnvSetupResult", "CondaEnv"],
     # -- Project Setup --
-    "dekk.setup": ["SetupResult", "run_setup"],
+    "dekk.environment.setup": ["SetupResult", "run_setup"],
     # -- Agent Config Management --
     "dekk.agents": [
+        "DekkAgent",
         "AgentConfigManager",
         "RuleDefinition",
         "SkillDefinition",
@@ -48,13 +52,13 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "parse_frontmatter",
         "scaffold_agents_dir",
     ],
-    "dekk.activation": ["EnvironmentActivator", "ActivationResult"],
-    "dekk.install": ["BinaryInstaller", "InstallResult"],
-    "dekk.wrapper": ["WrapperGenerator"],
+    "dekk.environment.activation": ["EnvironmentActivator", "ActivationResult"],
+    "dekk.execution.install": ["BinaryInstaller", "InstallResult"],
+    "dekk.execution.wrapper": ["WrapperGenerator"],
     # -- Detection & Platform --
-    "dekk.detect": ["PlatformDetector", "PlatformInfo"],
-    "dekk.deps": ["DependencyChecker", "DependencySpec", "DependencyResult", "ToolChecker"],
-    "dekk.conda": [
+    "dekk.detection.detect": ["PlatformDetector", "PlatformInfo"],
+    "dekk.detection.deps": ["DependencyChecker", "DependencySpec", "DependencyResult", "ToolChecker"],
+    "dekk.detection.conda": [
         "COMMON_INSTALL_PATHS",
         "CondaDetector",
         "CondaEnvironment",
@@ -63,9 +67,9 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     # -- Configuration (core) --
     "dekk.config": ["ConfigManager", "ConfigReconciler", "ConfigSource"],
     # -- CI --
-    "dekk.ci": ["CIDetector", "CIInfo", "CIProvider", "CIBuildAdvisor", "CIBuildHints"],
+    "dekk.detection.ci": ["CIDetector", "CIInfo", "CIProvider", "CIBuildAdvisor", "CIBuildHints"],
     # -- Workspace --
-    "dekk.workspace": ["WorkspaceDetector", "WorkspaceInfo", "WorkspaceKind", "SubProject"],
+    "dekk.detection.workspace": ["WorkspaceDetector", "WorkspaceInfo", "WorkspaceKind", "SubProject"],
     # -- Versioning --
     "dekk.version": [
         "Version",
@@ -74,13 +78,13 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "compare_versions",
         "version_satisfies",
     ],
-    "dekk.version_managers": ["VersionManagerDetector", "VersionManagerInfo", "ManagedVersion"],
+    "dekk.detection.version_managers": ["VersionManagerDetector", "VersionManagerInfo", "ManagedVersion"],
     # -- Lockfiles --
-    "dekk.lockfile": ["LockfileParser", "LockfileInfo", "LockfileKind", "LockedDependency"],
+    "dekk.detection.lockfile": ["LockfileParser", "LockfileInfo", "LockfileKind", "LockedDependency"],
     # -- Compiler & Build --
-    "dekk.compiler": ["CompilerDetector", "CompilerFamily", "CompilerInfo", "ToolchainInfo"],
-    "dekk.build": ["BuildSystemDetector", "BuildSystemInfo", "BuildSystem", "BuildTarget"],
-    "dekk.cache": ["BuildCacheDetector", "BuildCacheInfo", "CacheKind"],
+    "dekk.detection.compiler": ["CompilerDetector", "CompilerFamily", "CompilerInfo", "ToolchainInfo"],
+    "dekk.detection.build": ["BuildSystemDetector", "BuildSystemInfo", "BuildSystem", "BuildTarget"],
+    "dekk.detection.cache": ["BuildCacheDetector", "BuildCacheInfo", "CacheKind"],
     # -- Shell --
     "dekk.shell": [
         "ShellDetector",
@@ -95,13 +99,13 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "AliasSuggestor",
     ],
     # -- Toolchain --
-    "dekk.toolchain": ["ToolchainProfile", "EnvVarBuilder", "CMakeToolchain", "CondaToolchain"],
+    "dekk.execution.toolchain": ["ToolchainProfile", "EnvVarBuilder", "CMakeToolchain", "CondaToolchain"],
     # -- OS Abstraction --
-    "dekk.dekk_os": ["DekkOS", "PosixDekkOS", "WindowsDekkOS", "get_dekk_os"],
+    "dekk.execution.os": ["DekkOS", "PosixDekkOS", "WindowsDekkOS", "get_dekk_os"],
     # -- Environment --
-    "dekk.env": ["EnvSnapshot"],
+    "dekk.execution.env": ["EnvSnapshot"],
     # -- Diagnostics --
-    "dekk.diagnostic": [
+    "dekk.diagnostics.diagnostic": [
         "DiagnosticReport",
         "DiagnosticCheck",
         "CheckRegistry",
@@ -110,9 +114,9 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "JsonFormatter",
         "MarkdownFormatter",
     ],
-    "dekk.diagnostic_checks": ["PlatformCheck", "DependencyCheck", "CIEnvironmentCheck"],
+    "dekk.diagnostics.diagnostic_checks": ["PlatformCheck", "DependencyCheck", "CIEnvironmentCheck"],
     # -- Library Paths --
-    "dekk.libpath": ["LibraryPathInfo", "LibraryPathResolver"],
+    "dekk.detection.libpath": ["LibraryPathInfo", "LibraryPathResolver"],
     # -- Commands --
     "dekk.commands": [
         "CommandStatus",
@@ -122,9 +126,9 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "command",
     ],
     # -- Validation --
-    "dekk.validate": ["CheckStatus", "CheckResult", "ValidationReport", "EnvironmentValidator"],
+    "dekk.diagnostics.validate": ["CheckStatus", "CheckResult", "ValidationReport", "EnvironmentValidator"],
     # -- Remediation --
-    "dekk.remediate": [
+    "dekk.diagnostics.remediate": [
         "IssueSeverity",
         "FixStatus",
         "DetectedIssue",
@@ -195,13 +199,13 @@ _MODULE_ATTRS: dict[str, list[str]] = {
     # -- CLI Runner --
     "dekk.cli.runner": ["RunResult", "run_logged"],
     # -- Script Runner --
-    "dekk.runner": ["run_script"],
+    "dekk.execution.runner": ["run_script"],
 }
 
 # Renamed/aliased exports: alias -> (module_path, real_name)
 _RENAMES: dict[str, tuple[str, str]] = {
-    "DiagnosticCheckStatus": ("dekk.diagnostic", "CheckStatus"),
-    "DiagnosticCheckResult": ("dekk.diagnostic", "CheckResult"),
+    "DiagnosticCheckStatus": ("dekk.diagnostics.diagnostic", "CheckStatus"),
+    "DiagnosticCheckResult": ("dekk.diagnostics.diagnostic", "CheckResult"),
     "DekkTimeoutError": ("dekk.cli.errors", "TimeoutError"),
     "DekkPermissionError": ("dekk.cli.errors", "PermissionError"),
     "DekkRuntimeError": ("dekk.cli.errors", "RuntimeError"),

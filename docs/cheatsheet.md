@@ -11,18 +11,26 @@ syntax.
 [project]
 name = "myapp"
 
-[conda]
-name = "myapp"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
 python = { command = "python", version = ">=3.10" }
 
 [env]
-MY_VAR = "{conda}/lib"
+MY_VAR = "{environment}/lib"
 
 [paths]
 bin = ["{project}/bin"]
+
+[commands]
+test = { run = "pytest -q", description = "Run tests" }
+
+[agents]
+source = ".agents"
+targets = ["claude", "codex", "copilot", "cursor"]
 ```
 
 ---
@@ -37,12 +45,13 @@ name = "myapp"              # Required. Used as default conda env name.
 description = "My project"  # Optional.
 ```
 
-### `[conda]` -- optional
+### `[environment]` -- optional
 
 ```toml
-[conda]
-name = "myapp"              # Defaults to project.name
-file = "environment.yaml"   # For conda env create
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
+file = "environment.yaml"
 ```
 
 ### `[tools]` -- optional
@@ -68,7 +77,7 @@ optional = false
 
 ```toml
 [env]
-MLIR_DIR   = "{conda}/lib/cmake/mlir"
+CMAKE_PREFIX_PATH = "{environment}"
 PYTHONPATH = "{project}/src"
 NODE_ENV   = "development"
 ```
@@ -77,7 +86,23 @@ NODE_ENV   = "development"
 
 ```toml
 [paths]
-bin = ["{project}/bin", "{conda}/bin"]
+bin = ["{project}/bin", "{environment}/bin"]
+```
+
+### `[commands]` -- optional
+
+```toml
+[commands]
+server = { run = "python -m myapp.api", description = "Start API server" }
+test = { run = "pytest -q", description = "Run tests" }
+```
+
+### `[agents]` -- optional
+
+```toml
+[agents]
+source = ".agents"
+targets = ["claude", "codex", "copilot", "cursor"]
 ```
 
 ---
@@ -87,11 +112,11 @@ bin = ["{project}/bin", "{conda}/bin"]
 | Pattern | Resolves to | Example value |
 |---------|-------------|---------------|
 | `{project}` | Project root | `/home/user/projects/myapp` |
-| `{conda}` | `$CONDA_PREFIX` | `/home/user/miniforge3/envs/myapp` |
+| `{environment}` | Environment prefix | `/home/user/projects/myapp/.dekk/env` |
 | `{home}` | `$HOME` | `/home/user` |
 
 ```toml
-MLIR_DIR = "{conda}/lib/cmake/mlir"
+CMAKE_PREFIX_PATH = "{environment}"
 CONFIG   = "{home}/.config/myapp"
 BIN      = "{project}/target/release"
 ```
@@ -106,17 +131,18 @@ pipx install dekk
 ```
 
 ```bash
-dekk init                              # Create .dekk.toml in current directory
+dekk init                              # Create .dekk.toml from a chosen template
 dekk init --example quickstart         # Start from a built-in template
 dekk init --force                      # Overwrite existing .dekk.toml
 
-dekk install ./tools/cli.py            # Install a Python CLI; first run bootstraps .venv from pyproject.toml
-dekk install ./bin/myapp --name myapp  # Install a wrapped binary command
+dekk install ./tools/cli.py            # Install a Python CLI; auto-creates .dekk.toml if missing
+dekk install ./bin/myapp --name myapp  # Install a wrapped binary command; auto-creates .dekk.toml if missing
+dekk install ./tools/cli.py --update-shell   # Optional: add install dir to shell rc
 
 eval "$(dekk activate --shell bash)"      # Activate environment in the current POSIX shell
 dekk activate --shell powershell          # Emit PowerShell activation script
 
-dekk wrap myapp ./bin/myapp               # Generate wrapper in ./.install
+dekk wrap myapp ./bin/myapp               # Generate wrapper in ./.install; auto-creates .dekk.toml if missing
 dekk wrap myapp ./cli.py \
   --python /path/to/python3        # Wrap a Python script
 dekk wrap myapp ./bin/myapp \
@@ -126,6 +152,13 @@ dekk example quickstart                # Print starter config to stdout
 dekk doctor                            # Run system health checks
 dekk version                           # Show dekk version and platform
 dekk env                               # Show environment details
+dekk myapp server --port 8080          # Run command from nearest .dekk.toml
+
+dekk agents init                       # Scaffold .agents/ and seed .dekk.toml if needed
+dekk agents generate --target all      # Generate AGENTS.md / CLAUDE.md / etc.
+dekk agents clean --target all         # Remove generated agent files, keep .agents/
+dekk agents status                     # Show source + generated file state
+dekk agents install                    # Install Codex skills to ~/.codex/skills
 ```
 
 ```powershell
@@ -143,8 +176,9 @@ dekk install .\dist\myapp.exe --name myapp
 [project]
 name = "ml-pipeline"
 
-[conda]
-name = "ml-pipeline"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -152,6 +186,9 @@ python = { command = "python", version = ">=3.10" }
 
 [env]
 PYTHONPATH = "{project}/src"
+
+[commands]
+server = { run = "python -m ml_pipeline.api", description = "Start API server" }
 ```
 
 ### Rust
@@ -174,15 +211,16 @@ bin = ["{project}/target/release"]
 [project]
 name = "physics-sim"
 
-[conda]
-name = "physics-sim"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 
 [tools]
 cmake = { command = "cmake", version = ">=3.20" }
 ninja = { command = "ninja" }
 
 [env]
-CMAKE_PREFIX_PATH = "{conda}"
+CMAKE_PREFIX_PATH = "{environment}"
 ```
 
 ### Node.js
@@ -230,5 +268,6 @@ bin = ["{home}/go/bin"]
 ## See Also
 
 - [Full Specification](spec.md)
+- [Agent Workflows](agents.md)
 - [Wrapper Generation](wrapper.md)
 - [Examples by Language](examples-by-language.md)

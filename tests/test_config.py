@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from dekk.config import ConfigManager, ConfigReconciler, ConfigSource
+from dekk.paths import project_config_file, user_config_file
 
 # ===========================================================================
 # ConfigSource tests
@@ -503,3 +504,23 @@ class TestConfigManager:
     def test_custom_config_dir(self):
         config = ConfigManager("myapp", config_dir=".custom")
         assert config.config_dir == ".custom"
+
+    def test_loads_user_and_project_config_from_shared_path_policy(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        project = tmp_path / "project"
+        child = project / "subdir"
+        child.mkdir(parents=True)
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.chdir(child)
+
+        user_path = user_config_file("testapp")
+        user_path.parent.mkdir(parents=True)
+        user_path.write_text('[database]\nhost = "user"\n', encoding="utf-8")
+
+        project_path = project_config_file("testapp", start_dir=project)
+        project_path.parent.mkdir()
+        project_path.write_text('[database]\nhost = "project"\n', encoding="utf-8")
+
+        config = ConfigManager("testapp")
+        assert config.get("database.host") == "project"

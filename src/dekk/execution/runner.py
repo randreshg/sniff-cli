@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .dekk_os import get_dekk_os
+from .os import get_dekk_os
 
 VERSION_PREFIX_PATTERN = re.compile(r"^[\^~><!=]+")
 

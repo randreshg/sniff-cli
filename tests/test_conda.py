@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dekk.conda import (
+from dekk.detection.conda import (
     COMMON_INSTALL_PATHS,
     CondaDetector,
     CondaEnvironment,

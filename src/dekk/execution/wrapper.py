@@ -6,7 +6,7 @@ The result is a single executable file that activates the full project
 environment and execs the target binary -- no manual activation needed.
 
 Usage:
-    from dekk.wrapper import WrapperGenerator
+    from dekk.execution.wrapper import WrapperGenerator
 
     # From .dekk.toml (simplest)
     result = WrapperGenerator.install_from_spec(
@@ -29,10 +29,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .activation import ActivationResult, EnvironmentActivator
-from .cli.errors import NotFoundError, ValidationError
-from .dekk_os import get_dekk_os
-from .envspec import EnvironmentSpec
+from ..cli.errors import NotFoundError, ValidationError
+from .os import get_dekk_os
+from ..environment.activation import ActivationResult, EnvironmentActivator
+from ..environment.spec import EnvironmentSpec
 from .install import DEFAULT_INSTALL_DIRNAME, InstallResult
 
 # ---------------------------------------------------------------------------
@@ -164,12 +164,12 @@ class WrapperGenerator:
         """Generate a wrapper from a ``.dekk.toml`` spec (or ``EnvironmentSpec``).
 
         This resolves the full environment (conda prefix, env vars, PATH
-        entries) via :class:`~dekk.activation.EnvironmentActivator` and
+        entries) via :class:`~dekk.environment.activation.EnvironmentActivator` and
         then delegates to :meth:`generate`.
 
         Args:
             spec_file: Path to a ``.dekk.toml`` file, or an already-parsed
-                :class:`~dekk.envspec.EnvironmentSpec`.
+                :class:`~dekk.environment.spec.EnvironmentSpec`.
             project_root: Root directory of the project (used for placeholder
                 expansion and as the activation context).
             target: Absolute (or project-relative) path to the binary.
@@ -248,7 +248,7 @@ class WrapperGenerator:
                 ``.install`` in the current working directory.
 
         Returns:
-            An :class:`~dekk.install.InstallResult` with the written path,
+            An :class:`~dekk.execution.install.InstallResult` with the written path,
             whether the directory is in ``$PATH``, and a human-readable
             message.
 
@@ -303,7 +303,7 @@ class WrapperGenerator:
                 ``.install`` in the current working directory.
 
         Returns:
-            :class:`~dekk.install.InstallResult` describing what was removed.
+            :class:`~dekk.execution.install.InstallResult` describing what was removed.
         """
         dekk_os = get_dekk_os()
         wrapper_name = dekk_os.wrapper_filename(name)
@@ -357,7 +357,7 @@ class WrapperGenerator:
                 given).
 
         Returns:
-            :class:`~dekk.install.InstallResult`.
+            :class:`~dekk.execution.install.InstallResult`.
         """
         if project_root is not None:
             root = Path(project_root).resolve()

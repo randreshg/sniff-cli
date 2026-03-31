@@ -1,4 +1,4 @@
-"""Tests for dekk.test_runner."""
+"""Tests for dekk.execution.test_runner."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from dekk.cli.errors import NotFoundError
-from dekk.test_runner import resolve_test_plan
+from dekk.execution.test_runner import resolve_test_plan
 
 
 def test_resolve_test_plan_python_project_uses_pytest(tmp_path: Path) -> None:

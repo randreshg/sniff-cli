@@ -8,16 +8,22 @@ from pathlib import Path
 from typing import Any
 
 from dekk._compat import tomllib, walk_up
+from dekk.environment.types import EnvironmentKind, normalize_environment_type
 
 
 @dataclass(frozen=True)
-class CondaSpec:
-    """Conda environment specification."""
+class RuntimeEnvironmentSpec:
+    """Runtime environment specification."""
 
-    name: str
+    type: str
+    path: str
     file: str | None = None
-    packages: tuple[str, ...] = ()
-    channel: str = "conda-forge"
+    name: str | None = None
+
+    @property
+    def kind(self) -> EnvironmentKind | None:
+        """Known provider kind, if the configured type matches one."""
+        return EnvironmentKind.from_value(self.type)
 
 
 @dataclass(frozen=True)
@@ -65,7 +71,7 @@ class EnvironmentSpec:
     """Environment specification from .dekk.toml."""
 
     project_name: str
-    conda: CondaSpec | None = None
+    environment: RuntimeEnvironmentSpec | None = None
     tools: dict[str, ToolSpec] = field(default_factory=dict)
     env_vars: dict[str, str] = field(default_factory=dict)
     paths: dict[str, list[str]] = field(default_factory=dict)
@@ -78,7 +84,6 @@ class EnvironmentSpec:
     def from_file(cls, path: Path) -> EnvironmentSpec:
         """Parse .dekk.toml file."""
         if not path.exists():
-            # Lazy import to avoid triggering Rich import chain
             from dekk.cli.errors import ConfigError
 
             raise ConfigError(
@@ -99,7 +104,6 @@ class EnvironmentSpec:
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> EnvironmentSpec:
         """Parse dict into EnvironmentSpec."""
-        # Project name is required
         project = data.get("project", {})
         if not project.get("name"):
             from dekk.cli.errors import ValidationError
@@ -109,20 +113,49 @@ class EnvironmentSpec:
                 hint='Add [project]\\nname = "myproject" to .dekk.toml',
             )
 
-        # Conda (optional)
-        conda = None
-        if conda_data := data.get("conda"):
-            packages = conda_data.get("packages", [])
-            if isinstance(packages, str):
-                packages = [packages]
-            conda = CondaSpec(
-                name=conda_data.get("name", project["name"]),
-                file=conda_data.get("file"),
-                packages=tuple(packages),
-                channel=conda_data.get("channel", "conda-forge"),
+        if "conda" in data:
+            from dekk.cli.errors import ValidationError
+
+            raise ValidationError(
+                "Legacy [conda] section is not supported",
+                hint=(
+                    "Replace [conda] with:\n\n"
+                    "[environment]\n"
+                    'type = "conda"\n'
+                    'path = "{project}/.dekk/env"\n'
+                    'file = "environment.yaml"\n'
+                ),
             )
 
-        # Tools
+        environment = None
+        if env_data := data.get("environment"):
+            if not isinstance(env_data, dict):
+                from dekk.cli.errors import ValidationError
+
+                raise ValidationError("environment must be a dict")
+
+            env_type = env_data.get("type")
+            env_path = env_data.get("path")
+            if not env_type or not env_path:
+                from dekk.cli.errors import ValidationError
+
+                raise ValidationError(
+                    "environment.type and environment.path are required",
+                    hint=(
+                        "Add:\n\n"
+                        "[environment]\n"
+                        'type = "conda"\n'
+                        'path = "{project}/.dekk/env"\n'
+                    ),
+                )
+
+            environment = RuntimeEnvironmentSpec(
+                type=normalize_environment_type(str(env_type)),
+                path=str(env_path),
+                file=str(env_data.get("file")) if env_data.get("file") else None,
+                name=str(env_data.get("name")) if env_data.get("name") else None,
+            )
+
         tools = {}
         for name, spec in data.get("tools", {}).items():
             if isinstance(spec, dict):
@@ -134,19 +167,16 @@ class EnvironmentSpec:
             elif isinstance(spec, str):
                 tools[name] = ToolSpec(command=spec)
 
-        # Env vars (simple dict)
         env_vars = data.get("env", {})
         if env_vars and not isinstance(env_vars, dict):
             from dekk.cli.errors import ValidationError
 
             raise ValidationError("env must be a dict")
 
-        # Paths (normalize to lists)
         paths = {}
         for key, value in data.get("paths", {}).items():
             paths[key] = [value] if isinstance(value, str) else value
 
-        # Python environment (optional)
         python = None
         if python_data := data.get("python"):
             python = PythonSpec(
@@ -154,7 +184,6 @@ class EnvironmentSpec:
                 script=python_data.get("script"),
             )
 
-        # Npm packages (optional)
         npm = None
         if npm_data := data.get("npm"):
             npm_packages = {}
@@ -162,7 +191,6 @@ class EnvironmentSpec:
                 npm_packages[pkg_name] = str(pkg_version) if pkg_version else "latest"
             npm = NpmSpec(packages=npm_packages)
 
-        # Commands (optional)
         commands = {}
         for cmd_name, cmd_spec in data.get("commands", {}).items():
             if isinstance(cmd_spec, dict):
@@ -173,7 +201,6 @@ class EnvironmentSpec:
             elif isinstance(cmd_spec, str):
                 commands[cmd_name] = CommandSpec(run=cmd_spec)
 
-        # Agents config (optional)
         agents = None
         if agents_data := data.get("agents"):
             targets = agents_data.get("targets", ["claude", "codex", "copilot", "cursor"])
@@ -184,7 +211,7 @@ class EnvironmentSpec:
 
         return cls(
             project_name=project["name"],
-            conda=conda,
+            environment=environment,
             tools=tools,
             env_vars=env_vars or {},
             paths=paths,
@@ -195,15 +222,15 @@ class EnvironmentSpec:
         )
 
     def expand_placeholders(
-        self, project_root: Path, conda_prefix: Path | None = None
+        self, project_root: Path, environment_prefix: Path | None = None
     ) -> dict[str, str]:
-        """Expand {project}, {conda}, {home} placeholders."""
+        """Expand {project}, {environment}, {home} placeholders."""
         replacements = {
             "{project}": str(project_root),
             "{home}": str(Path.home()),
         }
-        if conda_prefix:
-            replacements["{conda}"] = str(conda_prefix)
+        if environment_prefix:
+            replacements["{environment}"] = str(environment_prefix)
 
         def expand(value: str) -> str:
             for placeholder, path in replacements.items():
@@ -212,11 +239,9 @@ class EnvironmentSpec:
 
         result = {}
 
-        # Expand env vars
         for key, value in self.env_vars.items():
             result[key] = expand(value)
 
-        # Expand and join paths
         for key, path_list in self.paths.items():
             expanded = [expand(p) for p in path_list]
             result[key] = os.pathsep.join(expanded)
@@ -227,3 +252,15 @@ class EnvironmentSpec:
 def find_envspec(start_dir: Path | None = None) -> Path | None:
     """Find .dekk.toml by walking up the directory tree."""
     return walk_up(Path(start_dir or Path.cwd()), ".dekk.toml")
+
+
+__all__ = [
+    "AgentsSpec",
+    "CommandSpec",
+    "EnvironmentSpec",
+    "NpmSpec",
+    "PythonSpec",
+    "RuntimeEnvironmentSpec",
+    "ToolSpec",
+    "find_envspec",
+]

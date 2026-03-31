@@ -28,12 +28,24 @@ from dekk.agents.discovery import (
     parse_frontmatter,
 )
 from dekk.agents.flows import generate_flow
-from dekk.agents.generators import AgentConfigManager
+from dekk.agents.generators import (
+    AgentConfigManager,
+    ClaudeCodeAgent,
+    CodexAgent,
+    CopilotAgent,
+    CursorAgent,
+)
+from dekk.agents.providers import DekkAgent
 from dekk.agents.installer import install_codex_skills
 from dekk.agents.scaffold import scaffold_agents_dir
 
 __all__ = [
     "AgentConfigManager",
+    "ClaudeCodeAgent",
+    "CodexAgent",
+    "CopilotAgent",
+    "CursorAgent",
+    "DekkAgent",
     "RuleDefinition",
     "SkillDefinition",
     "create_agents_app",

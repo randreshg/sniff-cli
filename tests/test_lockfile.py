@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from dekk.lockfile import (
+from dekk.detection.lockfile import (
     LockedDependency,
     LockfileInfo,
     LockfileKind,

@@ -2,7 +2,7 @@
 
 import pytest
 
-from dekk.version_managers import (
+from dekk.detection.version_managers import (
     ManagedVersion,
     VersionManagerDetector,
     VersionManagerInfo,

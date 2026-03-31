@@ -23,13 +23,14 @@ python -m dekk --help
 ## Three Pillars
 
 - **Detect** -- Platform, conda, build systems, compilers, CI, shells, workspaces.
-- **Activate** -- Read `.dekk.toml`, resolve conda paths, set env vars, validate tools. Example: `eval "$(dekk activate --shell bash)"` or `Invoke-Expression (& dekk activate --shell powershell | Out-String)`.
+- **Activate** -- Read `.dekk.toml`, resolve the configured runtime environment, set env vars, validate tools. Example: `eval "$(dekk activate --shell bash)"` or `Invoke-Expression (& dekk activate --shell powershell | Out-String)`.
 - **Wrap** -- Generate a self-contained launcher that bakes in the full environment. No manual activation ever again.
 
 ## Docs
 
 - **[Getting Started](getting-started.md)** -- Installation, quick start, core concepts
 - **[.dekk.toml Specification](spec.md)** -- Canonical reference for the config file format
+- **[Agent Workflows](agents.md)** -- `.agents/` source of truth, generation targets, Codex skill install
 - **[Wrapper Generation](wrapper.md)** -- How `dekk wrap` creates zero-activation executables
 - **[Quick Reference](cheatsheet.md)** -- One-page cheat sheet for `.dekk.toml` and CLI commands
 - **[Examples by Language](examples-by-language.md)** -- Configs for Python, Rust, C++, Node, Go, Java, and multi-language projects

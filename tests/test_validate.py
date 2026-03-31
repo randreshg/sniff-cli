@@ -1,4 +1,4 @@
-"""Tests for dekk.validate -- EnvironmentValidator, CheckResult, ValidationReport."""
+"""Tests for dekk.diagnostics.validate -- EnvironmentValidator, CheckResult, ValidationReport."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from dekk.remediate import DetectedIssue, IssueSeverity
-from dekk.validate import (
+from dekk.diagnostics.remediate import DetectedIssue, IssueSeverity
+from dekk.diagnostics.validate import (
     CheckResult,
     CheckStatus,
     EnvironmentValidator,
@@ -512,7 +512,7 @@ class TestValidateToolchainIntegration:
 
     def test_validate_cmake_directories(self, tmp_path):
         """Validate that CMakeToolchain paths exist using EnvironmentValidator."""
-        from dekk.toolchain import CMakeToolchain
+        from dekk.execution.toolchain import CMakeToolchain
 
         prefix = tmp_path / "envs" / "apxm"
         (prefix / "lib" / "cmake" / "mlir").mkdir(parents=True)
@@ -533,7 +533,7 @@ class TestValidateToolchainIntegration:
 
     def test_validate_missing_cmake_directories(self, tmp_path):
         """Report failures for missing CMakeToolchain directories."""
-        from dekk.toolchain import CMakeToolchain
+        from dekk.execution.toolchain import CMakeToolchain
 
         prefix = tmp_path / "nonexistent" / "envs" / "apxm"
         tc = CMakeToolchain(prefix=prefix)
@@ -548,8 +548,8 @@ class TestValidateToolchainIntegration:
 
     def test_validate_conda_env_var(self, tmp_path):
         """After CondaToolchain configures env vars, validate they're set."""
-        from dekk.toolchain import CondaToolchain
-        from dekk.toolchain import EnvVarBuilder as TcBuilder
+        from dekk.execution.toolchain import CondaToolchain
+        from dekk.execution.toolchain import EnvVarBuilder as TcBuilder
 
         prefix = tmp_path / "miniforge3" / "envs" / "apxm"
         prefix.mkdir(parents=True)
@@ -579,7 +579,7 @@ class TestValidateEnvIntegration:
 
     def test_validate_env_snapshot_vars(self):
         """Build an env from EnvVarBuilder, then validate with EnvironmentValidator."""
-        from dekk.env import EnvVarBuilder as EnvBuilder
+        from dekk.execution.env import EnvVarBuilder as EnvBuilder
 
         snap = EnvBuilder().set("MY_VAR", "my_value").set("OTHER_VAR", "other").build()
 
@@ -603,7 +603,7 @@ class TestValidateLibpathIntegration:
 
     def test_validate_library_path_after_apply(self):
         """After LibraryPathResolver.apply(), validate the env var is set."""
-        from dekk.libpath import LibraryPathResolver
+        from dekk.detection.libpath import LibraryPathResolver
 
         resolver = LibraryPathResolver.for_platform("Linux")
         resolver.prepend("/opt/test/lib")

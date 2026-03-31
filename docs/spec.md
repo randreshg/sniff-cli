@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 
-Canonical reference for `.dekk.toml`, the declarative environment configuration file read by `dekk`. One file describes your entire project environment -- conda, tools, paths, variables -- and dekk handles detection, activation, and wrapper generation.
+Canonical reference for `.dekk.toml`, the declarative environment configuration file read by `dekk`. One file describes your entire project environment -- runtime environment, tools, paths, variables -- and dekk handles detection, activation, and wrapper generation.
 
 ---
 
@@ -25,7 +25,7 @@ All string values support `{variable}` expansion at runtime.
 | Variable | Resolves to | Example |
 |----------|-------------|---------|
 | `{project}` | Project root (directory containing `.dekk.toml`) | `/home/user/projects/myapp` |
-| `{conda}` | `$CONDA_PREFIX` for the resolved conda environment | `/home/user/miniforge3/envs/myapp` |
+| `{environment}` | Environment prefix path | `/home/user/projects/myapp/.dekk/env` |
 | `{home}` | User home directory (`$HOME`) | `/home/user` |
 
 ### Rules
@@ -37,8 +37,8 @@ All string values support `{variable}` expansion at runtime.
 ### Examples
 
 ```toml
-MLIR_DIR = "{conda}/lib/cmake/mlir"
-# -> /home/user/miniforge3/envs/myapp/lib/cmake/mlir
+CMAKE_PREFIX_PATH = "{environment}"
+# -> /home/user/projects/myapp/.dekk/env
 
 DATA_DIR = "{project}/data"
 # -> /home/user/projects/myapp/data
@@ -57,7 +57,7 @@ Every `.dekk.toml` must have a `[project]` section with at least a `name`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | **yes** | Project name. Used as the default conda env name and in generated wrappers. |
+| `name` | string | **yes** | Project name. Used in generated wrappers and manifests. |
 | `description` | string | no | Human-readable project description. |
 
 ```toml
@@ -66,28 +66,31 @@ name = "myapp"
 description = "REST API server"
 ```
 
-**Implementation:** `dekk.envspec.EnvironmentSpec`
+**Implementation:** `dekk.environment.spec.EnvironmentSpec`
 
 ---
 
-### `[conda]` -- Conda / Mamba Environment
+### `[environment]` -- Runtime Environment
 
-Declares the conda environment to detect and activate.
+Declares the runtime environment to resolve and activate.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | no | Environment name (defaults to `project.name`). |
-| `file` | string | no | Path to `environment.yaml` for creation. |
+| `type` | string | **yes** | Environment provider type (currently: `conda`). |
+| `path` | string | **yes** | Environment prefix path (recommended: project-local). |
+| `file` | string | no | Path to `environment.yaml` for creation (conda). |
+| `name` | string | no | Display name (optional). |
 
 ```toml
-[conda]
-name = "myapp"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 ```
 
-When present, `dekk activate` and `dekk wrap` resolve the conda prefix automatically using `CondaDetector.find_environment()`.
+When present, `dekk activate` and `dekk wrap` use this `path` deterministically (no named-env lookup).
 
-**Implementation:** `dekk.conda.CondaDetector`
+**Implementation:** `dekk.environment.resolver.resolve_environment`
 
 ---
 
@@ -127,7 +130,7 @@ optional = false
 | `version` | string | no | Semver constraint (e.g., `>=3.20`, `>=1.70`). |
 | `optional` | bool | no | If `true`, a missing tool is a warning, not an error. Default: `false`. |
 
-**Implementation:** `dekk.deps.DependencyChecker`, `dekk.version.VersionSpec`
+**Implementation:** `dekk.detection.deps.DependencyChecker`, `dekk.version.VersionSpec`
 
 ---
 
@@ -137,15 +140,14 @@ Key-value pairs set during activation and baked into wrappers. Values support va
 
 ```toml
 [env]
-MLIR_DIR = "{conda}/lib/cmake/mlir"
-LLVM_DIR = "{conda}/lib/cmake/llvm"
+CMAKE_PREFIX_PATH = "{environment}"
 PYTHONPATH = "{project}/src"
 NODE_ENV = "development"
 ```
 
 All keys are exported as environment variables (`export KEY="value"` in generated scripts).
 
-**Implementation:** `dekk.toolchain.EnvVarBuilder`
+**Implementation:** `dekk.execution.toolchain.EnvVarBuilder`
 
 ---
 
@@ -155,12 +157,60 @@ Lists of directories to prepend to `PATH` during activation and in wrappers.
 
 ```toml
 [paths]
-bin = ["{project}/bin", "{project}/target/release", "{conda}/bin"]
+bin = ["{project}/bin", "{project}/target/release", "{environment}/bin"]
 ```
 
 Each key maps to a list of directories. The `bin` key is treated specially: its entries are prepended to `PATH`. Other keys are available for custom use by downstream tools.
 
-**Implementation:** `dekk.activation.EnvironmentActivator`
+**Implementation:** `dekk.environment.activation.EnvironmentActivator`
+
+---
+
+### `[commands]` -- Project Command Map
+
+Defines project commands used by `dekk <app_name> <command> [args...]`.
+
+```toml
+[commands]
+server = { run = "python -m clic.api", description = "Start API server" }
+test = { run = "pytest -q", description = "Run tests" }
+```
+
+Rules:
+
+- `dekk` resolves the nearest `.dekk.toml` from current working directory.
+- `<app_name>` must match `[project].name`, or dekk exits with a mismatch error.
+- Unknown command keys return an error with available command names.
+
+**Implementation:** `dekk.project.runner.run_project_command`
+
+---
+
+### `[agents]` -- Agent Generation Settings
+
+Controls the source-of-truth directory and which target formats dekk should
+generate for agent tooling.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source` | string | no | Source-of-truth directory. Default: `.agents`. |
+| `targets` | list[string] | no | Generation targets. Default: `["claude", "codex", "copilot", "cursor"]`. |
+
+```toml
+[agents]
+source = ".agents"
+targets = ["claude", "codex", "copilot", "cursor"]
+```
+
+Notes:
+
+- `dekk agents init` scaffolds `source/project.md` and starter skills.
+- Commands declared in `[commands]` are converted into starter skill templates
+  during `dekk agents init`.
+- `dekk agents generate` produces files such as `AGENTS.md`, `CLAUDE.md`,
+  `.cursorrules`, `.github/copilot-instructions.md`, and `.agents.json`.
+
+**Implementation:** `dekk.environment.spec.AgentsSpec`, `dekk.agents.generators.AgentConfigManager`
 
 ---
 
@@ -169,7 +219,7 @@ Each key maps to a list of directories. The `bin` key is treated specially: its 
 1. `[project].name` is **required**. Parsing fails without it.
 2. Tool commands are validated with `shutil.which()`. Missing required tools cause activation to fail.
 3. Version constraints use semver syntax: `>=`, `>`, `<=`, `<`, `=`, and bare versions.
-4. Undefined variables (`{conda}` when no conda env exists) raise an error.
+4. Undefined variables (`{environment}` when no environment prefix exists) raise an error.
 5. TOML syntax errors produce a clear `ConfigError` with file path and details.
 
 ---
@@ -178,13 +228,15 @@ Each key maps to a list of directories. The `bin` key is treated specially: its 
 
 | `.dekk.toml` Section | `dekk` Module | Primary Classes |
 |-----------------------|--------------|-----------------|
-| `[project]` | `dekk.envspec` | `EnvironmentSpec` |
-| `[conda]` | `dekk.conda` | `CondaDetector`, `CondaEnvironment` |
-| `[tools]` | `dekk.deps`, `dekk.version` | `DependencyChecker`, `VersionSpec` |
-| `[env]` | `dekk.toolchain` | `EnvVarBuilder` |
-| `[paths]` | `dekk.activation` | `EnvironmentActivator` |
-| *(activation)* | `dekk.activation` | `EnvironmentActivator` |
-| *(wrappers)* | `dekk.wrapper` | `WrapperGenerator` |
+| `[project]` | `dekk.environment.spec` | `EnvironmentSpec` |
+| `[environment]` | `dekk.environment.providers`, `dekk.environment.resolver` | `DekkEnv`, `resolve_environment` |
+| `[tools]` | `dekk.detection.deps`, `dekk.version` | `DependencyChecker`, `VersionSpec` |
+| `[env]` | `dekk.execution.toolchain` | `EnvVarBuilder` |
+| `[paths]` | `dekk.environment.activation` | `EnvironmentActivator` |
+| `[commands]` | `dekk.project.runner` | `run_project_command` |
+| `[agents]` | `dekk.environment.spec`, `dekk.agents.generators` | `AgentsSpec`, `AgentConfigManager` |
+| *(activation)* | `dekk.environment.activation` | `EnvironmentActivator` |
+| *(wrappers)* | `dekk.execution.wrapper` | `WrapperGenerator` |
 
 ---
 
@@ -203,8 +255,9 @@ name = "hello"
 [project]
 name = "ml-pipeline"
 
-[conda]
-name = "ml-pipeline"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -213,6 +266,9 @@ jupyter = { command = "jupyter" }
 
 [env]
 PYTHONPATH = "{project}/src"
+
+[agents]
+targets = ["claude", "codex"]
 ```
 
 ### Rust
@@ -235,8 +291,9 @@ bin = ["{project}/target/release"]
 [project]
 name = "physics-sim"
 
-[conda]
-name = "physics-sim"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -245,7 +302,7 @@ ninja = { command = "ninja" }
 clang = { command = "clang", version = ">=17" }
 
 [env]
-CMAKE_PREFIX_PATH = "{conda}"
+CMAKE_PREFIX_PATH = "{environment}"
 CMAKE_BUILD_TYPE  = "Release"
 ```
 
@@ -285,8 +342,9 @@ bin = ["{home}/go/bin"]
 [project]
 name = "compiler-toolkit"
 
-[conda]
-name = "compiler-toolkit"
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
 file = "environment.yaml"
 
 [tools]
@@ -295,11 +353,10 @@ cargo  = { command = "cargo", version = ">=1.80" }
 cmake  = { command = "cmake", version = ">=3.20" }
 
 [env]
-MLIR_DIR = "{conda}/lib/cmake/mlir"
-LLVM_DIR = "{conda}/lib/cmake/llvm"
+CMAKE_PREFIX_PATH = "{environment}"
 
 [paths]
-bin = ["{conda}/bin", "{project}/bin", "{project}/target/release"]
+bin = ["{environment}/bin", "{project}/bin", "{project}/target/release"]
 ```
 
 ---

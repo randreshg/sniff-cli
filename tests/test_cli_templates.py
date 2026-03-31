@@ -19,6 +19,12 @@ class TestLoadExampleTemplate:
         assert 'name = "demo-app"' in content
         assert 'name = "ml-project"' not in content
 
+    def test_loads_agents_template(self):
+        content = _load_example_template("agents", project_name="demo-app")
+        assert 'name = "demo-app"' in content
+        assert "[agents]" in content
+        assert "[commands]" in content
+
     def test_unknown_template_raises(self):
         with pytest.raises(ConfigError, match="Unknown example template"):
             _load_example_template("does-not-exist")

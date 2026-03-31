@@ -30,15 +30,6 @@ REQUIRED_SKILL_FIELDS: Final = ("name", "description")
 
 DEKK_TOML: Final = ".dekk.toml"
 
-# Build system markers → (language, build_cmd, test_cmd)
-BUILD_SYSTEM_MARKERS: Final[dict[str, tuple[str, str, str]]] = {
-    "Cargo.toml": ("Rust", "cargo build", "cargo test"),
-    "CMakeLists.txt": ("C/C++", "cmake -B build && cmake --build build", "ctest --test-dir build"),
-    "package.json": ("TypeScript/JavaScript", "npm run build", "npm test"),
-    "pyproject.toml": ("Python", "pip install -e .", "pytest"),
-    "Makefile": ("C/C++", "make", "make test"),
-}
-
 # ---------------------------------------------------------------------------
 # Agent target names
 # ---------------------------------------------------------------------------

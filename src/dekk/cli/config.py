@@ -7,19 +7,21 @@ reading/writing TOML files with dot-notation access to nested keys.
 Tier precedence (highest to lowest):
     1. Environment variables  (``{APP_NAME}_SECTION_KEY``)
     2. Project config         (``.{app_name}/config.toml`` in ancestor dirs)
-    3. User config            (``~/.{app_name}/config.toml``)
+    3. User config            (platform-standard user config dir)
     4. Built-in defaults      (passed to constructor)
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Final
 
-from dekk._compat import deep_merge, load_toml, tomllib, walk_up
+from dekk._compat import deep_merge, load_toml, tomllib
+from dekk.paths import find_project_config_file, project_config_file, user_config_file
 
-# TOML writing: installed with the base dekk package
+# TOML writing: prefer tomli_w when available, fall back to a small writer.
 try:
     import tomli_w
 except ImportError:
@@ -27,7 +29,6 @@ except ImportError:
 
 
 DEFAULT_CONFIG_FILE: Final = "config.toml"
-APP_DIR_PREFIX: Final = "."
 KEY_SEPARATOR: Final = "."
 ENV_VAR_SEPARATOR: Final = "_"
 
@@ -48,7 +49,7 @@ class ConfigManager:
 
         cfg = ConfigManager("myapp")
         cfg.set("database.path", "/tmp/db.sqlite")
-        cfg.save()                     # writes to ~/.myapp/config.toml
+        cfg.save()
         print(cfg.get("database.path"))  # /tmp/db.sqlite
     """
 
@@ -78,7 +79,7 @@ class ConfigManager:
         # Start from built-in defaults
         config: dict[str, Any] = _deep_copy(self._defaults)
 
-        # User config: ~/.{app_name}/config.toml
+        # User config: platform-standard user config directory
         user_config = self._user_config_path()
         if user_config.exists():
             config = deep_merge(config, load_toml(user_config) or {})
@@ -134,26 +135,18 @@ class ConfigManager:
 
         Args:
             user: If ``True`` (default), write to the user config directory
-                (``~/.{app_name}/config.toml``).  If ``False``, write to the
+                for the current platform. If ``False``, write to the
                 project-local directory (``.{app_name}/config.toml`` relative
                 to the current working directory).
 
-        Raises:
-            RuntimeError: If ``tomli_w`` is not installed.
         """
-        if tomli_w is None:
-            raise RuntimeError(
-                "tomli_w is required for saving config. "
-                "Install or repair the package with: pip install --upgrade dekk"
-            )
-
         if user:
             path = self._user_config_path()
         else:
-            path = Path.cwd() / f"{APP_DIR_PREFIX}{self.app_name}" / self.config_file
+            path = project_config_file(self.app_name, config_file=self.config_file)
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(tomli_w.dumps(self._config).encode())
+        path.write_text(_dump_toml(self._config), encoding="utf-8")
 
     def to_dict(self) -> dict[str, Any]:
         """Return the full configuration as a dictionary (shallow copy)."""
@@ -165,7 +158,7 @@ class ConfigManager:
 
     def _user_config_path(self) -> Path:
         """Return the user-level config file path."""
-        return Path.home() / f"{APP_DIR_PREFIX}{self.app_name}" / self.config_file
+        return user_config_file(self.app_name, self.config_file)
 
     def _find_project_config(self) -> Path | None:
         """Search ancestor directories for a project config file.
@@ -176,8 +169,7 @@ class ConfigManager:
         Returns:
             Path to the project config, or ``None`` if not found.
         """
-        marker = str(Path(f"{APP_DIR_PREFIX}{self.app_name}") / self.config_file)
-        return walk_up(Path.cwd(), marker)
+        return find_project_config_file(self.app_name, config_file=self.config_file)
 
     def _load_env_vars(self) -> dict[str, Any]:
         """Load config overrides from environment variables.
@@ -231,6 +223,53 @@ def _load_toml(path: Path) -> dict[str, Any]:
     if tomllib is None:
         return {}
     return load_toml(path) or {}
+
+
+def _dump_toml(data: dict[str, Any]) -> str:
+    """Serialize a nested config dict to TOML."""
+    if tomli_w is not None:
+        return tomli_w.dumps(data)
+    return _render_toml_table(data)
+
+
+def _render_toml_table(table: Mapping[str, Any], prefix: tuple[str, ...] = ()) -> str:
+    """Render a TOML table using only stdlib features."""
+    lines: list[str] = []
+    child_tables: list[tuple[tuple[str, ...], Mapping[str, Any]]] = []
+
+    for key, value in table.items():
+        if isinstance(value, Mapping):
+            child_tables.append(((*prefix, key), value))
+        else:
+            lines.append(f"{key} = {_format_toml_value(value)}")
+
+    rendered_sections: list[str] = []
+    if prefix:
+        header = ".".join(prefix)
+        body = "\n".join(lines)
+        rendered_sections.append(f"[{header}]\n{body}" if body else f"[{header}]")
+    elif lines:
+        rendered_sections.append("\n".join(lines))
+
+    for child_prefix, child_table in child_tables:
+        rendered_sections.append(_render_toml_table(child_table, child_prefix))
+
+    return "\n\n".join(section for section in rendered_sections if section) + "\n"
+
+
+def _format_toml_value(value: Any) -> str:
+    """Render a scalar TOML value."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    if isinstance(value, list):
+        inner = ", ".join(_format_toml_value(item) for item in value)
+        return f"[{inner}]"
+    raise TypeError(f"Unsupported TOML value: {value!r}")
 
 
 def _deep_merge(target: dict[str, Any], source: dict[str, Any]) -> None:

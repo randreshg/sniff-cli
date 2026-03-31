@@ -1,7 +1,7 @@
 """Factory for creating reusable ``agents`` Typer sub-apps.
 
-``create_agents_app()`` returns a Typer sub-app with init, generate, install,
-status, and list commands. It can be used standalone (``dekk agents``) or
+``create_agents_app()`` returns a Typer sub-app with init, generate, clean,
+install, status, and list commands. It can be used standalone (``dekk agents``) or
 embedded in a dekk-based CLI (``carts agents``).
 """
 
@@ -24,7 +24,6 @@ from dekk.agents.constants import (
     DEFAULT_SOURCE_DIR,
     DEKK_TOML,
     PROJECT_MD,
-    SKILL_FILENAME,
     SKILLS_DIR_NAME,
 )
 
@@ -67,7 +66,7 @@ def create_agents_app(
             cwd to find ``.agents/`` or ``.dekk.toml``.
 
     Returns:
-        Typer sub-app with: init, generate, install, status, list commands.
+        Typer sub-app with: init, generate, clean, install, status, list commands.
     """
     import typer
 
@@ -88,12 +87,14 @@ def create_agents_app(
         """Scaffold the source-of-truth directory from project detection + commands."""
         from dekk.agents.scaffold import scaffold_agents_dir
         from dekk.cli.styles import print_info, print_success
+        from dekk.environment.bootstrap import ensure_envspec
 
         project_root = _resolve_root()
         cli_name = None
         if parent_app is not None:
             cli_name = getattr(parent_app, "_name", None)
 
+        bootstrap = ensure_envspec(project_root)
         result_dir = scaffold_agents_dir(
             project_root=project_root,
             source_dir=source_dir,
@@ -101,25 +102,9 @@ def create_agents_app(
             cli_name=cli_name,
             force=force,
         )
-        print_success(f"Scaffolded {source_dir}/ in {project_root}")
-
-        # Report what was created
-        skills_dir = result_dir / SKILLS_DIR_NAME
-        if skills_dir.is_dir():
-            skill_count = len(list(skills_dir.glob(f"*/{SKILL_FILENAME}")))
-            if skill_count:
-                print_info(f"  {skill_count} skill template(s) created")
-
-        project_md = result_dir / PROJECT_MD
-        if project_md.is_file():
-            print_info(f"  {PROJECT_MD} created")
-
-        from dekk.cli.styles import print_next_steps
-        print_next_steps([
-            f"Review and customize {source_dir}/{PROJECT_MD}",
-            f"Review skill templates in {source_dir}/{SKILLS_DIR_NAME}/",
-            f"Run `{cli_name or DEFAULT_CLI_NAME} agents generate` to produce agent configs",
-        ])
+        if bootstrap.created:
+            print_info(f"Created {DEKK_TOML} from {bootstrap.source}")
+        print_success(f"Scaffolded {result_dir.relative_to(project_root)}/ in {project_root}")
 
     @agents_app.command("generate")
     def generate(
@@ -159,12 +144,6 @@ def create_agents_app(
         for item in result.generated:
             print_success(f"Generated {item}")
 
-        print_info(
-            f"Generated {len(result.generated)} target(s) from {source_dir}/ "
-            f"({result.skill_count} skills, {result.rule_count} rules) "
-            f"in {project_root}"
-        )
-
     @agents_app.command("install")
     def install(
         codex_dir: str | None = typer.Option(
@@ -190,6 +169,37 @@ def create_agents_app(
         for name in installed:
             print_success(f"  codex: {name}")
         print_info(f"Installed {len(installed)} Codex skill(s)")
+
+    @agents_app.command("clean")
+    def clean(
+        target: str = typer.Option(
+            "all",
+            "--target",
+            "-t",
+            help="Target: claude, codex, copilot, cursor, all",
+        ),
+    ) -> None:
+        """Remove generated agent config files while keeping the source directory."""
+        from dekk.agents.generators import AgentConfigManager
+        from dekk.cli.styles import print_info, print_success
+
+        project_root = _resolve_root()
+        cli_name = None
+        if parent_app is not None:
+            cli_name = getattr(parent_app, "_name", None)
+
+        manager = AgentConfigManager(
+            project_root=project_root,
+            source_dir=source_dir,
+            cli_name=cli_name,
+        )
+        result = manager.clean(target=target)
+        if not result.removed:
+            print_info("Nothing to clean")
+            return
+
+        for item in result.removed:
+            print_success(f"Removed {item}")
 
     @agents_app.command("status")
     def status(

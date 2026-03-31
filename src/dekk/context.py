@@ -651,9 +651,9 @@ class ExecutionContext:
         Returns:
             Complete ExecutionContext snapshot.
         """
-        from dekk.ci import CIDetector
-        from dekk.conda import CondaDetector
-        from dekk.detect import PlatformDetector
+        from dekk.detection.ci import CIDetector
+        from dekk.detection.conda import CondaDetector
+        from dekk.detection.detect import PlatformDetector
 
         platform_info = PlatformDetector().detect()
         conda_env = CondaDetector().find_active()
@@ -665,7 +665,7 @@ class ExecutionContext:
         # Build system detection
         build_system = None
         try:
-            from dekk.build import BuildSystemDetector
+            from dekk.detection.build import BuildSystemDetector
 
             detector = BuildSystemDetector()
             build_system = detector.detect_first(workspace.root)

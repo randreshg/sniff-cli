@@ -10,7 +10,6 @@ Extracted from ``carts/tools/scripts/agents.py`` into a generic library.
 from __future__ import annotations
 
 import json
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -18,31 +17,32 @@ from typing import Any
 from dekk.agents.constants import (
     AGENTS_JSON,
     AGENTS_MD,
-    AGENTS_REFERENCE_MD,
     CLAUDE_MD,
-    CLAUDE_RULES_DIR,
     CLAUDE_SKILLS_DIR,
     COPILOT_DIR,
     COPILOT_INSTRUCTIONS,
     COPILOT_PER_DIR,
-    COPILOT_RULE_SUFFIX,
     CURSORRULES,
     DEFAULT_SOURCE_DIR,
     PROJECT_MD,
-    SKILL_FILENAME,
     TARGET_ALL,
     TARGET_CLAUDE,
     TARGET_CODEX,
     TARGET_COPILOT,
     TARGET_CURSOR,
 )
-from dekk.agents.discovery import (
-    RuleDefinition,
-    SkillDefinition,
-    discover_rules,
-    discover_skills,
-    iter_skill_files,
+from dekk.agents.discovery import SkillDefinition, discover_rules, discover_skills
+from dekk.agents.providers import (
+    AgentContext,
+    ClaudeCodeAgent,
+    CodexAgent,
+    CopilotAgent,
+    CursorAgent,
+    DekkAgent,
+    default_agents,
+    render_codex_skill,
 )
+from dekk.agents.providers.shared import remove_file
 
 
 @dataclass
@@ -54,64 +54,11 @@ class GenerateResult:
     rule_count: int = 0
 
 
-def render_codex_skill(skill: SkillDefinition) -> str:
-    """Render a skill in Codex format (simplified frontmatter: name + description only)."""
-    return (
-        "---\n"
-        f"name: {skill.name}\n"
-        f"description: {skill.description}\n"
-        "---\n\n"
-        f"{skill.body.lstrip()}"
-    )
+@dataclass
+class CleanResult:
+    """Summary of what was removed."""
 
-
-def _install_skills_to_dir(
-    skills: list[SkillDefinition],
-    target_dir: Path,
-    renderer: Any = None,
-    force: bool = True,
-) -> list[str]:
-    """Install skills into a directory, optionally transforming SKILL.md."""
-    target_dir.mkdir(parents=True, exist_ok=True)
-    installed: list[str] = []
-
-    for skill in skills:
-        dest = target_dir / skill.source_dir.name
-        if dest.exists() and not force:
-            continue
-        dest.mkdir(parents=True, exist_ok=True)
-
-        for source_path, relative in iter_skill_files(skill):
-            target_path = dest / relative
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            if relative.as_posix() == SKILL_FILENAME and renderer:
-                target_path.write_text(renderer(skill), encoding="utf-8")
-            else:
-                shutil.copy2(source_path, target_path)
-
-        installed.append(skill.name)
-
-    return installed
-
-
-def _generate_claude_rules(project_root: Path, rules: list[RuleDefinition]) -> None:
-    """Generate ``.claude/rules/`` from rules (Claude Code ``paths:`` frontmatter)."""
-    rules_dir = project_root / CLAUDE_RULES_DIR
-    rules_dir.mkdir(parents=True, exist_ok=True)
-    for rule in rules:
-        paths_yaml = "\n".join(f'  - "{p}"' for p in rule.paths)
-        content = f"---\npaths:\n{paths_yaml}\n---\n{rule.body}"
-        (rules_dir / f"{rule.name}.md").write_text(content, encoding="utf-8")
-
-
-def _generate_copilot_per_directory(project_root: Path, rules: list[RuleDefinition]) -> None:
-    """Generate ``.github/instructions/`` from rules (Copilot ``applyTo:`` frontmatter)."""
-    instr_dir = project_root / COPILOT_DIR / COPILOT_PER_DIR
-    instr_dir.mkdir(parents=True, exist_ok=True)
-    for rule in rules:
-        apply_to = ",".join(rule.paths)
-        content = f"---\napplyTo: {apply_to}\n---\n{rule.body}"
-        (instr_dir / f"{rule.name}{COPILOT_RULE_SUFFIX}").write_text(content, encoding="utf-8")
+    removed: list[str] = field(default_factory=list)
 
 
 def _generate_agents_json(
@@ -167,12 +114,17 @@ class AgentConfigManager:
         source_dir: str = DEFAULT_SOURCE_DIR,
         project_name: str | None = None,
         cli_name: str | None = None,
+        agents: tuple[DekkAgent, ...] | None = None,
     ) -> None:
         self.project_root = project_root
         self.source_dir_name = source_dir
         self.source_dir = project_root / source_dir
         self.cli_name = cli_name
         self.project_name = project_name or project_root.name
+        self._abstractions = {
+            agent.target: agent
+            for agent in (agents or default_agents())
+        }
 
     def _read_project_md(self) -> str | None:
         """Read project.md from the source directory."""
@@ -204,26 +156,22 @@ class AgentConfigManager:
         rules = discover_rules(self.source_dir)
         result.rule_count = len(rules)
 
-        if effective_target in (TARGET_ALL, TARGET_CLAUDE):
-            self._generate_claude(project_content, skills, rules)
-            result.generated.append(CLAUDE_MD)
-            result.generated.append(f"{CLAUDE_SKILLS_DIR}/ ({len(skills)} skills)")
-            result.generated.append(f"{CLAUDE_RULES_DIR}/ ({len(rules)} rules)")
+        context = AgentContext(
+            project_root=self.project_root,
+            source_dir=self.source_dir,
+            source_dir_name=self.source_dir_name,
+            project_name=self.project_name,
+            cli_name=self.cli_name,
+            project_content=project_content,
+            skills=skills,
+            rules=rules,
+        )
 
-        if effective_target in (TARGET_ALL, TARGET_CODEX):
-            self._generate_codex(project_content)
-            result.generated.append(AGENTS_MD)
-
-        if effective_target in (TARGET_ALL, TARGET_CURSOR):
-            self._generate_cursor(project_content)
-            result.generated.append(CURSORRULES)
-
-        if effective_target in (TARGET_ALL, TARGET_COPILOT):
-            self._generate_copilot(project_content, rules)
-            result.generated.append(f"{COPILOT_DIR}/{COPILOT_INSTRUCTIONS}")
-            result.generated.append(
-                f"{COPILOT_DIR}/{COPILOT_PER_DIR}/ ({len(rules)} rules)"
-            )
+        if effective_target == TARGET_ALL:
+            for target_name in (TARGET_CLAUDE, TARGET_CODEX, TARGET_CURSOR, TARGET_COPILOT):
+                result.generated.extend(self._abstractions[target_name].generate(context))
+        elif effective_target in self._abstractions:
+            result.generated.extend(self._abstractions[effective_target].generate(context))
 
         if effective_target == TARGET_ALL:
             self._generate_manifest(skills)
@@ -231,52 +179,29 @@ class AgentConfigManager:
 
         return result
 
-    def _generate_claude(
-        self,
-        project_content: str,
-        skills: list[SkillDefinition],
-        rules: list[RuleDefinition],
-    ) -> None:
-        """Generate CLAUDE.md + .claude/skills/ + .claude/rules/."""
-        claude_md = self.project_root / CLAUDE_MD
-        claude_md.write_text(project_content, encoding="utf-8")
+    def clean(self, target: str = TARGET_ALL) -> CleanResult:
+        """Remove generated files for the specified target(s)."""
+        effective_target = target.lower()
+        context = AgentContext(
+            project_root=self.project_root,
+            source_dir=self.source_dir,
+            source_dir_name=self.source_dir_name,
+            project_name=self.project_name,
+            cli_name=self.cli_name,
+            project_content="",
+            skills=[],
+            rules=[],
+        )
+        result = CleanResult()
 
-        claude_skills = self.project_root / CLAUDE_SKILLS_DIR
-        _install_skills_to_dir(skills, claude_skills)
+        if effective_target == TARGET_ALL:
+            for target_name in (TARGET_CLAUDE, TARGET_CODEX, TARGET_CURSOR, TARGET_COPILOT):
+                result.removed.extend(self._abstractions[target_name].clean(context))
+            result.removed.extend(remove_file(self.project_root / AGENTS_JSON, AGENTS_JSON))
+        elif effective_target in self._abstractions:
+            result.removed.extend(self._abstractions[effective_target].clean(context))
 
-        _generate_claude_rules(self.project_root, rules)
-
-    def _generate_codex(self, project_content: str) -> None:
-        """Generate AGENTS.md (Codex reads this from cwd).
-
-        Uses agents-reference.md if available, otherwise project.md.
-        """
-        agents_ref = self.source_dir / AGENTS_REFERENCE_MD
-        if agents_ref.is_file():
-            content = agents_ref.read_text(encoding="utf-8")
-        else:
-            content = project_content
-
-        agents_md = self.project_root / AGENTS_MD
-        agents_md.write_text(content, encoding="utf-8")
-
-    def _generate_cursor(self, project_content: str) -> None:
-        """Generate .cursorrules (full project.md content)."""
-        cursor_path = self.project_root / CURSORRULES
-        cursor_path.write_text(project_content, encoding="utf-8")
-
-    def _generate_copilot(
-        self,
-        project_content: str,
-        rules: list[RuleDefinition],
-    ) -> None:
-        """Generate .github/copilot-instructions.md + .github/instructions/."""
-        copilot_dir = self.project_root / COPILOT_DIR
-        copilot_dir.mkdir(parents=True, exist_ok=True)
-        copilot_path = copilot_dir / COPILOT_INSTRUCTIONS
-        copilot_path.write_text(project_content, encoding="utf-8")
-
-        _generate_copilot_per_directory(self.project_root, rules)
+        return result
 
     def _generate_manifest(self, skills: list[SkillDefinition]) -> None:
         """Generate .agents.json machine-readable manifest."""
@@ -287,3 +212,18 @@ class AgentConfigManager:
             self.source_dir_name,
             self.cli_name,
         )
+
+
+__all__ = [
+    "AgentConfigManager",
+    "AgentContext",
+    "CleanResult",
+    "ClaudeCodeAgent",
+    "CodexAgent",
+    "CopilotAgent",
+    "CursorAgent",
+    "DekkAgent",
+    "GenerateResult",
+    "default_agents",
+    "render_codex_skill",
+]

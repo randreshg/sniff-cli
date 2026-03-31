@@ -3,25 +3,23 @@
 from __future__ import annotations
 
 import os
-import shlex
 import shutil
-import subprocess
-import sys
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal
 
-from .cli.errors import NotFoundError
-from .dekk_os import get_dekk_os
-from .shell import ShellDetector, ShellKind
+from ..cli.errors import NotFoundError
+from .os import get_dekk_os
+from ..shell import ShellDetector, ShellKind
 
 if TYPE_CHECKING:
-    from .envspec import EnvironmentSpec
+    from ..environment.spec import EnvironmentSpec
 
 DEFAULT_INSTALL_DIRNAME: Final = ".install"
-DEKK_MODULE_NAME: Final = "dekk"
 PROJECT_SPEC_FILENAME: Final = ".dekk.toml"
+PYTHON_SCRIPT_SUFFIX: Final = ".py"
+PROJECT_VENV_DIRNAME: Final = ".venv"
+DEKK_MARKER_PREFIX: Final = "# dekk:"
 SHELL_CONFIG_STATE_ADDED: Final = "added"
 SHELL_CONFIG_STATE_ALREADY_CONFIGURED: Final = "already_configured"
 SHELL_CONFIG_STATE_FAILED: Final = "failed"
@@ -50,7 +48,7 @@ class BinaryInstaller:
         self,
         source: Path,
         install_dir: Path | None = None,
-        update_shell: bool = True,
+        update_shell: bool = False,
     ) -> InstallResult:
         """Install a binary to the project install directory and optionally update PATH.
 
@@ -93,7 +91,7 @@ class BinaryInstaller:
         python: Path | None = None,
         name: str | None = None,
         install_dir: Path | None = None,
-        update_shell: bool = True,
+        update_shell: bool = False,
     ) -> InstallResult:
         """Generate and install a self-contained wrapper script.
 
@@ -111,8 +109,8 @@ class BinaryInstaller:
         Returns:
             InstallResult with details
         """
-        from dekk.envspec import EnvironmentSpec, find_envspec
-        from dekk.wrapper import WrapperGenerator
+        from dekk.environment.spec import EnvironmentSpec, find_envspec
+        from dekk.execution.wrapper import WrapperGenerator
 
         if spec is None:
             if spec_file is not None:
@@ -126,6 +124,7 @@ class BinaryInstaller:
                     )
                 spec = EnvironmentSpec.from_file(found)
 
+        python = self._resolve_python(target, python=python, spec=spec)
         wrapper_name = name or target.stem
 
         result = WrapperGenerator.install_from_spec(
@@ -135,45 +134,6 @@ class BinaryInstaller:
             python=python,
             install_dir=install_dir,
             project_root=self.project_root,
-        )
-        return self._with_shell_path_update(result, update_shell=update_shell)
-
-    def install_python_shim(
-        self,
-        script: Path,
-        *,
-        name: str | None = None,
-        install_dir: Path | None = None,
-        update_shell: bool = True,
-    ) -> InstallResult:
-        """Install a wrapper that runs a Python script through ``python -m dekk``.
-
-        This is the highest-friction-free path for Python CLIs that live in a
-        normal Python project: the installed command reuses dekk's
-        ``run_script`` bootstrap, which creates ``.venv`` from ``pyproject.toml``
-        on first run and then execs the script with the project environment.
-        """
-        from dekk.wrapper import WrapperGenerator
-
-        script = script.resolve()
-        if not script.exists():
-            raise NotFoundError(f"Script not found: {script}", hint="Check the path and try again")
-        if _find_pyproject(script.parent) is None:
-            raise NotFoundError(
-                f"No pyproject.toml found for {script}",
-                hint=(
-                    "Add a pyproject.toml near the script or use --python with a .dekk.toml config"
-                ),
-            )
-
-        command = [sys.executable, "-m", DEKK_MODULE_NAME, str(script)]
-        wrapper_name = name or script.stem
-        project_name = self.project_root.name or wrapper_name
-        wrapper = _render_command_wrapper(command, project_name=project_name)
-        result = WrapperGenerator.install(
-            wrapper,
-            wrapper_name,
-            install_dir=install_dir or self.default_install_dir(),
         )
         return self._with_shell_path_update(result, update_shell=update_shell)
 
@@ -217,11 +177,11 @@ class BinaryInstaller:
     ) -> InstallResult:
         """Remove an installed wrapper and optionally remove its PATH entry.
 
-        This is the wrapper/script counterpart to ``install_wrapper`` and
-        ``install_python_shim``. Projects can call it directly to provide
-        their own uninstall command on top of dekk's install surface.
+        This is the wrapper/script counterpart to ``install_wrapper``.
+        Projects can call it directly to provide their own uninstall command
+        on top of dekk's install surface.
         """
-        from dekk.wrapper import WrapperGenerator
+        from dekk.execution.wrapper import WrapperGenerator
 
         result = WrapperGenerator.uninstall(
             name, install_dir=install_dir or self.default_install_dir()
@@ -234,6 +194,44 @@ class BinaryInstaller:
     def default_install_dir(self) -> Path:
         """Return the project-local install directory used by dekk."""
         return self.project_root / DEFAULT_INSTALL_DIRNAME
+
+    def _resolve_python(
+        self,
+        target: Path,
+        *,
+        python: Path | None,
+        spec: EnvironmentSpec,
+    ) -> Path | None:
+        """Resolve the interpreter for Python script targets."""
+        if python is not None:
+            return python.resolve()
+
+        if target.suffix.lower() != PYTHON_SCRIPT_SUFFIX:
+            return None
+
+        from dekk.environment.resolver import resolve_environment
+
+        resolved = resolve_environment(spec, project_root=self.project_root)
+        dekk_os = get_dekk_os()
+        if resolved is not None:
+            for candidate in resolved.runtime_paths(dekk_os):
+                for executable in dekk_os.python_command_candidates():
+                    interpreter = candidate / executable
+                    if interpreter.exists():
+                        return interpreter
+
+        venv_python = dekk_os.venv_python(self.project_root / PROJECT_VENV_DIRNAME)
+        if venv_python.exists():
+            return venv_python
+
+        for executable in dekk_os.python_command_candidates():
+            if found := shutil.which(executable):
+                return Path(found).resolve()
+
+        raise NotFoundError(
+            f"No Python interpreter found for {target}",
+            hint="Pass --python or create a project environment before installing the wrapper",
+        )
 
     def _remove_from_shell_config(self, install_dir: Path) -> bool:
         """Remove PATH entries added by dekk. Returns True if cleaned."""
@@ -360,46 +358,4 @@ class BinaryInstaller:
 
     def _shell_config_marker(self) -> str:
         """Return the dekk marker used around shell PATH exports."""
-        return f"# {DEKK_MODULE_NAME}: {self.project_root.name} {SHELL_CONFIG_ENTRY_SUFFIX}"
-
-
-def _render_command_wrapper(command: Sequence[str], *, project_name: str) -> str:
-    """Render a minimal cross-platform wrapper for an arbitrary command."""
-    dekk_os = get_dekk_os()
-    if dekk_os.name == "windows":
-        lines = [
-            "@echo off",
-            "setlocal",
-            f"REM Wrapper for {project_name}",
-            "REM Generated by dekk",
-            "REM This wrapper bootstraps and runs the project command.",
-            "",
-            "call " + subprocess.list2cmdline(list(command)) + " %*",
-            "set EXIT_CODE=%ERRORLEVEL%",
-            "endlocal & exit /b %EXIT_CODE%",
-            "",
-        ]
-        return "\r\n".join(lines)
-
-    quoted = " ".join(shlex.quote(part) for part in command)
-    return "\n".join(
-        [
-            "#!/bin/sh",
-            f"# Wrapper for {project_name}",
-            "# Generated by dekk",
-            "# This wrapper bootstraps and runs the project command.",
-            "",
-            f'exec {quoted} "$@"',
-            "",
-        ]
-    )
-
-
-def _find_pyproject(start: Path) -> Path | None:
-    """Walk up from *start* looking for ``pyproject.toml``."""
-    current = start.resolve()
-    for parent in (current, *current.parents):
-        candidate = parent / "pyproject.toml"
-        if candidate.is_file():
-            return candidate
-    return None
+        return f"{DEKK_MARKER_PREFIX} {self.project_root.name} {SHELL_CONFIG_ENTRY_SUFFIX}"

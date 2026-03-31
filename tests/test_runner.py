@@ -1,11 +1,11 @@
-"""Tests for dekk.runner helpers."""
+"""Tests for dekk.execution.runner helpers."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from dekk import runner as runner_mod
-from dekk.dekk_os import PosixDekkOS, WindowsDekkOS
+from dekk.execution import runner as runner_mod
+from dekk.execution.os import PosixDekkOS, WindowsDekkOS
 
 
 class TestVenvExecutable:

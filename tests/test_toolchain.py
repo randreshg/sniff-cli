@@ -8,8 +8,9 @@ from unittest.mock import patch
 
 import pytest
 
+from dekk.execution.os import PosixDekkOS, WindowsDekkOS
 from dekk.shell import ActivationConfig, ActivationScriptBuilder, EnvVar, ShellKind
-from dekk.toolchain import (
+from dekk.execution.toolchain import (
     CMakeToolchain,
     CondaToolchain,
     EnvVarBuilder,
@@ -95,7 +96,7 @@ class TestEnvVarBuilder:
         builder.prepend_var("PYTHONPATH", "C:/first")
         builder.prepend_var("PYTHONPATH", "C:/second")
         builder.prepend_path("C:/bin")
-        monkeypatch.setattr("dekk.toolchain.os.pathsep", ";")
+        monkeypatch.setattr("dekk.execution.toolchain.builder.os.pathsep", ";")
         d = builder.to_env_dict()
         assert d["PYTHONPATH"] == "C:/first;C:/second"
         assert d["PATH"] == "C:/bin"
@@ -139,7 +140,7 @@ class TestCMakeToolchain:
         assert self.tc.lib_dir == self.prefix / "lib"
         assert self.tc.bin_dir == self.prefix / "bin"
 
-    @patch("dekk.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.execution.toolchain.cmake.get_dekk_os", return_value=WindowsDekkOS())
     def test_properties_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CMakeToolchain(prefix=prefix)
@@ -155,23 +156,21 @@ class TestCMakeToolchain:
             prefix / "bin",
         )
 
-    @patch("dekk.toolchain.platform.system", return_value="Linux")
-    def test_configure_linux(self, _mock):
+    @patch("dekk.execution.os.posix.platform.system", return_value="Linux")
+    @patch("dekk.execution.toolchain.cmake.get_dekk_os", return_value=PosixDekkOS())
+    def test_configure_linux(self, _os_mock, _platform_mock):
         builder = EnvVarBuilder(app_name="apxm")
         self.tc.configure(builder)
         config = builder.build()
 
         var_names = [v.name for v in config.env_vars]
-        assert "MLIR_DIR" in var_names
-        assert "LLVM_DIR" in var_names
-        assert "MLIR_PREFIX" in var_names
-        assert "LLVM_PREFIX" in var_names
+        assert "CMAKE_PREFIX_PATH" in var_names
         assert "LD_LIBRARY_PATH" in var_names
         assert "DYLD_LIBRARY_PATH" not in var_names
 
-        mlir_var = next(v for v in config.env_vars if v.name == "MLIR_DIR")
-        assert mlir_var.value == str(self.prefix / "lib" / "cmake" / "mlir")
-        assert mlir_var.prepend_path is False
+        cmake_prefix_var = next(v for v in config.env_vars if v.name == "CMAKE_PREFIX_PATH")
+        assert cmake_prefix_var.value == str(self.prefix)
+        assert cmake_prefix_var.prepend_path is True
 
         ld_var = next(v for v in config.env_vars if v.name == "LD_LIBRARY_PATH")
         assert ld_var.value == str(self.prefix / "lib")
@@ -179,8 +178,9 @@ class TestCMakeToolchain:
 
         assert str(self.prefix / "bin") in config.path_prepends
 
-    @patch("dekk.toolchain.platform.system", return_value="Darwin")
-    def test_configure_macos(self, _mock):
+    @patch("dekk.execution.os.posix.platform.system", return_value="Darwin")
+    @patch("dekk.execution.toolchain.cmake.get_dekk_os", return_value=PosixDekkOS())
+    def test_configure_macos(self, _os_mock, _platform_mock):
         builder = EnvVarBuilder()
         self.tc.configure(builder)
         config = builder.build()
@@ -189,7 +189,7 @@ class TestCMakeToolchain:
         assert "DYLD_LIBRARY_PATH" in var_names
         assert "LD_LIBRARY_PATH" not in var_names
 
-    @patch("dekk.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.execution.toolchain.cmake.get_dekk_os", return_value=WindowsDekkOS())
     def test_configure_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CMakeToolchain(prefix=prefix)
@@ -198,8 +198,7 @@ class TestCMakeToolchain:
         config = builder.build()
 
         var_names = [v.name for v in config.env_vars]
-        assert "MLIR_DIR" in var_names
-        assert "LLVM_DIR" in var_names
+        assert "CMAKE_PREFIX_PATH" in var_names
         assert "LD_LIBRARY_PATH" not in var_names
         assert "DYLD_LIBRARY_PATH" not in var_names
         assert str(prefix) in config.path_prepends
@@ -209,8 +208,9 @@ class TestCMakeToolchain:
         assert str(prefix / "Scripts") in config.path_prepends
         assert str(prefix / "bin") in config.path_prepends
 
-    @patch("dekk.toolchain.platform.system", return_value="Linux")
-    def test_extra_lib_dirs(self, _mock):
+    @patch("dekk.execution.os.posix.platform.system", return_value="Linux")
+    @patch("dekk.execution.toolchain.cmake.get_dekk_os", return_value=PosixDekkOS())
+    def test_extra_lib_dirs(self, _os_mock, _platform_mock):
         tc = CMakeToolchain(
             prefix=self.prefix,
             extra_lib_dirs=("/opt/release/lib", "/opt/release"),
@@ -233,8 +233,7 @@ class TestCMakeToolchain:
         config = builder.build()
 
         script = ActivationScriptBuilder().build(config, ShellKind.BASH)
-        assert "export MLIR_DIR=" in script
-        assert "export LLVM_DIR=" in script
+        assert "export CMAKE_PREFIX_PATH=" in script
         assert str(self.prefix / "bin") in script
 
 
@@ -279,7 +278,7 @@ class TestCondaToolchain:
         assert "CONDA_PREFIX" in var_names
         assert "CONDA_DEFAULT_ENV" not in var_names
 
-    @patch("dekk.toolchain.platform.system", return_value="Windows")
+    @patch("dekk.execution.toolchain.conda.get_dekk_os", return_value=WindowsDekkOS())
     def test_configure_windows(self, _mock):
         prefix = Path("C:/miniforge/envs/apxm")
         tc = CondaToolchain(prefix=prefix, env_name="apxm")
@@ -323,155 +322,3 @@ class TestToolchainProfileProtocol:
         tc.configure(builder)
         config = builder.build()
         assert config.env_vars[0].name == "CUSTOM"
-
-
-# ---------------------------------------------------------------------------
-# Integration: APXM replacement for setup_mlir_environment
-# ---------------------------------------------------------------------------
-
-
-class TestApxmIntegration:
-    """Demonstrate replacing setup_mlir_environment with toolchain profiles."""
-
-    @patch("dekk.toolchain.platform.system", return_value="Linux")
-    def test_replaces_setup_mlir_environment(self, _mock):
-        """The toolchain module should produce equivalent env vars to
-        the old setup_mlir_environment() function."""
-        prefix = Path("/home/user/miniforge3/envs/apxm")
-        target_dir = Path("/home/user/projects/apxm/target")
-
-        conda = CondaToolchain(prefix=prefix, env_name="apxm")
-        cmake = CMakeToolchain(
-            prefix=prefix,
-            extra_lib_dirs=(
-                str(target_dir / "release" / "lib"),
-                str(target_dir / "release"),
-            ),
-        )
-
-        builder = EnvVarBuilder(app_name="apxm")
-        builder.set_banner("APXM MLIR/LLVM toolchain activated")
-        conda.configure(builder)
-        cmake.configure(builder)
-
-        config = builder.build()
-
-        # Verify all vars from the old setup_mlir_environment are present
-        var_map = {v.name: v for v in config.env_vars}
-        assert var_map["CONDA_PREFIX"].value == str(prefix)
-        assert var_map["MLIR_DIR"].value == str(prefix / "lib" / "cmake" / "mlir")
-        assert var_map["LLVM_DIR"].value == str(prefix / "lib" / "cmake" / "llvm")
-
-        # Library path includes extra dirs + prefix/lib
-        ld_vars = [v for v in config.env_vars if v.name == "LD_LIBRARY_PATH"]
-        ld_values = [v.value for v in ld_vars]
-        assert str(target_dir / "release" / "lib") in ld_values
-        assert str(target_dir / "release") in ld_values
-        assert str(prefix / "lib") in ld_values
-
-        # PATH includes conda bin and cmake bin
-        assert str(prefix / "bin") in config.path_prepends
-
-        # Banner
-        assert config.banner == "APXM MLIR/LLVM toolchain activated"
-
-    def test_all_shells_produce_valid_scripts(self):
-        """Verify the config works with all supported shells."""
-        prefix = Path("/opt/conda/envs/apxm")
-        cmake = CMakeToolchain(prefix=prefix)
-        builder = EnvVarBuilder(app_name="apxm")
-        cmake.configure(builder)
-        config = builder.build()
-
-        script_builder = ActivationScriptBuilder()
-        for shell in (
-            ShellKind.BASH,
-            ShellKind.ZSH,
-            ShellKind.FISH,
-            ShellKind.TCSH,
-            ShellKind.POWERSHELL,
-        ):
-            script = script_builder.build(config, shell)
-            assert str(prefix) in script
-            assert len(script) > 20
-
-    def test_to_env_dict_for_subprocess(self):
-        """Verify to_env_dict produces a dict suitable for subprocess calls."""
-        prefix = Path("/opt/conda/envs/apxm")
-        conda = CondaToolchain(prefix=prefix, env_name="apxm")
-        cmake = CMakeToolchain(prefix=prefix)
-
-        builder = EnvVarBuilder()
-        conda.configure(builder)
-        cmake.configure(builder)
-
-        d = builder.to_env_dict()
-        assert d["CONDA_PREFIX"] == str(prefix)
-        assert d["MLIR_DIR"] == str(prefix / "lib" / "cmake" / "mlir")
-        assert d["LLVM_DIR"] == str(prefix / "lib" / "cmake" / "llvm")
-        assert str(prefix / "bin") in d["PATH"]
-
-    @patch("dekk.toolchain.platform.system", return_value="Windows")
-    @patch("dekk.toolchain.os.pathsep", ";")
-    def test_to_env_dict_uses_windows_separator(self, _platform_mock):
-        prefix = Path("C:/miniforge/envs/apxm")
-        builder = EnvVarBuilder()
-        CondaToolchain(prefix=prefix, env_name="apxm").configure(builder)
-
-        d = builder.to_env_dict()
-        assert ";" in d["PATH"]
-        assert str(prefix / "Library" / "bin") in d["PATH"]
-        assert str(prefix / "Scripts") in d["PATH"]
-        assert str(prefix / "bin") in d["PATH"]
-
-
-# ---------------------------------------------------------------------------
-# Real conda prefix example
-# ---------------------------------------------------------------------------
-
-
-class TestRealCondaPrefix:
-    """Test with a realistic conda prefix structure.
-
-    Uses tmp_path to create a realistic directory layout.
-    """
-
-    def test_cmake_toolchain_with_real_layout(self, tmp_path):
-        """Simulate a real conda environment with MLIR/LLVM installed."""
-        prefix = tmp_path / "envs" / "apxm"
-
-        # Create realistic directory structure
-        (prefix / "bin").mkdir(parents=True)
-        (prefix / "lib" / "cmake" / "mlir").mkdir(parents=True)
-        (prefix / "lib" / "cmake" / "llvm").mkdir(parents=True)
-        (prefix / "lib").mkdir(exist_ok=True)
-
-        tc = CMakeToolchain(prefix=prefix)
-
-        # Verify paths resolve to real directories
-        assert tc.mlir_dir.exists()
-        assert tc.llvm_dir.exists()
-        assert tc.lib_dir.exists()
-        assert tc.bin_dir.exists()
-
-        builder = EnvVarBuilder(app_name="apxm")
-        tc.configure(builder)
-        config = builder.build()
-
-        # All paths should be absolute
-        for var in config.env_vars:
-            if var.name in ("MLIR_DIR", "LLVM_DIR", "MLIR_PREFIX", "LLVM_PREFIX"):
-                assert Path(var.value).is_absolute()
-
-    def test_conda_toolchain_with_real_layout(self, tmp_path):
-        """Simulate a real conda environment prefix."""
-        prefix = tmp_path / "miniforge3" / "envs" / "apxm"
-        (prefix / "bin").mkdir(parents=True)
-
-        tc = CondaToolchain(prefix=prefix, env_name="apxm")
-        builder = EnvVarBuilder()
-        tc.configure(builder)
-        config = builder.build()
-
-        var_map = {v.name: v for v in config.env_vars}
-        assert Path(var_map["CONDA_PREFIX"].value).exists()

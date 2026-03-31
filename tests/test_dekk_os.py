@@ -1,8 +1,8 @@
-"""Tests for dekk.dekk_os."""
+"""Tests for dekk.execution.os."""
 
 from __future__ import annotations
 
-from dekk.dekk_os import PosixDekkOS, WindowsDekkOS, get_dekk_os
+from dekk.execution.os import PosixDekkOS, WindowsDekkOS, get_dekk_os
 
 
 class TestGetDekkOs:

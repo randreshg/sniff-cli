@@ -18,6 +18,20 @@ PYTHON_SCRIPT_SUFFIX: Final = ".py"
 DEFAULT_INIT_DIRECTORY: Final = "."
 DEFAULT_EXAMPLE_TEMPLATE: Final = "quickstart"
 FILESYSTEM_RETRY_HINT: Final = "Retry the command after fixing the filesystem or PATH issue."
+BUILTIN_COMMANDS: Final = {
+    "doctor",
+    "version",
+    "env",
+    "init",
+    "example",
+    "activate",
+    "install",
+    "test",
+    "wrap",
+    "uninstall",
+    "setup",
+    "agents",
+}
 
 
 def _make_app() -> typer.Typer:
@@ -114,6 +128,9 @@ def _make_app() -> typer.Typer:
             None, "--install-dir", help="Installation directory"
         ),
         spec: str | None = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml"),
+        update_shell: bool = typer.Option(
+            False, "--update-shell", help="Add install dir to shell config"
+        ),
     ) -> None:
         """Install a project command with automatic environment setup."""
         from dekk.cli.commands import install as _install
@@ -124,6 +141,7 @@ def _make_app() -> typer.Typer:
             python=Path(python) if python else None,
             install_dir=Path(install_dir) if install_dir else None,
             spec_file=Path(spec) if spec else None,
+            update_shell=update_shell,
         )
 
     @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -146,6 +164,9 @@ def _make_app() -> typer.Typer:
             None, "--install-dir", help="Installation directory"
         ),
         spec: str | None = typer.Option(None, "--spec", "-s", help="Path to .dekk.toml"),
+        update_shell: bool = typer.Option(
+            False, "--update-shell", help="Add install dir to shell config"
+        ),
     ) -> None:
         """Generate a self-contained wrapper binary."""
         from dekk.cli.commands import wrap as _wrap
@@ -156,6 +177,7 @@ def _make_app() -> typer.Typer:
             python=Path(python) if python else None,
             install_dir=Path(install_dir) if install_dir else None,
             spec_file=Path(spec) if spec else None,
+            update_shell=update_shell,
         )
 
     @app.command()
@@ -179,21 +201,22 @@ def _make_app() -> typer.Typer:
 
     @app.command()
     def setup(
-        force: bool = typer.Option(False, "--force", "-f", help="Recreate conda env even if it exists"),
+        force: bool = typer.Option(False, "--force", "-f", help="Recreate the runtime environment even if it exists"),
     ) -> None:
-        """Set up project environment (conda packages, npm tools) from .dekk.toml."""
+        """Set up the configured runtime environment and npm tools from `.dekk.toml`."""
         from dekk.cli.styles import print_error, print_info, print_success, print_warning
-        from dekk.setup import run_setup
+        from dekk.environment.setup import run_setup
 
         project_root = Path.cwd().resolve()
         result = run_setup(project_root, force=force)
 
-        if result.conda_created:
-            print_success(f"Created conda env: {result.conda_prefix.name}")
-            if result.conda_packages:
-                print_info(f"  Packages: {', '.join(result.conda_packages)}")
-        elif result.conda_prefix:
-            print_info(f"Conda env already exists: {result.conda_prefix.name}")
+        env_label = result.environment_kind.value if result.environment_kind else "environment"
+        if result.environment_created and result.environment_prefix:
+            print_success(f"Created {env_label}: {result.environment_prefix.name}")
+            if result.environment_packages:
+                print_info(f"  Packages: {', '.join(result.environment_packages)}")
+        elif result.environment_prefix:
+            print_info(f"{env_label.capitalize()} already exists: {result.environment_prefix.name}")
 
         for pkg in result.npm_installed:
             print_success(f"  npm: {pkg}")
@@ -206,9 +229,8 @@ def _make_app() -> typer.Typer:
         if not result.ok:
             raise typer.Exit(1)
 
-        if result.conda_prefix:
-            conda_bin = result.conda_prefix / "bin"
-            print_info(f"Tools available at: {conda_bin}")
+        if result.environment_prefix:
+            print_info(f"Runtime available at: {result.environment_prefix}")
             print_info(f"Activate with: eval \"$(dekk activate --shell bash)\"")
 
     # -- Agent config management sub-app --
@@ -232,10 +254,23 @@ def main() -> None:
     try:
         # If first arg is a .py script, run it with auto-bootstrapped venv
         if len(sys.argv) > 1 and sys.argv[1].endswith(PYTHON_SCRIPT_SUFFIX):
-            from dekk.runner import run_script
+            from dekk.execution.runner import run_script
 
             run_script(sys.argv[1], sys.argv[2:])
             return
+
+        # Worktree-safe project runner:
+        # `dekk <app_name> <command> [args...]`
+        if len(sys.argv) > 1:
+            first = sys.argv[1]
+            if (
+                not first.startswith("-")
+                and first not in BUILTIN_COMMANDS
+                and not first.endswith(PYTHON_SCRIPT_SUFFIX)
+            ):
+                from dekk.project.runner import run_project_command
+
+                raise SystemExit(run_project_command(first, sys.argv[2:]))
 
         global _app
         if _app is None:

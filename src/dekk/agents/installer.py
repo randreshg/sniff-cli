@@ -18,7 +18,8 @@ from dekk.agents.constants import (
     SKILL_FILENAME,
 )
 from dekk.agents.discovery import SkillDefinition, discover_skills
-from dekk.agents.generators import _install_skills_to_dir, render_codex_skill
+from dekk.agents.providers.codex import render_codex_skill
+from dekk.agents.providers.shared import install_skills_to_dir
 
 
 def codex_home() -> Path:
@@ -74,7 +75,7 @@ def install_codex_skills(
     """
     skills = discover_skills(source_dir)
     effective_dir = codex_dir.expanduser() if codex_dir else codex_skills_dir()
-    return _install_skills_to_dir(
+    return install_skills_to_dir(
         skills,
         effective_dir,
         renderer=render_codex_skill,

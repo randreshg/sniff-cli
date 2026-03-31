@@ -15,7 +15,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dekk.detect import PlatformDetector, PlatformInfo
+from dekk.detection.detect import PlatformDetector, PlatformInfo
 
 
 @dataclass(frozen=True)
@@ -191,7 +191,7 @@ class LibraryPathResolver:
             env = EnvVar(name=name, value=value, prepend_path=True)
 
         Usage with env.EnvVarBuilder:
-            from dekk.env import EnvVarBuilder
+            from dekk.execution.env import EnvVarBuilder
             builder = EnvVarBuilder()
             name, value = resolver.to_env_var()
             builder.set(name, value)
@@ -202,19 +202,19 @@ class LibraryPathResolver:
     def configure_builder(self, builder: object) -> None:
         """Apply resolved library paths to an EnvVarBuilder.
 
-        Works with both dekk.env.EnvVarBuilder and dekk.toolchain.EnvVarBuilder.
+        Works with both dekk.execution.env.EnvVarBuilder and dekk.execution.toolchain.EnvVarBuilder.
 
         Args:
-            builder: An EnvVarBuilder instance (from dekk.env or dekk.toolchain).
+            builder: An EnvVarBuilder instance (from dekk.execution.env or dekk.execution.toolchain).
         """
         name, value = self.to_env_var()
         if not value:
             return
-        # dekk.env.EnvVarBuilder uses set_from_path / set
+        # dekk.execution.env.EnvVarBuilder uses set_from_path / set
         if hasattr(builder, "set_from_path"):
             info = self.resolve()
             builder.set_from_path(name, list(info.paths))
-        # dekk.toolchain.EnvVarBuilder uses prepend_var
+        # dekk.execution.toolchain.EnvVarBuilder uses prepend_var
         elif hasattr(builder, "prepend_var"):
             builder.prepend_var(name, value)
         else:

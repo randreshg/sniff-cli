@@ -10,7 +10,7 @@ from unittest.mock import patch
 from dekk.cli.output import OutputFormat, OutputFormatter, print_dep_results
 
 # ---------------------------------------------------------------------------
-# Minimal DependencyResult stub (avoids importing dekk.deps to keep tests fast)
+# Minimal DependencyResult stub (avoids importing dekk.detection.deps to keep tests fast)
 # ---------------------------------------------------------------------------
 
 

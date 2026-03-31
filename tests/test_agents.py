@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from dekk.agents.constants import AGENTS_JSON, AGENTS_MD, CLAUDE_MD, CURSORRULES
 
 
 # ============================================================================
@@ -264,6 +265,54 @@ class TestGenerators:
         assert agents_md.is_file()
         assert "Detailed Reference" in agents_md.read_text()
 
+    def test_custom_agent_abstraction(self, project_root: Path) -> None:
+        from dekk.agents.generators import AgentConfigManager, AgentContext, DekkAgent
+
+        class StubAgent(DekkAgent):
+            target = "stub"
+
+            def generate(self, context: AgentContext) -> list[str]:
+                output = context.project_root / "STUB.md"
+                output.write_text(context.project_content, encoding="utf-8")
+                return ["STUB.md"]
+
+        manager = AgentConfigManager(project_root, agents=(StubAgent(),))
+        result = manager.generate("stub")
+
+        assert result.generated == ["STUB.md"]
+        assert (project_root / "STUB.md").is_file()
+
+    def test_clean_all_removes_generated_outputs(self, project_root: Path) -> None:
+        from dekk.agents.generators import AgentConfigManager
+
+        manager = AgentConfigManager(project_root)
+        manager.generate("all")
+
+        result = manager.clean("all")
+
+        assert AGENTS_MD in result.removed
+        assert CLAUDE_MD in result.removed
+        assert CURSORRULES in result.removed
+        assert AGENTS_JSON in result.removed
+        assert not (project_root / AGENTS_MD).exists()
+        assert not (project_root / CLAUDE_MD).exists()
+        assert not (project_root / CURSORRULES).exists()
+        assert not (project_root / AGENTS_JSON).exists()
+        assert not (project_root / ".claude").exists()
+
+    def test_clean_specific_target_only_removes_that_target(self, project_root: Path) -> None:
+        from dekk.agents.generators import AgentConfigManager
+
+        manager = AgentConfigManager(project_root)
+        manager.generate("all")
+
+        result = manager.clean("codex")
+
+        assert result.removed == [AGENTS_MD]
+        assert not (project_root / AGENTS_MD).exists()
+        assert (project_root / CLAUDE_MD).exists()
+        assert (project_root / CURSORRULES).exists()
+
     def test_generate_no_project_md(self, tmp_path: Path) -> None:
         from dekk.agents.generators import AgentConfigManager
 
@@ -489,7 +538,7 @@ class TestScaffold:
 
 class TestEnvspecExtensions:
     def test_command_spec_parsing(self, tmp_path: Path) -> None:
-        from dekk.envspec import EnvironmentSpec
+        from dekk.environment.spec import EnvironmentSpec
 
         toml_path = tmp_path / ".dekk.toml"
         toml_path.write_text(
@@ -508,7 +557,7 @@ class TestEnvspecExtensions:
         assert spec.commands["clean"].run == "rm -rf build"
 
     def test_agents_spec_parsing(self, tmp_path: Path) -> None:
-        from dekk.envspec import EnvironmentSpec
+        from dekk.environment.spec import EnvironmentSpec
 
         toml_path = tmp_path / ".dekk.toml"
         toml_path.write_text(
@@ -525,7 +574,7 @@ class TestEnvspecExtensions:
         assert spec.agents.targets == ("claude", "codex")
 
     def test_agents_spec_defaults(self, tmp_path: Path) -> None:
-        from dekk.envspec import EnvironmentSpec
+        from dekk.environment.spec import EnvironmentSpec
 
         toml_path = tmp_path / ".dekk.toml"
         toml_path.write_text('[project]\nname = "test"\n', encoding="utf-8")
@@ -705,6 +754,62 @@ class TestProjectRootResolution:
             assert not (some_other_dir / ".agents.json").exists()
         finally:
             os.chdir(original_cwd)
+
+    def test_agents_init_auto_creates_dekk_toml(self, tmp_path: Path) -> None:
+        """`agents init` should seed `.dekk.toml` before scaffolding `.agents/`."""
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.agents.app import create_agents_app
+
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "demo-app"\n\n'
+            "[build-system]\n"
+            'build-backend = "setuptools.build_meta"\n',
+            encoding="utf-8",
+        )
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(app, ["init"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0
+        assert (tmp_path / ".dekk.toml").is_file()
+        assert (tmp_path / ".agents" / "project.md").is_file()
+        assert (tmp_path / ".agents" / "skills" / "build" / "SKILL.md").is_file()
+
+    def test_agents_clean_command(self, project_root: Path) -> None:
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.agents.app import create_agents_app
+
+        from dekk.agents.generators import AgentConfigManager
+
+        AgentConfigManager(project_root).generate("all")
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            result = runner.invoke(app, ["clean", "--target", "codex"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0
+        assert not (project_root / AGENTS_MD).exists()
+        assert (project_root / CLAUDE_MD).exists()
 
 
 class TestFlowGeneration:

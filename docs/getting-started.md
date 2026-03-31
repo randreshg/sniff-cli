@@ -39,14 +39,16 @@ Invoke-Expression (& dekk activate --shell powershell | Out-String)
 ```bash
 dekk --help
 dekk doctor
-dekk init --example quickstart
+dekk install ./tools/cli.py
 ```
 
 That sequence is the intended onboarding path:
 
 - `dekk --help` confirms the command is installed correctly.
 - `dekk doctor` checks the current machine and toolchain state.
-- `dekk init --example quickstart` creates a starter `.dekk.toml` in the current directory.
+- `dekk install ./tools/cli.py` will auto-create `.dekk.toml` if the repo does not have one yet.
+
+Use `dekk init --example quickstart` when you want to start from an explicit template instead of detection.
 
 For ready-to-use starter configs, see
 [`examples/.dekk.toml.quickstart`](../examples/.dekk.toml.quickstart)
@@ -57,6 +59,13 @@ dekk example quickstart
 dekk example conda
 ```
 
+For agent-oriented projects, there is also a built-in agent template:
+
+```bash
+dekk agents init
+dekk agents generate --target all
+```
+
 ## First End-to-End Flow
 
 This is the smallest reliable workflow for a new project:
@@ -64,18 +73,16 @@ This is the smallest reliable workflow for a new project:
 1. Install `dekk`.
 2. Confirm the command works with `dekk --help`.
 3. Run `dekk doctor`.
-4. Create a starter config with `dekk init --example quickstart`.
-5. Edit `.dekk.toml` so it matches your project.
-6. Build one real target in your repo.
-7. Run `dekk install <target>` or `dekk wrap <name> <target>`.
+4. Build one real target in your repo.
+5. Run `dekk install <target>` or `dekk wrap <name> <target>`.
+6. Let dekk auto-create `.dekk.toml` from the repo if needed.
+7. Edit `.dekk.toml` only if you want to refine commands, tools, or environment settings.
 8. Run the generated wrapper directly.
 
 Example:
 
 ```bash
 dekk install ./tools/cli.py
-
-dekk init --example quickstart
 dekk install ./bin/myapp --name myapp
 myapp --help
 ```
@@ -83,17 +90,32 @@ myapp --help
 PowerShell example:
 
 ```powershell
-dekk init --example quickstart
 dekk install .\dist\myapp.exe --name myapp
 myapp --help
 ```
 
-For Python scripts, `dekk install ./tools/cli.py` expects a nearby
-`pyproject.toml` and bootstraps `.venv` automatically on first run.
-For binaries and conda-backed projects, prefer `.dekk.toml` plus
-`dekk install <target>`. In both cases, the launcher is written to
-`./.install` by default and `dekk` can add that directory to your shell
-config automatically.
+For Python projects, dekk uses `pyproject.toml` to seed `.dekk.toml` and wraps
+the target with the active project interpreter, local `.venv`, or an explicit
+`--python` override. For binaries and conda-backed projects, dekk uses the
+nearest build files plus any `environment.yaml` it finds. In all cases, the
+launcher is written to `./.install` by default and dekk can add that directory
+to your shell config automatically.
+
+## Agent Setup
+
+If the repo needs agent instructions checked into source control, use the
+agent workflow:
+
+```bash
+dekk agents init
+dekk agents generate --target all
+dekk agents status
+```
+
+`dekk agents init` will auto-create `.dekk.toml` first when needed, then create
+`.agents/` and starter skills from `[commands]`.
+
+See [Agent Workflows](agents.md) for the full model.
 
 ## Using The Library APIs
 
@@ -300,7 +322,7 @@ else:
 dekk is detection-only, but provides a Protocol for consumers to implement fixes:
 
 ```python
-from dekk.remediate import Remediator, DetectedIssue, FixResult
+from dekk.diagnostics.remediate import Remediator, DetectedIssue, FixResult
 from typing_extensions import runtime_checkable
 
 @runtime_checkable

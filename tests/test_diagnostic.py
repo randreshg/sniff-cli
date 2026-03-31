@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from dekk.deps import DependencyResult, DependencySpec
-from dekk.diagnostic import (
+from dekk.detection.deps import DependencyResult, DependencySpec
+from dekk.diagnostics.diagnostic import (
     CheckRegistry,
     CheckResult,
     CheckStatus,
@@ -20,8 +20,8 @@ from dekk.diagnostic import (
     MarkdownFormatter,
     TextFormatter,
 )
-from dekk.diagnostic_checks import CIEnvironmentCheck, DependencyCheck, PlatformCheck
-from dekk.remediate import (
+from dekk.diagnostics.diagnostic_checks import CIEnvironmentCheck, DependencyCheck, PlatformCheck
+from dekk.diagnostics.remediate import (
     DetectedIssue,
     FixResult,
     FixStatus,
@@ -279,7 +279,7 @@ def test_platform_check_reports_detected_platform_details():
         is_container=True,
     )
 
-    with patch("dekk.diagnostic_checks.PlatformDetector.detect", return_value=fake_platform):
+    with patch("dekk.diagnostics.diagnostic_checks.PlatformDetector.detect", return_value=fake_platform):
         result = PlatformCheck().run()
 
     assert result.status is CheckStatus.PASS
@@ -290,7 +290,7 @@ def test_platform_check_reports_detected_platform_details():
 
 
 def test_platform_check_reports_detector_failures():
-    with patch("dekk.diagnostic_checks.PlatformDetector.detect", side_effect=RuntimeError("boom")):
+    with patch("dekk.diagnostics.diagnostic_checks.PlatformDetector.detect", side_effect=RuntimeError("boom")):
         result = PlatformCheck().run()
 
     assert result.status is CheckStatus.FAIL
@@ -306,7 +306,7 @@ def test_dependency_check_passes_when_dependency_is_found():
         version="3.12.1",
     )
 
-    with patch("dekk.diagnostic_checks.DependencyChecker.check", return_value=dependency):
+    with patch("dekk.diagnostics.diagnostic_checks.DependencyChecker.check", return_value=dependency):
         result = DependencyCheck(spec).run()
 
     assert result.status is CheckStatus.PASS
@@ -331,9 +331,9 @@ def test_dependency_check_warns_for_old_or_optional_dependencies():
         error="fake not found",
     )
 
-    with patch("dekk.diagnostic_checks.DependencyChecker.check", return_value=old_dependency):
+    with patch("dekk.diagnostics.diagnostic_checks.DependencyChecker.check", return_value=old_dependency):
         old_result = DependencyCheck(old_spec).run()
-    with patch("dekk.diagnostic_checks.DependencyChecker.check", return_value=missing_optional):
+    with patch("dekk.diagnostics.diagnostic_checks.DependencyChecker.check", return_value=missing_optional):
         optional_result = DependencyCheck(DependencySpec("Fake", "fake", required=False)).run()
 
     assert old_result.status is CheckStatus.WARN
@@ -351,9 +351,9 @@ def test_dependency_check_fails_for_missing_required_or_checker_errors():
         error="git not found",
     )
 
-    with patch("dekk.diagnostic_checks.DependencyChecker.check", return_value=missing_required):
+    with patch("dekk.diagnostics.diagnostic_checks.DependencyChecker.check", return_value=missing_required):
         missing_result = DependencyCheck(DependencySpec("Git", "git")).run()
-    with patch("dekk.diagnostic_checks.DependencyChecker.check", side_effect=RuntimeError("boom")):
+    with patch("dekk.diagnostics.diagnostic_checks.DependencyChecker.check", side_effect=RuntimeError("boom")):
         error_result = DependencyCheck(DependencySpec("Git", "git")).run()
 
     assert missing_result.status is CheckStatus.FAIL
@@ -365,7 +365,7 @@ def test_dependency_check_fails_for_missing_required_or_checker_errors():
 def test_ci_environment_check_skips_outside_ci():
     fake_ci = SimpleNamespace(is_ci=False)
 
-    with patch("dekk.diagnostic_checks.CIDetector.detect", return_value=fake_ci):
+    with patch("dekk.diagnostics.diagnostic_checks.CIDetector.detect", return_value=fake_ci):
         result = CIEnvironmentCheck().run()
 
     assert result.status is CheckStatus.SKIP
@@ -380,7 +380,7 @@ def test_ci_environment_check_reports_provider_and_branch():
         runner=SimpleNamespace(runner_os="Linux"),
     )
 
-    with patch("dekk.diagnostic_checks.CIDetector.detect", return_value=fake_ci):
+    with patch("dekk.diagnostics.diagnostic_checks.CIDetector.detect", return_value=fake_ci):
         result = CIEnvironmentCheck().run()
 
     assert result.status is CheckStatus.PASS
@@ -394,7 +394,7 @@ def test_ci_environment_check_reports_provider_and_branch():
 
 
 def test_ci_environment_check_reports_detector_failures():
-    with patch("dekk.diagnostic_checks.CIDetector.detect", side_effect=RuntimeError("boom")):
+    with patch("dekk.diagnostics.diagnostic_checks.CIDetector.detect", side_effect=RuntimeError("boom")):
         result = CIEnvironmentCheck().run()
 
     assert result.status is CheckStatus.FAIL

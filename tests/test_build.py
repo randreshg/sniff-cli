@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from dekk.build import (
+from dekk.detection.build import (
     BuildSystem,
     BuildSystemDetector,
     BuildSystemInfo,

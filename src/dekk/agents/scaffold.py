@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from dekk.agents.constants import (
-    BUILD_SYSTEM_MARKERS,
     DEFAULT_SOURCE_DIR,
     DEKK_TOML,
     PROJECT_MD,
@@ -28,6 +27,65 @@ from dekk.agents.constants import (
     TOML_PROJECT_KEY,
     TOML_RUN_KEY,
 )
+from dekk.detection.build import BuildSystem, BuildSystemDetector
+from dekk.scaffold import ProjectLanguage, ProjectTypeDetector
+
+BUILD_COMMAND_NAME = "build"
+TEST_COMMAND_NAME = "test"
+LANGUAGE_DISPLAY_NAMES = {
+    ProjectLanguage.PYTHON: "Python",
+    ProjectLanguage.RUST: "Rust",
+    ProjectLanguage.JAVASCRIPT: "TypeScript/JavaScript",
+    ProjectLanguage.TYPESCRIPT: "TypeScript/JavaScript",
+    ProjectLanguage.GO: "Go",
+    ProjectLanguage.JAVA: "Java",
+    ProjectLanguage.CSHARP: "C#",
+    ProjectLanguage.CPP: "C/C++",
+    ProjectLanguage.C: "C/C++",
+    ProjectLanguage.RUBY: "Ruby",
+    ProjectLanguage.PHP: "PHP",
+    ProjectLanguage.SWIFT: "Swift",
+    ProjectLanguage.KOTLIN: "Kotlin",
+    ProjectLanguage.SCALA: "Scala",
+}
+DETECTED_BUILD_COMMANDS = {
+    BuildSystem.CARGO: "cargo build",
+    BuildSystem.CMAKE: "cmake -B build && cmake --build build",
+    BuildSystem.NPM: "npm run build",
+    BuildSystem.PNPM: "pnpm run build",
+    BuildSystem.YARN: "yarn build",
+    BuildSystem.BUN: "bun run build",
+    BuildSystem.POETRY: "poetry build",
+    BuildSystem.PDM: "pdm build",
+    BuildSystem.HATCH: "hatch build",
+    BuildSystem.FLIT: "flit build",
+    BuildSystem.SETUPTOOLS: "python -m build",
+    BuildSystem.MATURIN: "maturin build",
+    BuildSystem.UV: "uv build",
+    BuildSystem.GO: "go build ./...",
+    BuildSystem.MAVEN: "mvn package",
+    BuildSystem.GRADLE: "gradle build",
+    BuildSystem.MAKE: "make",
+}
+DETECTED_TEST_COMMANDS = {
+    BuildSystem.CARGO: "cargo test",
+    BuildSystem.CMAKE: "ctest --test-dir build",
+    BuildSystem.NPM: "npm test",
+    BuildSystem.PNPM: "pnpm test",
+    BuildSystem.YARN: "yarn test",
+    BuildSystem.BUN: "bun test",
+    BuildSystem.POETRY: "pytest -q",
+    BuildSystem.PDM: "pytest -q",
+    BuildSystem.HATCH: "pytest -q",
+    BuildSystem.FLIT: "pytest -q",
+    BuildSystem.SETUPTOOLS: "pytest -q",
+    BuildSystem.MATURIN: "pytest -q",
+    BuildSystem.UV: "pytest -q",
+    BuildSystem.GO: "go test ./...",
+    BuildSystem.MAVEN: "mvn test",
+    BuildSystem.GRADLE: "gradle test",
+    BuildSystem.MAKE: "make test",
+}
 
 
 @dataclass
@@ -97,17 +155,33 @@ def discover_commands_from_toml(spec: Any) -> list[DiscoveredCommand]:
 
 
 def _detect_project_info(project_root: Path) -> dict[str, str]:
-    """Auto-detect project language, build system, and test framework."""
+    """Detect high-level project metadata for the scaffolded `project.md`."""
     info: dict[str, str] = {TOML_NAME_KEY: project_root.name}
-
-    for marker, (language, build_cmd, test_cmd) in BUILD_SYSTEM_MARKERS.items():
-        if (project_root / marker).exists():
-            info["language"] = language
-            info["build"] = build_cmd
-            info["test"] = test_cmd
-            break
-
+    project_type = ProjectTypeDetector().detect(project_root)
+    if project_type.language is not ProjectLanguage.UNKNOWN:
+        info["language"] = LANGUAGE_DISPLAY_NAMES.get(
+            project_type.language,
+            project_type.language.value,
+        )
+    build_info = BuildSystemDetector().detect_first(project_root)
+    if build_info is not None:
+        if build_command := DETECTED_BUILD_COMMANDS.get(build_info.system):
+            info["build"] = build_command
+        if test_command := DETECTED_TEST_COMMANDS.get(build_info.system):
+            info["test"] = test_command
     return info
+
+
+def _apply_command_sections(
+    project_info: dict[str, str],
+    commands: list[DiscoveredCommand],
+) -> None:
+    """Populate build/test sections from discovered commands when present."""
+    command_lookup = {command.name: command for command in commands}
+    if BUILD_COMMAND_NAME in command_lookup:
+        project_info["build"] = command_lookup[BUILD_COMMAND_NAME].run
+    if TEST_COMMAND_NAME in command_lookup:
+        project_info["test"] = command_lookup[TEST_COMMAND_NAME].run
 
 
 def _render_skill_md(cmd: DiscoveredCommand) -> str:
@@ -247,6 +321,7 @@ def scaffold_agents_dir(
 
     # Detect project info
     project_info = _detect_project_info(project_root)
+    _apply_command_sections(project_info, all_commands)
     project_name = toml_project_name or project_info.get(TOML_NAME_KEY, project_root.name)
 
     # Generate skill templates from commands

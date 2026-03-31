@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from dekk.workspace import (
+from dekk.detection.workspace import (
     SubProject,
     WorkspaceDetector,
     WorkspaceInfo,
