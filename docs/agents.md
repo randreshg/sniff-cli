@@ -183,6 +183,8 @@ dekk agents init [--force]
 
 - Auto-detects project language, build system, and test framework
 - Reads `[commands]` from `.dekk.toml` and converts them to skill templates
+- Auto-scaffolds a `worktree` skill for git repos (teaches agents about
+  `dekk worktree` commands)
 - Creates `project.md`, `skills/`, and `rules/` directories
 - If `.dekk.toml` is missing, auto-creates one from `pyproject.toml`,
   `package.json`, `Cargo.toml`, `environment.yaml`, or the repo name

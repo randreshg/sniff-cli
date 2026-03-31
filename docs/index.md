@@ -31,6 +31,7 @@ python -m dekk --help
 - **[Getting Started](getting-started.md)** -- Installation, quick start, core concepts
 - **[.dekk.toml Specification](spec.md)** -- Canonical reference for the config file format
 - **[Agent Workflows](agents.md)** -- `.agents/` source of truth, generation targets, Codex skill install
+- **[Worktree Management](worktree.md)** -- `dekk worktree` for parallel work with auto-setup
 - **[Wrapper Generation](wrapper.md)** -- How `dekk wrap` creates zero-activation executables
 - **[Quick Reference](cheatsheet.md)** -- One-page cheat sheet for `.dekk.toml` and CLI commands
 - **[Examples by Language](examples-by-language.md)** -- Configs for Python, Rust, C++, Node, Go, Java, and multi-language projects
