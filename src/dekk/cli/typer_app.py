@@ -387,7 +387,7 @@ class Typer:
 
     def _add_worktree_command(self) -> None:
         """Register the built-in ``worktree`` sub-app."""
-        from dekk.cli.worktree_commands import create_worktree_app
+        from dekk.tools.worktree import create_worktree_app
 
         self.add_typer(create_worktree_app(), name="worktree")
 

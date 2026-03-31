@@ -172,7 +172,7 @@ class TestListWorktrees:
     def test_returns_empty_if_no_git_root(self, tmp_path: Path) -> None:
         assert list_worktrees(tmp_path) == []
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_returns_empty_on_failure(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -180,7 +180,7 @@ class TestListWorktrees:
         )
         assert list_worktrees(tmp_path) == []
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_parses_output(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -193,7 +193,7 @@ class TestListWorktrees:
         assert len(result) == 1
         assert result[0].branch == "main"
 
-    @patch("dekk.project.worktree.subprocess.run", side_effect=FileNotFoundError)
+    @patch("dekk.tools.worktree.core.subprocess.run", side_effect=FileNotFoundError)
     def test_git_not_found(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         assert list_worktrees(tmp_path) == []
@@ -210,7 +210,7 @@ class TestCreateWorktree:
         assert not result.ok
         assert result.error is not None
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_success(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -220,7 +220,7 @@ class TestCreateWorktree:
         assert result.ok
         assert result.branch == "feat"
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_failure(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -230,7 +230,7 @@ class TestCreateWorktree:
         assert not result.ok
         assert "branch already exists" in (result.error or "")
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_custom_path(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         custom = tmp_path / "custom-wt"
@@ -240,7 +240,7 @@ class TestCreateWorktree:
         result = create_worktree("feat", path=custom, git_root=tmp_path)
         assert result.ok
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_existing_branch(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -263,7 +263,7 @@ class TestRemoveWorktree:
         ok, msg = remove_worktree("/tmp/wt", git_root=tmp_path)
         assert not ok
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_success(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -272,7 +272,7 @@ class TestRemoveWorktree:
         ok, msg = remove_worktree("/tmp/wt", git_root=tmp_path)
         assert ok
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_force_flag(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]
@@ -293,7 +293,7 @@ class TestPruneWorktrees:
         ok, msg = prune_worktrees(git_root=tmp_path)
         assert not ok
 
-    @patch("dekk.project.worktree.subprocess.run")
+    @patch("dekk.tools.worktree.core.subprocess.run")
     def test_success(self, mock_run: object, tmp_path: Path) -> None:
         (tmp_path / ".git").mkdir()
         mock_run.return_value = subprocess.CompletedProcess(  # type: ignore[attr-defined]

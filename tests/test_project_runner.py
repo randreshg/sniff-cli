@@ -99,3 +99,57 @@ def test_worktree_specific_spec_resolution(tmp_path: Path, monkeypatch: pytest.M
             assert run_project_command("app2", ["hello"]) == 0
 
     assert run_mock.call_count == 2
+
+
+# -- Built-in project sub-command routing ----------------------------------
+
+
+def test_agents_without_appname_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``dekk agents init`` (no app name) raises with a helpful hint."""
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValidationError, match="project sub-command"):
+        run_project_command("agents", ["init"])
+
+
+def test_worktree_without_appname_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``dekk worktree list`` (no app name) raises with a helpful hint."""
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValidationError, match="project sub-command"):
+        run_project_command("worktree", ["list"])
+
+
+def test_agents_without_appname_hint_includes_project_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_spec(tmp_path, project="myapp")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValidationError) as exc:
+        run_project_command("agents", ["init"])
+    assert "dekk myapp agents init" in str(exc.value.hint)
+
+
+def test_missing_command_shows_agents_and_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``dekk demo`` (no command) should list agents/worktree among available commands."""
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValidationError) as exc:
+        run_project_command("demo", [])
+    assert "agents" in str(exc.value.hint)
+    assert "worktree" in str(exc.value.hint)
+
+
+def test_agents_subcommand_routing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``dekk demo agents list`` routes to the agents sub-app."""
+    _write_spec(tmp_path, project="demo")
+    # Create the .agents/ dir so agents list doesn't error
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    # agents list with no skills should complete without error
+    code = run_project_command("demo", ["agents", "list"])
+    assert code == 0

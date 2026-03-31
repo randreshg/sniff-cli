@@ -23,7 +23,7 @@ def create_worktree_app() -> typer.Typer:
     def list_cmd() -> None:
         """List all git worktrees for this project."""
         from dekk.cli.styles import print_info, print_warning
-        from dekk.project.worktree import find_git_root, list_worktrees
+        from dekk.tools.worktree.core import find_git_root, list_worktrees
 
         root = find_git_root()
         if root is None:
@@ -67,7 +67,7 @@ def create_worktree_app() -> typer.Typer:
     ) -> None:
         """Create a new git worktree with dekk environment support."""
         from dekk.cli.styles import print_error, print_info, print_success
-        from dekk.project.worktree import create_worktree as _create
+        from dekk.tools.worktree.core import create_worktree as _create
 
         result = _create(
             branch=branch,
@@ -109,7 +109,7 @@ def create_worktree_app() -> typer.Typer:
     ) -> None:
         """Remove a git worktree."""
         from dekk.cli.styles import print_error, print_success
-        from dekk.project.worktree import remove_worktree as _remove
+        from dekk.tools.worktree.core import remove_worktree as _remove
 
         ok, message = _remove(name, force=force)
         if ok:
@@ -122,7 +122,7 @@ def create_worktree_app() -> typer.Typer:
     def prune() -> None:
         """Clean up stale worktree references."""
         from dekk.cli.styles import print_error, print_success
-        from dekk.project.worktree import prune_worktrees
+        from dekk.tools.worktree.core import prune_worktrees
 
         ok, message = prune_worktrees()
         if ok:

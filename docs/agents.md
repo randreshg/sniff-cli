@@ -5,8 +5,9 @@ source of truth. You edit one directory (`.agents/`), and it generates
 target-specific outputs for Claude Code, Codex, Cursor, Copilot, and a
 machine-readable manifest.
 
-> **Note:** Throughout this doc, `<cli>` refers to your project's CLI name
-> (e.g., `myapp`). Enable with `Typer(add_agents_command=True)`.
+> **Note:** Throughout this doc, commands use `dekk myapp` as the entry point
+> (where `myapp` is your `[project].name` from `.dekk.toml`). Downstream CLIs
+> can also inherit the command via `Typer(add_agents_command=True)`.
 
 ## Data Flow
 
@@ -14,7 +15,7 @@ machine-readable manifest.
 .dekk.toml [commands]
        │
        ▼
- <cli> agents init ──► .agents/             (source of truth — user curated)
+ dekk myapp agents init ──► .agents/             (source of truth — user curated)
                        ├── project.md
                        ├── skills/
                        │   ├── build/SKILL.md
@@ -23,7 +24,7 @@ machine-readable manifest.
                            └── tests.md
        │
        ▼
- <cli> agents generate ──► target configs   (generated — can be regenerated)
+ dekk myapp agents generate ──► target configs   (generated — can be regenerated)
                            ├── CLAUDE.md
                            ├── .claude/skills/          (synced skills)
                            │   └── skills_index.md      (auto-generated routing)
@@ -38,18 +39,18 @@ machine-readable manifest.
 ## Quick Start
 
 ```bash
-<cli> agents init                  # scaffold .agents/ from project detection
-<cli> agents generate --target all # generate all agent configs
-<cli> agents status                # verify everything is in sync
+dekk myapp agents init                  # scaffold .agents/ from project detection
+dekk myapp agents generate --target all # generate all agent configs
+dekk myapp agents status                # verify everything is in sync
 ```
 
 ## Source of Truth: `.agents/`
 
 The `.agents/` directory is the single place you edit. **Commit it to git.**
 Everything else (`CLAUDE.md`, `.cursorrules`, etc.) is derived and can be
-regenerated at any time with `<cli> agents generate`.
+regenerated at any time with `dekk myapp agents generate`.
 
-`<cli> agents init` will prompt for confirmation if `.agents/` already exists
+`dekk myapp agents init` will prompt for confirmation if `.agents/` already exists
 to prevent accidental changes. Use `--force` to bypass the prompt.
 
 ### Directory structure
@@ -114,7 +115,7 @@ etc.) — they will be synced to target skill directories.
 
 ### Skills Index (routing layer)
 
-`<cli> agents generate` auto-generates a `skills_index.md` file in each
+`dekk myapp agents generate` auto-generates a `skills_index.md` file in each
 target's skills directory (e.g., `.claude/skills/skills_index.md`). This gives
 agents a lightweight lookup table so they can pick the right skill before
 loading full SKILL.md instructions:
@@ -135,7 +136,7 @@ skill applies. The index creates a "decision surface" — agents read a small
 file, pick the relevant skill(s), and only then open the full SKILL.md.
 
 The index is a generated output — it lives alongside vendor configs, not in
-the `.agents/` SSOT. It regenerates on every `<cli> agents generate` run from
+the `.agents/` SSOT. It regenerates on every `dekk myapp agents generate` run from
 each skill's `description` frontmatter field. To improve routing, make those
 descriptions more specific.
 
@@ -177,12 +178,12 @@ or more detailed instructions than other agents.
 
 ## CLI Reference
 
-### `<cli> agents init`
+### `dekk myapp agents init`
 
 Scaffold the `.agents/` source-of-truth directory.
 
 ```bash
-<cli> agents init [--force]
+dekk myapp agents init [--force]
 ```
 
 - Auto-detects project language, build system, and test framework
@@ -194,46 +195,46 @@ Scaffold the `.agents/` source-of-truth directory.
   `package.json`, `Cargo.toml`, `environment.yaml`, or the repo name
 - `--force` overwrites existing `project.md`
 
-### `<cli> agents generate`
+### `dekk myapp agents generate`
 
 Generate agent config files from the source-of-truth directory.
 
 ```bash
-<cli> agents generate [--target TARGET]
+dekk myapp agents generate [--target TARGET]
 ```
 
 - `--target`: `claude`, `codex`, `copilot`, `cursor`, or `all` (default: `all`)
 - Generates the skills index (`skills/skills_index.md`) from discovered skills
 - Respects `[agents].targets` filtering from `.dekk.toml`
 
-### `<cli> agents clean`
+### `dekk myapp agents clean`
 
 Remove generated agent config files while keeping `.agents/`.
 
 ```bash
-<cli> agents clean [--target TARGET]
+dekk myapp agents clean [--target TARGET]
 ```
 
 - `--target`: `claude`, `codex`, `copilot`, `cursor`, or `all` (default: `all`)
 - Cleans generated files and directories (e.g., `.claude/skills/`, `.claude/rules/`)
 
-### `<cli> agents install`
+### `dekk myapp agents install`
 
 Install skills into `~/.codex/skills/` for the Codex agent.
 
 ```bash
-<cli> agents install [--codex-dir DIR] [--force/--no-force]
+dekk myapp agents install [--codex-dir DIR] [--force/--no-force]
 ```
 
 - Copies skill files with simplified frontmatter (name + description only)
 - `--codex-dir` overrides the default `$CODEX_HOME/skills` or `~/.codex/skills`
 
-### `<cli> agents status`
+### `dekk myapp agents status`
 
 Show agent config and skill installation status.
 
 ```bash
-<cli> agents status [--codex-dir DIR]
+dekk myapp agents status [--codex-dir DIR]
 ```
 
 Example output:
@@ -256,12 +257,12 @@ Skills:
   lint   claude=ok  codex=missing
 ```
 
-### `<cli> agents list`
+### `dekk myapp agents list`
 
 List available skills from the source-of-truth directory.
 
 ```bash
-<cli> agents list
+dekk myapp agents list
 ```
 
 Example output:
@@ -297,7 +298,7 @@ source.
 |--------|--------|
 | `AGENTS.md` | `agents-reference.md` if present, otherwise `project.md` |
 
-Skills are installed separately via `<cli> agents install` into `~/.codex/skills/`.
+Skills are installed separately via `dekk myapp agents install` into `~/.codex/skills/`.
 Codex skills use simplified frontmatter (only `name` and `description`, no
 `user-invocable`).
 
@@ -343,7 +344,7 @@ Example `.agents.json`:
 
 ### `[commands]` — auto-converted to skills
 
-Commands defined here become skill templates when `<cli> agents init` scaffolds
+Commands defined here become skill templates when `dekk myapp agents init` scaffolds
 the `.agents/` directory.
 
 ```toml
@@ -370,18 +371,18 @@ targets = ["claude", "codex", "copilot", "cursor"]  # default: all four
 
 - `source` — the SSOT directory name (override for dekk-based CLIs like CARTS
   that use `.carts/` instead of `.agents/`)
-- `targets` — when set, `<cli> agents generate --target all` only generates for
+- `targets` — when set, `dekk myapp agents generate --target all` only generates for
   the listed targets
 
 ## Recommended Workflow
 
-1. **`<cli> agents init`** — scaffold `.agents/` from project detection.
+1. **`dekk myapp agents init`** — scaffold `.agents/` from project detection.
 2. **Edit `.dekk.toml`** — refine `[commands]` or `[agents]` if needed.
 3. **Edit `.agents/project.md`** — add project-specific guidance.
 4. **Edit `skills/*/SKILL.md`** — customize generated skill templates.
 5. **Add rules** — create `rules/<name>.md` with `paths:` frontmatter for
    path-scoped instructions.
-6. **`<cli> agents generate --target all`** — produce all agent configs.
+6. **`dekk myapp agents generate --target all`** — produce all agent configs.
 7. **Commit** both `.agents/` and the generated target files.
 
 ### Skill Routing Policy (recommended for skill-heavy repos)
@@ -419,7 +420,7 @@ Tips for the skills index:
 - If agents still pick the wrong skill, rewrite the `description` field in
   each SKILL.md frontmatter to be more precise
 - Treat `skills_index.md` as a generated file — it regenerates on each
-  `<cli> agents generate` run from skill descriptions
+  `dekk myapp agents generate` run from skill descriptions
 
 ## Agent Abstraction
 
@@ -447,7 +448,7 @@ Built-in provider modules live under `src/dekk/agents/providers/`.
 ## Notes
 
 - `AGENTS.md` is the Codex-facing generated file in the project root.
-- `<cli> agents install` is only for Codex skill installation into the local
+- `dekk myapp agents install` is only for Codex skill installation into the local
   Codex home; it does not replace generated project files.
 - The feature is project-root aware and walks upward to find either `.agents/`
   or `.dekk.toml`, so it works correctly from nested directories inside a repo.

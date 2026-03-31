@@ -30,8 +30,6 @@ BUILTIN_COMMANDS: Final = {
     "wrap",
     "uninstall",
     "setup",
-    "agents",
-    "worktree",
 }
 
 
@@ -236,19 +234,6 @@ def _make_app() -> typer.Typer:
         if result.environment_prefix:
             print_info(f"Runtime available at: {result.environment_prefix}")
             print_info("Activate with: eval \"$(dekk activate --shell bash)\"")
-
-    # -- Agent config management sub-app --
-    from dekk.agents.app import create_agents_app
-    from dekk.agents.constants import DEFAULT_SOURCE_DIR
-
-    agents_sub = create_agents_app(source_dir=DEFAULT_SOURCE_DIR)
-    app.add_typer(agents_sub, name="agents")
-
-    # -- Git worktree management sub-app --
-    from dekk.cli.worktree_commands import create_worktree_app
-
-    worktree_sub = create_worktree_app()
-    app.add_typer(worktree_sub, name="worktree")
 
     return app
 

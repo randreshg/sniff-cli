@@ -177,8 +177,9 @@ def create_agents_app(
             result = manager.generate(target=target)
         except FileNotFoundError as exc:
             print_error(str(exc))
+            cmd_prefix = cli_name or f"{DEFAULT_CLI_NAME} <appname>"
             hint = (
-                f"Run `{cli_name or DEFAULT_CLI_NAME} agents init` "
+                f"Run `{cmd_prefix} agents init` "
                 f"to scaffold the source directory"
             )
             print_info(f"Hint: {hint}")

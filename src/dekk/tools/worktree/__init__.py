@@ -1,8 +1,10 @@
-"""Project-scoped command routing and execution."""
+"""Worktree management tool for dekk.
 
-from .runner import run_project_command
-from .subcommands import AGENTS, CLI_NAME, NAMES, WORKTREE, create_app
-from .worktree import (
+Provides git worktree operations with automatic dekk environment setup.
+"""
+
+from dekk.tools.worktree.commands import create_worktree_app
+from dekk.tools.worktree.core import (
     WorktreeCreateResult,
     WorktreeInfo,
     create_worktree,
@@ -13,17 +15,12 @@ from .worktree import (
 )
 
 __all__ = [
-    "AGENTS",
-    "CLI_NAME",
-    "NAMES",
-    "WORKTREE",
     "WorktreeCreateResult",
     "WorktreeInfo",
-    "create_app",
     "create_worktree",
+    "create_worktree_app",
     "find_git_root",
     "list_worktrees",
     "prune_worktrees",
     "remove_worktree",
-    "run_project_command",
 ]
