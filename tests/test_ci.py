@@ -35,6 +35,23 @@ def clean_env(monkeypatch):
         "DRONE",
         "WOODPECKER_CI",
         "HEROKU_TEST_RUN_ID",
+        # GitHub Actions-specific vars that leak when running ON GHA
+        "GITHUB_REF",
+        "GITHUB_SHA",
+        "GITHUB_HEAD_REF",
+        "GITHUB_BASE_REF",
+        "GITHUB_EVENT_NAME",
+        "GITHUB_REPOSITORY",
+        "GITHUB_SERVER_URL",
+        "GITHUB_WORKSPACE",
+        "GITHUB_RUN_ID",
+        "GITHUB_RUN_NUMBER",
+        "GITHUB_JOB",
+        "GITHUB_WORKFLOW",
+        "GITHUB_REF_NAME",
+        "RUNNER_NAME",
+        "RUNNER_OS",
+        "RUNNER_ARCH",
     ]
     for var in ci_vars:
         monkeypatch.delenv(var, raising=False)

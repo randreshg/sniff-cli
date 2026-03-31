@@ -515,11 +515,11 @@ class TestConfigManager:
         monkeypatch.chdir(child)
 
         user_path = user_config_file("testapp")
-        user_path.parent.mkdir(parents=True)
+        user_path.parent.mkdir(parents=True, exist_ok=True)
         user_path.write_text('[database]\nhost = "user"\n', encoding="utf-8")
 
         project_path = project_config_file("testapp", start_dir=project)
-        project_path.parent.mkdir()
+        project_path.parent.mkdir(exist_ok=True)
         project_path.write_text('[database]\nhost = "project"\n', encoding="utf-8")
 
         config = ConfigManager("testapp")
