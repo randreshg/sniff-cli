@@ -181,6 +181,12 @@ Rules:
 - `dekk` resolves the nearest `.dekk.toml` from current working directory.
 - `<app_name>` must match `[project].name`, or dekk exits with a mismatch error.
 - Unknown command keys return an error with available command names.
+- The command runs with its working directory set to the resolved project root.
+- Activation/env vars are loaded from that same project config before execution.
+
+This makes `dekk <app_name> <command>` worktree-friendly: running from a nested
+directory or a separate Git worktree still resolves the nearest project spec
+instead of depending on global shell state.
 
 **Implementation:** `dekk.project.runner.run_project_command`
 

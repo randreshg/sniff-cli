@@ -180,6 +180,21 @@ semantics.
 
 ---
 
+## Worktree-Safe Command Routing (`project/runner.py`)
+
+`dekk <app_name> <command> [args...]` is designed to be safe in nested repos
+and Git worktrees:
+
+- it walks up from the current directory to the nearest `.dekk.toml`
+- it validates that `<app_name>` matches `[project].name`
+- it activates env vars from that project config
+- it runs the command with `cwd` set to the resolved project root
+
+That keeps command dispatch local to the current project context instead of
+depending on the caller's shell state or current subdirectory.
+
+---
+
 ## CLI Framework
 
 The CLI layer (included in the base `dekk` install) provides:

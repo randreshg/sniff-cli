@@ -166,6 +166,21 @@ Invoke-Expression (& dekk activate --shell powershell | Out-String)
 dekk install .\dist\myapp.exe --name myapp
 ```
 
+## Worktree-Friendly Routing
+
+```bash
+dekk myapp server
+dekk myapp test -k smoke
+```
+
+- `dekk` walks up to the nearest `.dekk.toml`
+- `myapp` must match `[project].name`
+- the command runs from that project root
+- activation/env vars come from that project before execution
+
+This keeps command routing safe across nested directories and separate Git
+worktrees.
+
 ---
 
 ## Common Patterns

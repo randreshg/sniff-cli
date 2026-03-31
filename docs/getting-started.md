@@ -94,6 +94,35 @@ dekk install .\dist\myapp.exe --name myapp
 myapp --help
 ```
 
+## Project Commands
+
+`dekk` can also run named project commands directly from `.dekk.toml`:
+
+```toml
+[project]
+name = "myapp"
+
+[commands]
+server = { run = "python -m myapp.api", description = "Start API server" }
+test = { run = "pytest -q", description = "Run tests" }
+```
+
+Run them like this:
+
+```bash
+dekk myapp server
+dekk myapp test -k api
+```
+
+This is worktree-friendly:
+
+- `dekk` finds the nearest `.dekk.toml` by walking up from the current directory
+- `myapp` must match `[project].name`, which prevents routing into the wrong project
+- the command executes from the resolved project root, not the nested directory you started in
+
+So if you are inside `repo/packages/api/` or inside a separate Git worktree of
+the same repo, `dekk myapp server` still resolves the correct project context.
+
 For Python projects, dekk uses `pyproject.toml` to seed `.dekk.toml` and wraps
 the target with the active project interpreter, local `.venv`, or an explicit
 `--python` override. For binaries and conda-backed projects, dekk uses the

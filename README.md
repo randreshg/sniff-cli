@@ -49,6 +49,18 @@ Project command routing (uses nearest `.dekk.toml`):
 dekk myapp server --port 8080
 ```
 
+This is worktree-friendly by default:
+
+- `dekk` walks up from your current directory to find the nearest `.dekk.toml`
+- the app name must match `[project].name`
+- the command runs with `cwd` set to that project root, not whatever nested
+  directory you happened to be in
+- activation is scoped to that project config before the command runs
+
+That means `dekk myapp server` works correctly from a repo root, a nested
+subpackage, or a separate Git worktree for the same project, without relying
+on global shell state.
+
 ## Agents
 
 Source of truth: `.agents/`
