@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import shlex
 import subprocess
@@ -12,9 +13,12 @@ from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
 from dekk.environment.spec import EnvironmentSpec, find_envspec
+from dekk.project.subcommands import PROJECT_BUILTIN_DESCRIPTIONS
+from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
 from dekk.project.subcommands import CLI_NAME
 from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
 
+PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
 PREPEND_ENV_VARS = {
     "PATH",
     "LD_LIBRARY_PATH",
@@ -62,16 +66,20 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
         )
 
     if not argv:
-        available = _available_commands(spec)
-        raise ValidationError(
-            "Missing project command",
-            hint=f"Usage: {CLI_NAME} {app_name} <command> [args...] (available: {available})",
-        )
+        _print_project_help(spec)
+        return 0
 
     command_name, *command_args = argv
 
+    if command_name in PROJECT_HELP_COMMANDS:
+        if command_args:
+            _print_command_help(spec, command_args[0])
+        else:
+            _print_project_help(spec)
+        return 0
+
     # Built-in project sub-commands (agents, worktree)
-    if command_name in BUILTIN_PROJECT_SUBCOMMANDS:
+    if _is_builtin_project_command(spec, command_name):
         return _run_builtin_subcommand(command_name, command_args, project_root)
 
     if command_name not in spec.commands:
@@ -85,7 +93,10 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
     if resolved is not None and not resolved.exists():
         raise NotFoundError(
             f"Environment prefix not found: {resolved.prefix}",
-            hint=f"Run `{CLI_NAME} setup` to create the runtime environment",
+            hint=(
+                f"Run `{CLI_NAME} {spec.project_name} {PROJECT_SETUP_COMMAND}` "
+                "to create the runtime environment"
+            ),
         )
 
     activation = EnvironmentActivator(spec, project_root).activate()
@@ -105,8 +116,87 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
 
 def _available_commands(spec: EnvironmentSpec) -> str:
     """Return a comma-separated list of available commands including built-in sub-commands."""
-    cmds = sorted(spec.commands.keys()) + sorted(BUILTIN_PROJECT_SUBCOMMANDS)
+    cmds = sorted(spec.commands.keys())
+    cmds.extend(
+        name for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if name not in spec.commands
+    )
     return ", ".join(cmds) or "<none>"
+
+
+def _project_commands(spec: EnvironmentSpec) -> list[tuple[str, str]]:
+    commands = [
+        (name, PROJECT_BUILTIN_DESCRIPTIONS[name])
+        for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS)
+        if name not in spec.commands
+    ]
+    commands.extend(
+        (name, spec.commands[name].description or f"Run {name}")
+        for name in sorted(spec.commands)
+    )
+    return commands
+
+
+def _print_project_help(spec: EnvironmentSpec) -> None:
+    lines = [
+        f"Project commands for '{spec.project_name}'",
+        "",
+        "Usage:",
+        f"  {CLI_NAME} {spec.project_name} <command> [args...]",
+        f"  {CLI_NAME} {spec.project_name} help [command]",
+        "",
+        "Commands:",
+    ]
+    for name, description in _project_commands(spec):
+        lines.append(f"  {name:<12} {description}")
+    lines.extend(
+        [
+            "",
+            "Notes:",
+            f"  - Run `{CLI_NAME} {spec.project_name} <command> --help` for command-specific help.",
+            (
+                "  - Built-in project tools: "
+                f"{', '.join(name for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if name not in spec.commands)}."
+            ),
+        ]
+    )
+    print("\n".join(lines))
+
+
+def _print_command_help(spec: EnvironmentSpec, command_name: str) -> None:
+    if _is_builtin_project_command(spec, command_name):
+        description = PROJECT_BUILTIN_DESCRIPTIONS[command_name]
+    elif command_name in spec.commands:
+        description = spec.commands[command_name].description or f"Run {command_name}"
+    else:
+        available = _available_commands(spec)
+        raise NotFoundError(
+            f"Unknown command '{command_name}' for project '{spec.project_name}'",
+            hint=f"Available commands: {available}",
+        )
+
+    lines = [
+        f"{spec.project_name}:{command_name}",
+        f"  {description}",
+        "",
+        "Usage:",
+        f"  {CLI_NAME} {spec.project_name} {command_name} [args...]",
+        f"  {CLI_NAME} {spec.project_name} {command_name} --help",
+    ]
+
+    if _is_builtin_project_command(spec, command_name):
+        lines.append("")
+        lines.append("This is a dekk built-in project sub-command.")
+    else:
+        lines.append("")
+        lines.append("This command is defined in `.dekk.toml` under `[commands]`.")
+
+    print("\n".join(lines))
+
+
+def _is_builtin_project_command(spec: EnvironmentSpec, command_name: str) -> bool:
+    if command_name in BUILTIN_PROJECT_SUBCOMMANDS:
+        return True
+    return command_name == PROJECT_SETUP_COMMAND and command_name not in spec.commands
 
 
 def _run_builtin_subcommand(
@@ -119,6 +209,9 @@ def _run_builtin_subcommand(
     resolve correctly, and ``sys.argv`` is adjusted so Typer/Click parses
     the right arguments.
     """
+    if command_name == PROJECT_SETUP_COMMAND:
+        return _run_project_setup(args, project_root)
+
     from dekk.project.subcommands import create_app
 
     sub = create_app(command_name, project_root)
@@ -135,6 +228,51 @@ def _run_builtin_subcommand(
     finally:
         sys.argv = saved_argv
         os.chdir(saved_cwd)
+
+
+def _run_project_setup(args: list[str], project_root: Path) -> int:
+    """Run `dekk <app> setup` from the resolved project root."""
+    from dekk.cli.styles import print_error, print_info, print_success
+    from dekk.environment.setup import run_setup
+
+    parser = argparse.ArgumentParser(
+        prog=f"{CLI_NAME} <appname> {PROJECT_SETUP_COMMAND}",
+        description=PROJECT_BUILTIN_DESCRIPTIONS[PROJECT_SETUP_COMMAND],
+    )
+    parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Recreate the runtime environment even if it exists",
+    )
+    parsed = parser.parse_args(args)
+
+    result = run_setup(project_root, force=parsed.force)
+
+    env_label = result.environment_kind.value if result.environment_kind else "environment"
+    if result.environment_created and result.environment_prefix:
+        print_success(f"Created {env_label}: {result.environment_prefix.name}")
+        if result.environment_packages:
+            print_info(f"  Packages: {', '.join(result.environment_packages)}")
+    elif result.environment_prefix:
+        print_info(f"{env_label.capitalize()} already exists: {result.environment_prefix.name}")
+
+    for pkg in result.npm_installed:
+        print_success(f"  npm: {pkg}")
+    if result.npm_installed:
+        print_info(f"Installed {len(result.npm_installed)} npm package(s)")
+
+    for err in result.errors:
+        print_error(err)
+
+    if not result.ok:
+        return 1
+
+    if result.environment_prefix:
+        print_info(f"Runtime available at: {result.environment_prefix}")
+        print_info(f"Run `{CLI_NAME} <appname> doctor` or your project command next.")
+
+    return 0
 
 
 __all__ = ["run_project_command"]

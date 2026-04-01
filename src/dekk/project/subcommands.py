@@ -9,10 +9,20 @@ from dekk.tools import (
     AGENTS,
     CLI_NAME,
     NAMES,
+    PROJECT_BUILTIN_DESCRIPTIONS,
+    SETUP,
     WORKTREE,
 )
 from dekk.tools import (
     create_tool_app as create_app,
 )
 
-__all__ = ["AGENTS", "CLI_NAME", "NAMES", "WORKTREE", "create_app"]
+__all__ = [
+    "AGENTS",
+    "CLI_NAME",
+    "NAMES",
+    "PROJECT_BUILTIN_DESCRIPTIONS",
+    "SETUP",
+    "WORKTREE",
+    "create_app",
+]

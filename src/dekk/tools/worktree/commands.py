@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from dekk.tools import CLI_NAME
+from dekk.tools import SETUP as PROJECT_SETUP_COMMAND
+
 if TYPE_CHECKING:
     import typer
 
@@ -86,16 +89,27 @@ def create_worktree_app() -> typer.Typer:
         if setup and (result.path / ".dekk.toml").exists():
             import subprocess
 
-            print_info("Running dekk setup in worktree...")
+            setup_cmd = [CLI_NAME, PROJECT_SETUP_COMMAND]
+            try:
+                from dekk.environment.spec import EnvironmentSpec
+
+                project_name = EnvironmentSpec.from_file(result.path / ".dekk.toml").project_name
+                setup_cmd = [CLI_NAME, project_name, PROJECT_SETUP_COMMAND]
+            except Exception:
+                pass
+
+            print_info(f"Running {' '.join(setup_cmd)} in worktree...")
             setup_result = subprocess.run(
-                ["dekk", "setup"],
+                setup_cmd,
                 cwd=result.path,
                 check=False,
             )
             if setup_result.returncode == 0:
                 print_success("Environment ready.")
             else:
-                print_info("Setup had issues. Run `dekk setup` manually in the worktree.")
+                print_info(
+                    "Setup had issues. Run the project-scoped dekk setup command manually in the worktree."
+                )
 
         print_info(f"  cd {result.path}")
 

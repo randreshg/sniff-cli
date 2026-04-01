@@ -29,8 +29,8 @@ preferred for worktree safety.
 ## Automatic Environment Setup
 
 When a worktree is created and `.dekk.toml` exists in the new worktree,
-`dekk setup` runs automatically to prepare the environment. Skip this with
-`--no-setup`.
+`dekk <appname> setup` runs automatically to prepare the environment. Skip this
+with `--no-setup`.
 
 ## Worktree Layout
 

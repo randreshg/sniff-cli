@@ -152,6 +152,9 @@ dekk example quickstart                # Print starter config to stdout
 dekk doctor                            # Run system health checks
 dekk version                           # Show dekk version and platform
 dekk env                               # Show environment details
+dekk myapp                             # Show project-aware help
+dekk myapp --help                      # Same as above
+dekk myapp setup                       # Create the configured project runtime
 dekk myapp server --port 8080          # Run command from nearest .dekk.toml
 
 dekk agents init                       # Scaffold .agents/ and seed .dekk.toml if needed
