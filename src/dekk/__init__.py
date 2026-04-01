@@ -17,7 +17,7 @@ from typing import Any
 try:
     __version__ = version("dekk")
 except PackageNotFoundError:
-    __version__ = "1.6.4"
+    __version__ = "1.6.5"
 
 # ---------------------------------------------------------------------------
 # Lazy import registry: module_path -> list of exported names

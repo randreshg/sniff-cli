@@ -239,6 +239,7 @@ def select_components(
 
     try:
         import questionary
+        from prompt_toolkit.keys import Keys
         from prompt_toolkit.styles import Style as PtStyle
     except ImportError:
         # Fallback: use defaults if questionary not installed
@@ -267,12 +268,19 @@ def select_components(
         ]
     )
 
-    selected = questionary.checkbox(
+    question = questionary.checkbox(
         "Select components to install:",
         choices=choices,
         style=component_style,
-    ).ask()
+    )
+
+    # Bind Escape to cancel (questionary only binds Ctrl-C by default)
+    app_kb = question.application.key_bindings
+    if app_kb is not None and hasattr(app_kb, "add"):
+        app_kb.add(Keys.Escape, eager=True)(
+            lambda event: event.app.exit(result=None)
+        )
 
     # None = user pressed Escape/Ctrl-C → cancel
-    result: list[str] | None = selected
+    result: list[str] | None = question.ask()
     return result
