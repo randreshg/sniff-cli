@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.status import Status
 
 __all__ = [
     "progress_bar",
@@ -46,9 +50,13 @@ def progress_bar(
 
 
 @contextmanager
-def spinner(description: str) -> Generator[None, None, None]:
-    """Context manager for an indeterminate spinner."""
+def spinner(description: str) -> Generator[Status, None, None]:
+    """Context manager for an indeterminate spinner.
+
+    Yields the Rich ``Status`` object so callers can update the displayed
+    text via ``status.update("new message...")``.
+    """
     from dekk.cli.styles import _get_console
 
-    with _get_console().status(description, spinner="dots"):
-        yield
+    with _get_console().status(description, spinner="dots") as status:
+        yield status

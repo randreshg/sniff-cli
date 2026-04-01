@@ -12,6 +12,7 @@ from dekk.tools import (
     NAMES,
     PROJECT_BUILTIN_DESCRIPTIONS,
     SETUP,
+    UNINSTALL,
     WORKTREE,
 )
 from dekk.tools import (
@@ -25,6 +26,7 @@ __all__ = [
     "NAMES",
     "PROJECT_BUILTIN_DESCRIPTIONS",
     "SETUP",
+    "UNINSTALL",
     "WORKTREE",
     "create_app",
 ]

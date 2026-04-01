@@ -73,10 +73,10 @@ class Symbols:
 # ---------------------------------------------------------------------------
 
 PROMPT_TOKENS: Final[dict[str, str]] = {
-    "selected": "fg:ansibrightblue nobold",
+    "selected": "fg:ansibrightblue noreverse",
     "unselected": "fg:ansibrightblack",
     "pointer": "fg:ansicyan bold",
-    "highlighted": "nobold",
+    "highlighted": "noreverse",
 }
 
 

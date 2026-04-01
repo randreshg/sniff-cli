@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from dekk.environment.spec import ToolSpec
     from dekk.execution.os import DekkOS
     from dekk.execution.toolchain import EnvVarBuilder
+
+ProgressCallback = Callable[[str], None]
 
 
 @dataclass
@@ -66,8 +68,20 @@ class DekkEnv(ABC):
         """Apply provider-specific environment variables to a builder."""
 
     @abstractmethod
-    def setup(self, *, project_root: Path, force: bool = False) -> DekkEnvSetupResult:
-        """Create or update the runtime environment."""
+    def setup(
+        self,
+        *,
+        project_root: Path,
+        force: bool = False,
+        on_progress: ProgressCallback | None = None,
+    ) -> DekkEnvSetupResult:
+        """Create or update the runtime environment.
+
+        Args:
+            on_progress: Optional callback receiving sub-status messages
+                (e.g. ``"Solving environment..."``). Used by the install
+                runner to update the spinner text in real time.
+        """
 
     def install_npm_packages(self, packages: Mapping[str, str]) -> tuple[list[str], list[str]]:
         """Install npm packages into the runtime environment if supported."""

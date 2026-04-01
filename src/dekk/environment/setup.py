@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,15 +30,23 @@ class SetupResult:
 def run_setup(
     project_root: Path,
     force: bool = False,
+    on_progress: Callable[[str], None] | None = None,
 ) -> SetupResult:
-    """Set up the complete project environment from .dekk.toml."""
+    """Set up the complete project environment from .dekk.toml.
+
+    Args:
+        on_progress: Optional callback receiving sub-status messages
+            (e.g. ``"Solving environment..."``).
+    """
     spec_file = project_root / ".dekk.toml"
     spec = EnvironmentSpec.from_file(spec_file)
     result = SetupResult()
 
     resolved = resolve_environment(spec, project_root=project_root)
     if resolved:
-        provider_result = resolved.setup(project_root=project_root, force=force)
+        provider_result = resolved.setup(
+            project_root=project_root, force=force, on_progress=on_progress,
+        )
         result.environment_kind = resolved.kind
         result.environment_prefix = provider_result.prefix
         result.environment_created = provider_result.created
@@ -49,9 +58,13 @@ def run_setup(
             result.npm_installed = installed
             result.errors.extend(npm_errors)
         elif spec.npm and spec.npm.packages and not provider_result.prefix:
-            result.errors.append("Cannot install npm packages: runtime environment not available")
+            result.errors.append(
+                "Cannot install npm packages: runtime environment not available"
+            )
     elif spec.npm and spec.npm.packages:
-        result.errors.append("Cannot install npm packages: no runtime environment configured")
+        result.errors.append(
+            "Cannot install npm packages: no runtime environment configured"
+        )
 
     return result
 

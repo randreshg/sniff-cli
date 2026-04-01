@@ -61,10 +61,12 @@ class TestSpinner:
             with spinner("Resolving..."):
                 pass
 
-    def test_yields_none(self, capture_console):
+    def test_yields_status(self, capture_console):
+        """Spinner yields a Rich Status object for dynamic text updates."""
         with capture_console():
-            with spinner("Working...") as result:
-                assert result is None
+            with spinner("Working...") as status:
+                assert status is not None
+                assert hasattr(status, "update")
 
     def test_code_runs_inside_block(self, capture_console):
         """Code within the spinner block should execute normally."""

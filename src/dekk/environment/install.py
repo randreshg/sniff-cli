@@ -1,14 +1,19 @@
-"""One-command install pipeline: setup -> build -> components -> (optionally) wrap."""
+"""One-command install pipeline: setup -> build -> components -> (optionally) wrap.
+
+Also provides ``run_uninstall`` to tear down the environment, wrappers,
+and dekk state directory.
+"""
 
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 from dekk.cli.install_runner import InstallRunner, InstallRunnerResult, select_components
 from dekk.environment.spec import EnvironmentSpec
 
-__all__ = ["run_install"]
+__all__ = ["run_install", "run_uninstall"]
 
 PREPEND_ENV_VARS = {
     "PATH",
@@ -58,10 +63,10 @@ def run_install(
     if spec.environment:
         from dekk.environment.setup import run_setup
 
-        runner.add(
-            "Setting up environment",
-            lambda: run_setup(project_root, force=force).ok,
-        )
+        def _setup_with_progress(status_fn):  # type: ignore[no-untyped-def]
+            return run_setup(project_root, force=force, on_progress=status_fn).ok
+
+        runner.add("Setting up environment", _setup_with_progress, progress=True)
 
     # Step 2: Build (if install.build configured)
     build_env: dict[str, str] | None = None
@@ -119,3 +124,50 @@ def run_install(
     result = runner.run(env=build_env, cwd=project_root, verbose=verbose)
     result.selected_components = selected
     return result
+
+
+def run_uninstall(project_root: Path) -> list[str]:
+    """Remove the runtime environment, wrappers, and dekk state.
+
+    Returns a list of human-readable messages describing what was removed.
+    """
+    spec = EnvironmentSpec.from_file(project_root / ".dekk.toml")
+    removed: list[str] = []
+
+    # 1. Remove the wrapper + clean shell config (if install.wrap is configured)
+    if spec.install and spec.install.wrap:
+        from dekk.execution.install import BinaryInstaller
+
+        wr = BinaryInstaller(project_root=project_root).uninstall_wrapper(
+            spec.install.wrap.name, clean_shell=True,
+        )
+        removed.append(wr.message)
+
+    # 2. Remove the .install/ directory if empty
+    install_dir = project_root / ".install"
+    if install_dir.is_dir() and not any(install_dir.iterdir()):
+        install_dir.rmdir()
+        removed.append(f"Removed empty directory: {install_dir}")
+
+    # 3. Remove the conda/venv environment
+    dekk_dir = project_root / ".dekk"
+    env_dir = dekk_dir / "env"
+    if env_dir.is_dir():
+        shutil.rmtree(env_dir)
+        removed.append(f"Removed environment: {env_dir}")
+
+    # 4. Remove install log
+    log_path = dekk_dir / "install.log"
+    if log_path.is_file():
+        log_path.unlink()
+        removed.append(f"Removed log: {log_path}")
+
+    # 5. Remove .dekk/ directory if empty
+    if dekk_dir.is_dir() and not any(dekk_dir.iterdir()):
+        dekk_dir.rmdir()
+        removed.append(f"Removed empty directory: {dekk_dir}")
+
+    if not removed:
+        removed.append("Nothing to remove.")
+
+    return removed

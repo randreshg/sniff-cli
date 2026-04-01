@@ -17,6 +17,7 @@ from dekk.project.subcommands import CLI_NAME, PROJECT_BUILTIN_DESCRIPTIONS
 from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
 from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
 from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
+from dekk.project.subcommands import UNINSTALL as PROJECT_UNINSTALL_COMMAND
 
 PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
 PREPEND_ENV_VARS = {
@@ -201,6 +202,8 @@ def _is_builtin_project_command(spec: EnvironmentSpec, command_name: str) -> boo
         return True
     if command_name == PROJECT_INSTALL_COMMAND and command_name not in spec.commands:
         return True
+    if command_name == PROJECT_UNINSTALL_COMMAND and command_name not in spec.commands:
+        return True
     return False
 
 
@@ -219,6 +222,9 @@ def _run_builtin_subcommand(
 
     if command_name == PROJECT_INSTALL_COMMAND:
         return _run_project_install(args, project_root)
+
+    if command_name == PROJECT_UNINSTALL_COMMAND:
+        return _run_project_uninstall(args, project_root)
 
     from dekk.project.subcommands import create_app
 
@@ -338,6 +344,68 @@ def _run_project_install(args: list[str], project_root: Path) -> int:
         components=comp_list,
     )
     return 0 if result.ok else 1
+
+
+def _run_project_uninstall(args: list[str], project_root: Path) -> int:
+    """Run `dekk <app> uninstall` to remove environment, wrappers, and dekk state."""
+    from dekk.cli.styles import print_info, print_success
+
+    parser = argparse.ArgumentParser(
+        prog=f"{CLI_NAME} <appname> {PROJECT_UNINSTALL_COMMAND}",
+        description=PROJECT_BUILTIN_DESCRIPTIONS[PROJECT_UNINSTALL_COMMAND],
+    )
+    parser.add_argument(
+        "--yes", "-y", action="store_true",
+        help="Skip confirmation prompt",
+    )
+    parsed = parser.parse_args(args)
+
+    dekk_dir = project_root / ".dekk"
+    env_dir = dekk_dir / "env"
+    install_dir = project_root / ".install"
+    spec = EnvironmentSpec.from_file(project_root / ".dekk.toml")
+
+    has_env = env_dir.is_dir()
+    has_log = (dekk_dir / "install.log").is_file()
+    has_wrapper = (
+        spec.install is not None
+        and spec.install.wrap is not None
+        and (install_dir / spec.install.wrap.name).exists()
+    )
+
+    if not has_env and not has_log and not has_wrapper:
+        print_info("Nothing to uninstall.")
+        return 0
+
+    if not parsed.yes:
+        print_info("This will remove:")
+        if has_env:
+            print_info(f"  - Runtime environment: {env_dir}")
+        if has_wrapper and spec.install and spec.install.wrap:
+            print_info(f"  - CLI wrapper: {install_dir / spec.install.wrap.name}")
+            print_info("  - Shell PATH entry (if added by dekk)")
+        if has_log:
+            print_info(f"  - Install log: {dekk_dir / 'install.log'}")
+        try:
+            answer = input("\nContinue? [y/N] ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            print_info("Cancelled.")
+            return 1
+        if answer not in ("y", "yes"):
+            print_info("Cancelled.")
+            return 1
+
+    from dekk.environment.install import run_uninstall
+
+    messages = run_uninstall(project_root)
+    for msg in messages:
+        if "nothing to remove" in msg.lower() or "not found" in msg.lower():
+            print_info(msg)
+        else:
+            print_success(msg)
+
+    return 0
 
 
 __all__ = ["run_project_command"]

@@ -70,11 +70,25 @@ class InstallRunner:
     def __init__(self, title: str, log_path: Path | None = None) -> None:
         self.title = title
         self.log_path = log_path
-        self._steps: list[tuple[str, Callable[[], bool] | str]] = []
+        self._steps: list[tuple[str, Callable[..., bool] | str, bool]] = []
 
-    def add(self, label: str, action: Callable[[], bool] | str) -> None:
-        """Add a step. *action* is a callable returning bool, or a shell command string."""
-        self._steps.append((label, action))
+    def add(
+        self,
+        label: str,
+        action: Callable[..., bool] | str,
+        *,
+        progress: bool = False,
+    ) -> None:
+        """Add a step.
+
+        Args:
+            label: Human-readable step description.
+            action: A callable returning bool, or a shell command string.
+            progress: If True, the callable receives a ``status_fn(msg)``
+                argument that updates the spinner text with sub-status
+                messages (e.g. "Solving environment...").
+        """
+        self._steps.append((label, action, progress))
 
     def run(
         self,
@@ -108,7 +122,7 @@ class InstallRunner:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
             self.log_path.write_text("", encoding="utf-8")
 
-        for i, (label, action) in enumerate(self._steps, 1):
+        for i, (label, action, has_progress) in enumerate(self._steps, 1):
             print_step(label, step_num=i, total=total)
             t0 = time.monotonic()
 
@@ -116,7 +130,7 @@ class InstallRunner:
                 if isinstance(action, str):
                     step_ok = self._run_command(action, label, env=env, cwd=cwd)
                 else:
-                    step_ok = self._run_callable(action, label)
+                    step_ok = self._run_callable(action, label, progress=has_progress)
             except KeyboardInterrupt:
                 elapsed = time.monotonic() - t0
                 result.steps.append(
@@ -180,12 +194,24 @@ class InstallRunner:
         )
         return rr.ok
 
-    def _run_callable(self, fn: Callable[[], bool], label: str) -> bool:
-        """Run a callable with spinner."""
+    def _run_callable(
+        self, fn: Callable[..., bool], label: str, *, progress: bool = False
+    ) -> bool:
+        """Run a callable with spinner.
+
+        When *progress* is True, *fn* is called with a ``status_fn(msg)``
+        argument that updates the spinner text with sub-status messages.
+        """
         from dekk.cli.progress import spinner
 
-        with spinner(f"{label}..."):
+        with spinner(f"{label}...") as status:
             try:
+                if progress:
+
+                    def update_status(msg: str) -> None:
+                        status.update(msg)
+
+                    return fn(update_status)
                 return fn()
             except Exception as e:
                 if self.log_path:

@@ -35,11 +35,13 @@ CLI_NAME: Final = "dekk"
 AGENTS: Final = "agents"
 INSTALL: Final = "install"
 SETUP: Final = "setup"
+UNINSTALL: Final = "uninstall"
 WORKTREE: Final = "worktree"
 PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
     AGENTS: "Manage agent configs for this project",
     INSTALL: "Set up environment, build, and optionally install CLI wrapper",
     SETUP: "Create or refresh the configured runtime environment",
+    UNINSTALL: "Remove the runtime environment, wrappers, and dekk state",
     WORKTREE: "Manage git worktrees with dekk environment awareness",
 }
 
@@ -110,6 +112,7 @@ __all__ = [
     "PROJECT_BUILTIN_DESCRIPTIONS",
     "REGISTRY",
     "SETUP",
+    "UNINSTALL",
     "WORKTREE",
     "create_tool_app",
 ]
