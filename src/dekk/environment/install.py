@@ -61,24 +61,38 @@ def run_install(
 
     # Step 1: Setup environment (if [environment] configured)
     if spec.environment:
-        from dekk.environment.setup import run_setup
+        from dekk.environment.resolver import resolve_environment
 
-        def _setup_with_progress(status_fn):  # type: ignore[no-untyped-def]
-            return run_setup(project_root, force=force, on_progress=status_fn).ok
+        resolved = resolve_environment(spec, project_root=project_root)
+        if resolved:
+            try:
+                setup_cmd = resolved.get_setup_command(project_root=project_root, force=force)
+            except Exception as e:
+                from dekk.cli.styles import print_error
 
-        runner.add("Setting up environment", _setup_with_progress, progress=True)
+                print_error(str(e))
+                return InstallRunnerResult(title=runner.title, log_path=log_path)
+            if setup_cmd:
+                runner.add("Setting up environment", setup_cmd)
+            else:
+                from dekk.cli.styles import print_info
 
-    # Step 2: Build (if install.build configured)
-    build_env: dict[str, str] | None = None
-    if spec.install and spec.install.build:
+                print_info("Environment already exists (use --force to recreate)")
+
+    # Resolve activated environment for all shell steps
+    activated_env: dict[str, str] | None = None
+    if spec.environment:
         from dekk.environment.activation import EnvironmentActivator
 
         try:
             activator = EnvironmentActivator(spec, project_root)
             activation = activator.activate()
-            build_env = _merge_env(activation)
+            activated_env = _merge_env(activation)
         except Exception:
-            build_env = None  # fall through to build without custom env
+            activated_env = None  # fall through without custom env
+
+    # Step 2: Build (if install.build configured)
+    if spec.install and spec.install.build:
         runner.add("Building project", spec.install.build)
 
     # Step 3: Optional components (interactive selection or --components flag)
@@ -121,7 +135,7 @@ def run_install(
 
         runner.add("Installing CLI wrapper", do_wrap)
 
-    result = runner.run(env=build_env, cwd=project_root, verbose=verbose)
+    result = runner.run(env=activated_env, cwd=project_root, verbose=verbose)
     result.selected_components = selected
     return result
 

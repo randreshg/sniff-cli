@@ -70,25 +70,16 @@ class InstallRunner:
     def __init__(self, title: str, log_path: Path | None = None) -> None:
         self.title = title
         self.log_path = log_path
-        self._steps: list[tuple[str, Callable[..., bool] | str, bool]] = []
+        self._steps: list[tuple[str, Callable[..., bool] | str]] = []
 
-    def add(
-        self,
-        label: str,
-        action: Callable[..., bool] | str,
-        *,
-        progress: bool = False,
-    ) -> None:
+    def add(self, label: str, action: Callable[..., bool] | str) -> None:
         """Add a step.
 
         Args:
             label: Human-readable step description.
             action: A callable returning bool, or a shell command string.
-            progress: If True, the callable receives a ``status_fn(msg)``
-                argument that updates the spinner text with sub-status
-                messages (e.g. "Solving environment...").
         """
-        self._steps.append((label, action, progress))
+        self._steps.append((label, action))
 
     def run(
         self,
@@ -114,15 +105,20 @@ class InstallRunner:
             print_success,
         )
 
-        print_header(self.title)
         result = InstallRunnerResult(title=self.title, log_path=self.log_path)
+
+        if not self._steps:
+            print_info("Nothing to install.")
+            return result
+
+        print_header(self.title)
         total = len(self._steps)
 
         if self.log_path:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
             self.log_path.write_text("", encoding="utf-8")
 
-        for i, (label, action, has_progress) in enumerate(self._steps, 1):
+        for i, (label, action) in enumerate(self._steps, 1):
             print_step(label, step_num=i, total=total)
             t0 = time.monotonic()
 
@@ -130,7 +126,7 @@ class InstallRunner:
                 if isinstance(action, str):
                     step_ok = self._run_command(action, label, env=env, cwd=cwd)
                 else:
-                    step_ok = self._run_callable(action, label, progress=has_progress)
+                    step_ok = self._run_callable(action, label)
             except KeyboardInterrupt:
                 elapsed = time.monotonic() - t0
                 result.steps.append(
@@ -194,7 +190,10 @@ class InstallRunner:
                 if proc.stdout is not None:
                     for line in proc.stdout:
                         if log_file:
-                            log_file.write(line)
+                            try:
+                                log_file.write(line)
+                            except OSError:
+                                pass  # log capture is best-effort
                         stripped = line.strip()
                         if stripped:
                             # Truncate long lines for the spinner display
@@ -212,41 +211,20 @@ class InstallRunner:
 
         return returncode == 0
 
-    def _run_callable(
-        self, fn: Callable[..., bool], label: str, *, progress: bool = False
-    ) -> bool:
-        """Run a callable with spinner.
-
-        When *progress* is True, *fn* is called with a ``status_fn(msg)``
-        argument that updates the spinner text with sub-status messages.
-        Completed phases are printed as persistent ``✓`` lines.
-        """
+    def _run_callable(self, fn: Callable[..., bool], label: str) -> bool:
+        """Run a callable with spinner."""
         from dekk.cli.progress import spinner
-        from dekk.cli.styles import _get_console
 
-        console = _get_console()
-
-        with spinner(f"{label}...") as status:
+        with spinner(f"{label}..."):
             try:
-                if progress:
-                    last_phase: str | None = None
-
-                    def update_status(msg: str) -> None:
-                        nonlocal last_phase
-                        if last_phase is not None:
-                            console.print(
-                                f"        [green]✓[/] {last_phase}",
-                                highlight=False,
-                            )
-                        last_phase = msg
-                        status.update(f"{msg}")
-
-                    return fn(update_status)
                 return fn()
             except Exception as e:
                 if self.log_path:
-                    with open(self.log_path, "a", encoding="utf-8") as f:
-                        f.write(f"--- {label} ---\n{e}\n")
+                    try:
+                        with open(self.log_path, "a", encoding="utf-8") as f:
+                            f.write(f"--- {label} ---\n{e}\n")
+                    except OSError:
+                        pass  # log capture is best-effort
                 return False
 
 

@@ -53,6 +53,44 @@ class CondaEnv(DekkEnv):
         if any(tool_name.lower() == CMAKE_TOOL_NAME for tool_name in tools):
             CMakeToolchain(self.prefix).configure(builder)
 
+    def get_setup_command(
+        self, *, project_root: Path, force: bool = False
+    ) -> str | None:
+        from dekk.cli.errors import DependencyError, NotFoundError
+
+        conda_cmd = _find_conda_cmd()
+        if not conda_cmd:
+            raise DependencyError(
+                "conda/mamba not found on PATH",
+                hint="Install mamba: https://mamba.readthedocs.io/en/latest/installation.html",
+            )
+
+        existing = self.exists()
+        if existing and not force:
+            return None  # only valid skip — env already exists
+
+        if self.file:
+            env_file_path = project_root / self.file
+            if not env_file_path.is_file():
+                raise NotFoundError(f"Environment file not found: {env_file_path}")
+            if existing:
+                cmd = [
+                    conda_cmd, "env", "update",
+                    "-p", str(self.prefix), "-f", str(env_file_path), "-y",
+                ]
+            else:
+                cmd = [
+                    conda_cmd, "env", "create",
+                    "-p", str(self.prefix), "-f", str(env_file_path), "-y",
+                ]
+                if force:
+                    cmd.append("--force")
+        else:
+            cmd = [conda_cmd, "create", "-p", str(self.prefix), "-c", CONDA_FORGE_CHANNEL, "-y"]
+
+        import shlex
+        return shlex.join(cmd)
+
     def setup(
         self,
         *,

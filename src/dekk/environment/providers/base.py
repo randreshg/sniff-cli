@@ -83,6 +83,17 @@ class DekkEnv(ABC):
                 runner to update the spinner text in real time.
         """
 
+    def get_setup_command(
+        self, *, project_root: Path, force: bool = False
+    ) -> str | None:
+        """Return the shell command to create/update the environment.
+
+        Returns ``None`` if the environment already exists (and *force* is
+        ``False``) or if preconditions are not met.  Subclasses should
+        override this to provide a concrete command string.
+        """
+        return None
+
     def install_npm_packages(self, packages: Mapping[str, str]) -> tuple[list[str], list[str]]:
         """Install npm packages into the runtime environment if supported."""
         return [], [f"npm installation is not supported for {self.type_name} environments"]
