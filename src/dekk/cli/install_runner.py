@@ -172,9 +172,6 @@ class InstallRunner:
         import subprocess
 
         from dekk.cli.progress import spinner
-        from dekk.cli.styles import _get_console
-
-        console = _get_console()
 
         with spinner(f"{label}...") as status:
             proc = subprocess.Popen(
@@ -194,23 +191,15 @@ class InstallRunner:
                     )
                     log_file.write(f"--- {label} ---\n")
 
-                last_status: str | None = None
                 if proc.stdout is not None:
                     for line in proc.stdout:
-                        stripped = line.rstrip("\n")
                         if log_file:
                             log_file.write(line)
+                        stripped = line.strip()
                         if stripped:
-                            # Show meaningful lines as sub-status
-                            display = _extract_display_line(stripped)
-                            if display and display != last_status:
-                                if last_status is not None:
-                                    console.print(
-                                        f"        [green]✓[/] {last_status}",
-                                        highlight=False,
-                                    )
-                                last_status = display
-                                status.update(f"{display}...")
+                            # Truncate long lines for the spinner display
+                            display = stripped if len(stripped) <= 60 else stripped[:57] + "..."
+                            status.update(f"{display}")
 
                 returncode = proc.wait()
             except BaseException:
@@ -259,43 +248,6 @@ class InstallRunner:
                     with open(self.log_path, "a", encoding="utf-8") as f:
                         f.write(f"--- {label} ---\n{e}\n")
                 return False
-
-
-def _extract_display_line(line: str) -> str | None:
-    """Extract a user-friendly status from build output.
-
-    Returns a short display string for lines worth showing (e.g. cargo
-    ``Compiling``, cmake ``Building``, npm ``added``), or ``None`` for
-    noise (warnings, blank lines, progress bars).
-    """
-    stripped = line.strip()
-    if not stripped:
-        return None
-    # Cargo: "   Compiling apxm-cli v0.1.0 (/path/to/crate)"
-    if stripped.startswith("Compiling "):
-        parts = stripped.split()
-        if len(parts) >= 2:
-            return f"Compiling {parts[1]}"
-        return stripped
-    # Cargo: "   Downloading crate-name v1.0"
-    if stripped.startswith("Downloading "):
-        parts = stripped.split()
-        if len(parts) >= 2:
-            return f"Downloading {parts[1]}"
-        return stripped
-    # CMake: "-- Building target..."
-    if stripped.startswith("-- "):
-        return stripped[3:]
-    # CMake: "[  5%] Building CXX object..."
-    if stripped.startswith("[") and "]" in stripped:
-        after_bracket = stripped.split("]", 1)[1].strip()
-        if after_bracket:
-            return after_bracket
-    # npm: "added 150 packages..."
-    if stripped.startswith("added "):
-        return stripped
-    # Skip warnings, errors, and other noise — these go to the log
-    return None
 
 
 def _print_log_tail(log_path: Path, n: int) -> None:
