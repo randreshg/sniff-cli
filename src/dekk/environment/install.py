@@ -79,11 +79,19 @@ def run_install(
     # Step 3: Optional components (interactive selection or --components flag)
     selected: list[str] = []
     if spec.install and spec.install.components:
-        selected = select_components(
+        selection = select_components(
             spec.install.components,
             preselect=components,
             interactive=interactive,
         )
+        if selection is None:
+            # User pressed Escape/Ctrl-C — abort installation
+            from dekk.cli.styles import print_blank, print_info
+
+            print_blank()
+            print_info("Installation cancelled.")
+            return InstallRunnerResult(title=runner.title, log_path=log_path)
+        selected = selection
         for comp in spec.install.components:
             if comp.name in selected:
                 runner.add(f"Installing {comp.label}", comp.run)

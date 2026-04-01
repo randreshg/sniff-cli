@@ -208,7 +208,7 @@ def select_components(
     *,
     preselect: list[str] | None = None,
     interactive: bool = True,
-) -> list[str]:
+) -> list[str] | None:
     """Prompt user to select optional install components.
 
     Args:
@@ -219,7 +219,8 @@ def select_components(
                      Agents/CI should pass ``interactive=False``.
 
     Returns:
-        List of selected component names.
+        List of selected component names, or ``None`` if the user cancelled
+        (Escape / Ctrl-C).
     """
     if preselect is not None:
         return preselect
@@ -239,9 +240,12 @@ def select_components(
     _qcommon.INDICATOR_SELECTED = "\u2713"  # type: ignore[attr-defined]  # ✓
     _qcommon.INDICATOR_UNSELECTED = "\u25cb"  # type: ignore[attr-defined]  # ○
 
+    # Pass title as (style, text) tuples so the label text stays default color.
+    # When title is a list, questionary uses tokens.extend(choice.title) — bypassing
+    # the class:selected override that would color the entire row green.
     choices = [
         questionary.Choice(
-            title=f"{c.label} — {c.description}",  # type: ignore[attr-defined]
+            title=[("", f"{c.label} — {c.description}")],  # type: ignore[attr-defined]
             value=c.name,  # type: ignore[attr-defined]
             checked=c.default,  # type: ignore[attr-defined]
         )
@@ -250,8 +254,8 @@ def select_components(
 
     component_style = PtStyle(
         [
-            ("selected", "fg:#00ff00 bold"),  # green ✓ and text for checked
-            ("text", "fg:#808080"),  # dim ○ and text for unchecked
+            ("selected", "fg:#00ff00"),  # green ✓ indicator only
+            ("text", "fg:#808080"),  # dim ○ indicator only
             ("pointer", "fg:#00d7ff bold"),  # cyan pointer
             ("highlighted", "bold"),  # bold current row
         ]
@@ -263,4 +267,6 @@ def select_components(
         style=component_style,
     ).ask()
 
-    return selected if selected is not None else []
+    # None = user pressed Escape/Ctrl-C → cancel
+    result: list[str] | None = selected
+    return result
