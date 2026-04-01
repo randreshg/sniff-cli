@@ -17,7 +17,7 @@ from typing import Any
 try:
     __version__ = version("dekk")
 except PackageNotFoundError:
-    __version__ = "1.6.3"
+    __version__ = "1.6.4"
 
 # ---------------------------------------------------------------------------
 # Lazy import registry: module_path -> list of exported names
@@ -238,6 +238,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "print_table",
         "print_numbered_list",
         "print_next_steps",
+        "PROMPT_TOKENS",
     ],
     # -- CLI Output Formatting --
     "dekk.cli.output": ["OutputFormatter", "OutputFormat", "print_dep_results"],

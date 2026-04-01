@@ -18,7 +18,7 @@ Usage::
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -63,6 +63,21 @@ class Symbols:
     RUNNING = "\u25cf"  # black circle
     INFO = "\u2139"  # information source
     WARNING = "\u26a0"  # warning sign
+
+
+# ---------------------------------------------------------------------------
+# Prompt-toolkit style tokens for interactive prompts (questionary)
+#
+# Uses ANSI named colors so they follow the terminal's color scheme.
+# These are prompt_toolkit style strings, NOT Rich markup.
+# ---------------------------------------------------------------------------
+
+PROMPT_TOKENS: Final[dict[str, str]] = {
+    "selected": "fg:ansibrightblue",
+    "unselected": "fg:ansibrightblack",
+    "pointer": "fg:ansicyan bold",
+    "highlighted": "bold",
+}
 
 
 # ---------------------------------------------------------------------------

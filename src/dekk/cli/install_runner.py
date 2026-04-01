@@ -239,15 +239,12 @@ def select_components(
 
     try:
         import questionary
-        import questionary.prompts.common as _qcommon
         from prompt_toolkit.styles import Style as PtStyle
     except ImportError:
         # Fallback: use defaults if questionary not installed
         return [c.name for c in components if c.default]  # type: ignore[attr-defined]
 
-    # Blue filled dot for selected, dim empty dot for unselected
-    _qcommon.INDICATOR_SELECTED = "\u25cf"  # type: ignore[attr-defined]  # ●
-    _qcommon.INDICATOR_UNSELECTED = "\u25cb"  # type: ignore[attr-defined]  # ○
+    from dekk.cli.styles import PROMPT_TOKENS
 
     # Pass title as (style, text) tuples so the label text stays default color.
     # When title is a list, questionary uses tokens.extend(choice.title) — bypassing
@@ -263,9 +260,10 @@ def select_components(
 
     component_style = PtStyle(
         [
-            ("selected", "fg:#5f87ff"),  # blue ● indicator only
-            ("text", "fg:#808080"),  # dim ○ indicator only
-            ("highlighted", ""),  # no extra styling for current row
+            ("selected", PROMPT_TOKENS["selected"]),
+            ("text", PROMPT_TOKENS["unselected"]),
+            ("pointer", PROMPT_TOKENS["pointer"]),
+            ("highlighted", PROMPT_TOKENS["highlighted"]),
         ]
     )
 
@@ -273,7 +271,6 @@ def select_components(
         "Select components to install:",
         choices=choices,
         style=component_style,
-        pointer=None,  # no arrow — just the filled/empty dot
     ).ask()
 
     # None = user pressed Escape/Ctrl-C → cancel
