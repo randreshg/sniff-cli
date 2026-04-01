@@ -145,9 +145,9 @@ class InstallRunner:
 
             if step_ok:
                 suffix = f" ({elapsed:.0f}s)" if elapsed > 5 else ""
-                print_success(f"{label}{suffix}")
+                print_success(f"Done{suffix}")
             else:
-                print_error(f"{label} failed")
+                print_error("Failed")
                 if self.log_path:
                     print_info(f"Log: {self.log_path}")
                     if verbose:
