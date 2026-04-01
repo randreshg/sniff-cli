@@ -110,6 +110,8 @@ test = { run = "pytest -q", description = "Run tests" }
 Run them like this:
 
 ```bash
+dekk myapp
+dekk myapp --help
 dekk myapp server
 dekk myapp test -k api
 ```
@@ -122,6 +124,10 @@ This is worktree-friendly:
 
 So if you are inside `repo/packages/api/` or inside a separate Git worktree of
 the same repo, `dekk myapp server` still resolves the correct project context.
+
+`dekk myapp` and `dekk myapp --help` print project-aware help with the commands
+declared in `.dekk.toml` plus built-in project tools such as `setup`, `agents`,
+and `worktree`.
 
 For Python projects, dekk uses `pyproject.toml` to seed `.dekk.toml` and wraps
 the target with the active project interpreter, local `.venv`, or an explicit

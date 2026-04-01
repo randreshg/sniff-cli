@@ -49,6 +49,8 @@ All project commands go through `dekk <appname>`, which finds the nearest
 `.dekk.toml` and runs with `cwd` set to that project root:
 
 ```bash
+dekk myapp                   # project-aware help
+dekk myapp --help
 dekk myapp server --port 8080
 dekk myapp build
 dekk myapp test
@@ -68,10 +70,11 @@ on global shell state.
 
 ## Built-in Project Tools
 
-Built-in tools (`agents`, `worktree`) are project-scoped — they require the
-app name so dekk knows which project context to use:
+Built-in tools (`setup`, `agents`, `worktree`) are project-scoped — they require
+the app name so dekk knows which project context to use:
 
 ```bash
+dekk myapp setup
 dekk myapp agents init
 dekk myapp agents generate --target all
 dekk myapp worktree create feature-x --base main

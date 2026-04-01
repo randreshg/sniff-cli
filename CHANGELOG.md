@@ -2,6 +2,19 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.5.1 - 2026-03-31
+
+- Added native project help for `dekk <app>` / `dekk <app> --help` /
+  `dekk <app> help [command]`, with command descriptions sourced from
+  `.dekk.toml` plus built-in project tools.
+- Added project-scoped `dekk <app> setup` routing so runtime setup works in the
+  same worktree-safe command model as other project commands.
+- Fixed missing-runtime hints to suggest `dekk <app> setup` instead of the
+  global `dekk setup` path.
+- Updated worktree auto-setup to prefer `dekk <app> setup` when the worktree
+  contains a readable `.dekk.toml`.
+- Updated docs to reflect the project-aware help and setup flows.
+
 ## 1.3.0 - 2026-03-31
 
 - Refactored environment, agents, and path infrastructure into sub-packages

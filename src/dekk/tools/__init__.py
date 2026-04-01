@@ -33,7 +33,13 @@ CLI_NAME: Final = "dekk"
 # ---------------------------------------------------------------------------
 
 AGENTS: Final = "agents"
+SETUP: Final = "setup"
 WORKTREE: Final = "worktree"
+PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
+    AGENTS: "Manage agent configs for this project",
+    SETUP: "Create or refresh the configured runtime environment",
+    WORKTREE: "Manage git worktrees with dekk environment awareness",
+}
 
 # ---------------------------------------------------------------------------
 # Registry: tool name → factory info
@@ -98,7 +104,9 @@ __all__ = [
     "AGENTS",
     "CLI_NAME",
     "NAMES",
+    "PROJECT_BUILTIN_DESCRIPTIONS",
     "REGISTRY",
+    "SETUP",
     "WORKTREE",
     "create_tool_app",
 ]

@@ -73,8 +73,9 @@ def test_unknown_registered_command(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def test_missing_environment_prefix_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _write_spec(tmp_path, project="demo")
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(NotFoundError):
+    with pytest.raises(NotFoundError) as exc:
         run_project_command("demo", ["hello"])
+    assert "dekk demo setup" in str(exc.value.hint)
 
 
 def test_worktree_specific_spec_resolution(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -133,13 +134,135 @@ def test_agents_without_appname_hint_includes_project_name(
 def test_missing_command_shows_agents_and_worktree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``dekk demo`` (no command) should list agents/worktree among available commands."""
+    """``dekk demo`` (no command) should print project help."""
     _write_spec(tmp_path, project="demo")
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(ValidationError) as exc:
-        run_project_command("demo", [])
-    assert "agents" in str(exc.value.hint)
-    assert "worktree" in str(exc.value.hint)
+    code = run_project_command("demo", [])
+    assert code == 0
+
+
+def test_missing_command_help_includes_agents_and_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    run_project_command("demo", [])
+
+    out = capsys.readouterr().out
+    assert "Project commands for 'demo'" in out
+    assert "agents" in out
+    assert "worktree" in out
+    assert "setup" in out
+    assert "hello" in out
+
+
+def test_explicit_help_alias_prints_project_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["help"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Usage:" in out
+    assert "dekk demo <command> [args...]" in out
+
+
+def test_help_flag_prints_project_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["--help"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Commands:" in out
+    assert "hello" in out
+
+
+def test_help_for_single_command_prints_command_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["help", "hello"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "demo:hello" in out
+    assert "This command is defined in `.dekk.toml`" in out
+
+
+def test_help_for_builtin_subcommand_prints_command_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["help", "agents"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "demo:agents" in out
+    assert "built-in project sub-command" in out
+
+
+def test_help_for_setup_prints_builtin_command_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["help", "setup"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "demo:setup" in out
+    assert "Create or refresh the configured runtime environment" in out
+
+
+def test_project_setup_routes_to_runtime_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_spec(tmp_path, project="demo")
+    monkeypatch.chdir(tmp_path)
+
+    with patch("dekk.environment.setup.run_setup") as setup_mock:
+        setup_mock.return_value.environment_created = False
+        setup_mock.return_value.environment_prefix = None
+        setup_mock.return_value.environment_kind = None
+        setup_mock.return_value.environment_packages = []
+        setup_mock.return_value.npm_installed = []
+        setup_mock.return_value.errors = []
+        code = run_project_command("demo", ["setup"])
+
+    assert code == 0
+    setup_mock.assert_called_once_with(tmp_path, force=False)
+
+
+def test_project_setup_is_hidden_when_project_defines_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    spec = tmp_path / ".dekk.toml"
+    spec.write_text(
+        "[project]\n"
+        'name = "demo"\n\n'
+        "[commands]\n"
+        'setup = { run = "echo custom", description = "custom setup" }\n',
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    run_project_command("demo", ["help"])
+
+    out = capsys.readouterr().out
+    assert "custom setup" in out
 
 
 def test_agents_subcommand_routing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
