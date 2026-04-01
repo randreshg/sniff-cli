@@ -13,10 +13,10 @@ from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
 from dekk.environment.spec import EnvironmentSpec, find_envspec
-from dekk.project.subcommands import PROJECT_BUILTIN_DESCRIPTIONS
-from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
-from dekk.project.subcommands import CLI_NAME
+from dekk.project.subcommands import CLI_NAME, PROJECT_BUILTIN_DESCRIPTIONS
+from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
 from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
+from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
 
 PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
 PREPEND_ENV_VARS = {
@@ -153,10 +153,11 @@ def _print_project_help(spec: EnvironmentSpec) -> None:
             "",
             "Notes:",
             f"  - Run `{CLI_NAME} {spec.project_name} <command> --help` for command-specific help.",
-            (
-                "  - Built-in project tools: "
-                f"{', '.join(name for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if name not in spec.commands)}."
-            ),
+            "  - Built-in project tools: "
+            + ", ".join(
+                n for n in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if n not in spec.commands
+            )
+            + ".",
         ]
     )
     print("\n".join(lines))
@@ -196,7 +197,11 @@ def _print_command_help(spec: EnvironmentSpec, command_name: str) -> None:
 def _is_builtin_project_command(spec: EnvironmentSpec, command_name: str) -> bool:
     if command_name in BUILTIN_PROJECT_SUBCOMMANDS:
         return True
-    return command_name == PROJECT_SETUP_COMMAND and command_name not in spec.commands
+    if command_name == PROJECT_SETUP_COMMAND and command_name not in spec.commands:
+        return True
+    if command_name == PROJECT_INSTALL_COMMAND and command_name not in spec.commands:
+        return True
+    return False
 
 
 def _run_builtin_subcommand(
@@ -211,6 +216,9 @@ def _run_builtin_subcommand(
     """
     if command_name == PROJECT_SETUP_COMMAND:
         return _run_project_setup(args, project_root)
+
+    if command_name == PROJECT_INSTALL_COMMAND:
+        return _run_project_install(args, project_root)
 
     from dekk.project.subcommands import create_app
 
@@ -273,6 +281,63 @@ def _run_project_setup(args: list[str], project_root: Path) -> int:
         print_info(f"Run `{CLI_NAME} <appname> doctor` or your project command next.")
 
     return 0
+
+
+def _run_project_install(args: list[str], project_root: Path) -> int:
+    """Run `dekk <app> install` from the resolved project root."""
+    parser = argparse.ArgumentParser(
+        prog=f"{CLI_NAME} <appname> {PROJECT_INSTALL_COMMAND}",
+        description=PROJECT_BUILTIN_DESCRIPTIONS[PROJECT_INSTALL_COMMAND],
+    )
+    parser.add_argument(
+        "--force", "-f", action="store_true",
+        help="Recreate environment even if it exists",
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true",
+        help="Show log tail on error (for humans; agents prefer reading the log file)",
+    )
+    parser.add_argument(
+        "--wrap", action="store_true",
+        help="Also install a global CLI wrapper (not worktree-safe)",
+    )
+    parser.add_argument(
+        "--all", action="store_true", dest="install_all",
+        help="Install all optional components (no prompt)",
+    )
+    parser.add_argument(
+        "--components", type=str, default=None,
+        help="Comma-separated list of components to install (no prompt)",
+    )
+    parser.add_argument(
+        "--no-interactive", action="store_true",
+        help="Use defaults without prompting (for agents/CI)",
+    )
+    parsed = parser.parse_args(args)
+
+    # Determine component selection mode
+    comp_list: list[str] | None = None
+    interactive = not parsed.no_interactive
+    if parsed.install_all:
+        spec = EnvironmentSpec.from_file(project_root / ".dekk.toml")
+        if spec.install and spec.install.components:
+            comp_list = [c.name for c in spec.install.components]
+        interactive = False
+    elif parsed.components:
+        comp_list = [c.strip() for c in parsed.components.split(",")]
+        interactive = False
+
+    from dekk.environment.install import run_install
+
+    result = run_install(
+        project_root,
+        force=parsed.force,
+        verbose=parsed.verbose,
+        wrap=parsed.wrap,
+        interactive=interactive,
+        components=comp_list,
+    )
+    return 0 if result.ok else 1
 
 
 __all__ = ["run_project_command"]

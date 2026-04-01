@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dekk"
-version = "1.5.1"
+version = "1.6.0"
 description = "Reusable environment detection, activation, and wrapper tooling for developer CLIs."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,6 +16,7 @@ dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
     "tomli-w>=1.0.0",
     "PyYAML>=6.0",
+    "questionary>=2.0.0",
 ]
 authors = [
     { name = "Randres Herrera", email = "randres2011@gmail.com" },

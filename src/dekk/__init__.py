@@ -17,7 +17,7 @@ from typing import Any
 try:
     __version__ = version("dekk")
 except PackageNotFoundError:
-    __version__ = "1.5.1"
+    __version__ = "1.6.0"
 
 # ---------------------------------------------------------------------------
 # Lazy import registry: module_path -> list of exported names
@@ -26,19 +26,30 @@ except PackageNotFoundError:
 _MODULE_ATTRS: dict[str, list[str]] = {
     # -- Automatic Environment Setup --
     "dekk.environment.spec": [
+        "ComponentSpec",
         "EnvironmentSpec",
+        "InstallSpec",
         "ToolSpec",
         "CommandSpec",
         "NpmSpec",
         "AgentsSpec",
         "PythonSpec",
         "RuntimeEnvironmentSpec",
+        "WrapSpec",
         "find_envspec",
     ],
     "dekk.environment.types": ["EnvironmentKind"],
     "dekk.environment.providers": ["DekkEnv", "DekkEnvSetupResult", "CondaEnv"],
     # -- Project Setup --
     "dekk.environment.setup": ["SetupResult", "run_setup"],
+    # -- Install Pipeline --
+    "dekk.environment.install": ["run_install"],
+    "dekk.cli.install_runner": [
+        "InstallRunner",
+        "InstallRunnerResult",
+        "StepResult",
+        "select_components",
+    ],
     # -- Agent Config Management --
     "dekk.agents": [
         "DekkAgent",

@@ -108,7 +108,8 @@ def create_worktree_app() -> typer.Typer:
                 print_success("Environment ready.")
             else:
                 print_info(
-                    "Setup had issues. Run the project-scoped dekk setup command manually in the worktree."
+                    "Setup had issues. Run the project-scoped dekk setup"
+                    " command manually in the worktree."
                 )
 
         print_info(f"  cd {result.path}")

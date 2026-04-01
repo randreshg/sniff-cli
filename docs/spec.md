@@ -192,6 +192,59 @@ instead of depending on global shell state.
 
 ---
 
+### `[install]` -- Install Pipeline
+
+Configures the one-command install pipeline invoked by `dekk <app> install`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `build` | string | no | Shell command to build the project (e.g., `cargo build --release`). |
+| `wrap` | table | no | Wrapper specification: `{ name = "myapp", target = "target/release/myapp" }`. |
+| `components` | array of tables | no | Optional install components (interactive selection). |
+
+#### Component specification (`[[install.components]]`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | **yes** | Machine-readable identifier (used with `--components` flag). |
+| `label` | string | no | Human-readable label. Defaults to `name`. |
+| `description` | string | no | One-line description shown in selection prompt. |
+| `run` | string | **yes** | Shell command to execute for this component. |
+| `default` | bool | no | Pre-selected in interactive mode. Default: `true`. |
+
+```toml
+[install]
+build = "cargo build --release"
+wrap = { name = "myapp", target = "target/release/myapp" }
+
+[[install.components]]
+name = "mcp-server"
+label = "MCP Server"
+description = "HTTP API + MCP protocol server for IDE integration"
+run = "cargo build -p my-server --release"
+default = true
+
+[[install.components]]
+name = "docs"
+label = "Documentation"
+description = "Build HTML documentation"
+run = "make docs"
+default = false
+```
+
+The install pipeline runs steps in order:
+
+1. **Setup environment** (if `[environment]` is configured)
+2. **Build** (if `install.build` is set)
+3. **Components** (selected interactively, or via `--components`/`--all`/`--no-interactive`)
+4. **Wrap** (only if `--wrap` flag is passed and `install.wrap` is configured)
+
+Flags: `--force`, `--verbose`, `--wrap`, `--all`, `--components <list>`, `--no-interactive`.
+
+**Implementation:** `dekk.environment.install.run_install`, `dekk.cli.install_runner.InstallRunner`
+
+---
+
 ### `[agents]` -- Agent Generation Settings
 
 Controls the source-of-truth directory and which target formats dekk should
@@ -240,6 +293,7 @@ Notes:
 | `[env]` | `dekk.execution.toolchain` | `EnvVarBuilder` |
 | `[paths]` | `dekk.environment.activation` | `EnvironmentActivator` |
 | `[commands]` | `dekk.project.runner` | `run_project_command` |
+| `[install]` | `dekk.environment.install`, `dekk.cli.install_runner` | `InstallSpec`, `InstallRunner` |
 | `[agents]` | `dekk.environment.spec`, `dekk.agents.generators` | `AgentsSpec`, `AgentConfigManager` |
 | *(activation)* | `dekk.environment.activation` | `EnvironmentActivator` |
 | *(wrappers)* | `dekk.execution.wrapper` | `WrapperGenerator` |

@@ -33,10 +33,12 @@ CLI_NAME: Final = "dekk"
 # ---------------------------------------------------------------------------
 
 AGENTS: Final = "agents"
+INSTALL: Final = "install"
 SETUP: Final = "setup"
 WORKTREE: Final = "worktree"
 PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
     AGENTS: "Manage agent configs for this project",
+    INSTALL: "Set up environment, build, and optionally install CLI wrapper",
     SETUP: "Create or refresh the configured runtime environment",
     WORKTREE: "Manage git worktrees with dekk environment awareness",
 }
@@ -103,6 +105,7 @@ def create_tool_app(name: str, project_root: Path) -> Any:
 __all__ = [
     "AGENTS",
     "CLI_NAME",
+    "INSTALL",
     "NAMES",
     "PROJECT_BUILTIN_DESCRIPTIONS",
     "REGISTRY",

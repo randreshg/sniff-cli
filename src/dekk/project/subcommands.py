@@ -8,6 +8,7 @@ from ``dekk.project.subcommands`` continue to work.
 from dekk.tools import (
     AGENTS,
     CLI_NAME,
+    INSTALL,
     NAMES,
     PROJECT_BUILTIN_DESCRIPTIONS,
     SETUP,
@@ -20,6 +21,7 @@ from dekk.tools import (
 __all__ = [
     "AGENTS",
     "CLI_NAME",
+    "INSTALL",
     "NAMES",
     "PROJECT_BUILTIN_DESCRIPTIONS",
     "SETUP",

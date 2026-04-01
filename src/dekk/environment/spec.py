@@ -59,6 +59,34 @@ class CommandSpec:
 
 
 @dataclass(frozen=True)
+class WrapSpec:
+    """Wrapper install specification."""
+
+    name: str
+    target: str
+
+
+@dataclass(frozen=True)
+class ComponentSpec:
+    """An optional install component shown during interactive selection."""
+
+    name: str
+    label: str
+    description: str
+    run: str  # shell command to execute
+    default: bool = True  # pre-selected in interactive mode
+
+
+@dataclass(frozen=True)
+class InstallSpec:
+    """Install pipeline specification parsed from ``[install]``."""
+
+    build: str | None = None
+    wrap: WrapSpec | None = None
+    components: list[ComponentSpec] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class AgentsSpec:
     """Configuration for agent config generation."""
 
@@ -79,6 +107,7 @@ class EnvironmentSpec:
     npm: NpmSpec | None = None
     commands: dict[str, CommandSpec] = field(default_factory=dict)
     agents: AgentsSpec | None = None
+    install: InstallSpec | None = None
 
     @classmethod
     def from_file(cls, path: Path) -> EnvironmentSpec:
@@ -209,6 +238,28 @@ class EnvironmentSpec:
                 targets=tuple(targets),
             )
 
+        install = None
+        if install_data := data.get("install"):
+            wrap = None
+            if wrap_data := install_data.get("wrap"):
+                wrap = WrapSpec(name=wrap_data["name"], target=wrap_data["target"])
+            components: list[ComponentSpec] = []
+            for comp_data in install_data.get("components", []):
+                components.append(
+                    ComponentSpec(
+                        name=comp_data["name"],
+                        label=comp_data.get("label", comp_data["name"]),
+                        description=comp_data.get("description", ""),
+                        run=comp_data["run"],
+                        default=comp_data.get("default", True),
+                    )
+                )
+            install = InstallSpec(
+                build=install_data.get("build"),
+                wrap=wrap,
+                components=components,
+            )
+
         return cls(
             project_name=project["name"],
             environment=environment,
@@ -219,6 +270,7 @@ class EnvironmentSpec:
             npm=npm,
             commands=commands,
             agents=agents,
+            install=install,
         )
 
     def expand_placeholders(
@@ -257,10 +309,13 @@ def find_envspec(start_dir: Path | None = None) -> Path | None:
 __all__ = [
     "AgentsSpec",
     "CommandSpec",
+    "ComponentSpec",
     "EnvironmentSpec",
+    "InstallSpec",
     "NpmSpec",
     "PythonSpec",
     "RuntimeEnvironmentSpec",
     "ToolSpec",
+    "WrapSpec",
     "find_envspec",
 ]
