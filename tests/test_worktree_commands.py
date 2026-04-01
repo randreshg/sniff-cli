@@ -41,7 +41,8 @@ def test_worktree_create_falls_back_to_global_setup_when_spec_parse_fails(tmp_pa
     result_obj = WorktreeCreateResult(path=worktree_path, branch="feat", created=True)
 
     with patch("dekk.tools.worktree.core.create_worktree", return_value=result_obj):
-        with patch("dekk.environment.spec.EnvironmentSpec.from_file", side_effect=RuntimeError("boom")):
+        spec_patch = "dekk.environment.spec.EnvironmentSpec.from_file"
+        with patch(spec_patch, side_effect=RuntimeError("boom")):
             with patch("subprocess.run") as run_mock:
                 run_mock.return_value = subprocess.CompletedProcess(args=[], returncode=0)
                 result = runner.invoke(app, ["create", "feat"])
