@@ -168,31 +168,60 @@ class InstallRunner:
         env: dict[str, str] | None,
         cwd: Path | None,
     ) -> bool:
-        """Run a shell command with spinner + log capture (no stdout)."""
-        from dekk.cli.runner import run_logged
+        """Run a shell command with spinner, streaming last line as sub-status."""
+        import subprocess
 
-        if self.log_path is None:
-            import subprocess
+        from dekk.cli.progress import spinner
+        from dekk.cli.styles import _get_console
 
-            proc = subprocess.run(
+        console = _get_console()
+
+        with spinner(f"{label}...") as status:
+            proc = subprocess.Popen(
                 ["sh", "-c", cmd],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                errors="replace",
                 env=env,
                 cwd=cwd,
             )
-            return proc.returncode == 0
+            try:
+                log_file = None
+                if self.log_path:
+                    log_file = open(  # noqa: SIM115
+                        self.log_path, "a", encoding="utf-8", errors="replace",
+                    )
+                    log_file.write(f"--- {label} ---\n")
 
-        rr = run_logged(
-            ["sh", "-c", cmd],
-            log_path=self.log_path,
-            label=label,
-            spinner_text=f"{label}...",
-            env=env,
-            cwd=cwd,
-            append=True,
-            tail_lines=0,  # never dump tail (agent-friendly)
-        )
-        return rr.ok
+                last_status: str | None = None
+                if proc.stdout is not None:
+                    for line in proc.stdout:
+                        stripped = line.rstrip("\n")
+                        if log_file:
+                            log_file.write(line)
+                        if stripped:
+                            # Show meaningful lines as sub-status
+                            display = _extract_display_line(stripped)
+                            if display and display != last_status:
+                                if last_status is not None:
+                                    console.print(
+                                        f"        [green]✓[/] {last_status}",
+                                        highlight=False,
+                                    )
+                                last_status = display
+                                status.update(f"{display}...")
+
+                returncode = proc.wait()
+            except BaseException:
+                proc.kill()
+                proc.wait()
+                raise
+            finally:
+                if log_file:
+                    log_file.close()
+
+        return returncode == 0
 
     def _run_callable(
         self, fn: Callable[..., bool], label: str, *, progress: bool = False
@@ -201,15 +230,27 @@ class InstallRunner:
 
         When *progress* is True, *fn* is called with a ``status_fn(msg)``
         argument that updates the spinner text with sub-status messages.
+        Completed phases are printed as persistent ``✓`` lines.
         """
         from dekk.cli.progress import spinner
+        from dekk.cli.styles import _get_console
+
+        console = _get_console()
 
         with spinner(f"{label}...") as status:
             try:
                 if progress:
+                    last_phase: str | None = None
 
                     def update_status(msg: str) -> None:
-                        status.update(msg)
+                        nonlocal last_phase
+                        if last_phase is not None:
+                            console.print(
+                                f"        [green]✓[/] {last_phase}",
+                                highlight=False,
+                            )
+                        last_phase = msg
+                        status.update(f"{msg}")
 
                     return fn(update_status)
                 return fn()
@@ -218,6 +259,43 @@ class InstallRunner:
                     with open(self.log_path, "a", encoding="utf-8") as f:
                         f.write(f"--- {label} ---\n{e}\n")
                 return False
+
+
+def _extract_display_line(line: str) -> str | None:
+    """Extract a user-friendly status from build output.
+
+    Returns a short display string for lines worth showing (e.g. cargo
+    ``Compiling``, cmake ``Building``, npm ``added``), or ``None`` for
+    noise (warnings, blank lines, progress bars).
+    """
+    stripped = line.strip()
+    if not stripped:
+        return None
+    # Cargo: "   Compiling apxm-cli v0.1.0 (/path/to/crate)"
+    if stripped.startswith("Compiling "):
+        parts = stripped.split()
+        if len(parts) >= 2:
+            return f"Compiling {parts[1]}"
+        return stripped
+    # Cargo: "   Downloading crate-name v1.0"
+    if stripped.startswith("Downloading "):
+        parts = stripped.split()
+        if len(parts) >= 2:
+            return f"Downloading {parts[1]}"
+        return stripped
+    # CMake: "-- Building target..."
+    if stripped.startswith("-- "):
+        return stripped[3:]
+    # CMake: "[  5%] Building CXX object..."
+    if stripped.startswith("[") and "]" in stripped:
+        after_bracket = stripped.split("]", 1)[1].strip()
+        if after_bracket:
+            return after_bracket
+    # npm: "added 150 packages..."
+    if stripped.startswith("added "):
+        return stripped
+    # Skip warnings, errors, and other noise — these go to the log
+    return None
 
 
 def _print_log_tail(log_path: Path, n: int) -> None:
