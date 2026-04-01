@@ -229,9 +229,15 @@ def select_components(
 
     try:
         import questionary
+        import questionary.prompts.common as _qcommon
+        from prompt_toolkit.styles import Style as PtStyle
     except ImportError:
         # Fallback: use defaults if questionary not installed
         return [c.name for c in components if c.default]  # type: ignore[attr-defined]
+
+    # Use ✓/○ instead of default ●/○ for clearer checked/unchecked state
+    _qcommon.INDICATOR_SELECTED = "\u2713"  # type: ignore[attr-defined]  # ✓
+    _qcommon.INDICATOR_UNSELECTED = "\u25cb"  # type: ignore[attr-defined]  # ○
 
     choices = [
         questionary.Choice(
@@ -242,9 +248,19 @@ def select_components(
         for c in components
     ]
 
+    component_style = PtStyle(
+        [
+            ("selected", "fg:#00ff00 bold"),  # green ✓ and text for checked
+            ("text", "fg:#808080"),  # dim ○ and text for unchecked
+            ("pointer", "fg:#00d7ff bold"),  # cyan pointer
+            ("highlighted", "bold"),  # bold current row
+        ]
+    )
+
     selected = questionary.checkbox(
         "Select components to install:",
         choices=choices,
+        style=component_style,
     ).ask()
 
     return selected if selected is not None else []
