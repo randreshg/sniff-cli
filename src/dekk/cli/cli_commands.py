@@ -74,6 +74,21 @@ def run_doctor(context: ExecutionContext) -> None:
     if pkg_count > 0:
         console.print(f"\n[bold]Packages[/bold]: {pkg_count} installed")
 
+    # Project tool dependencies (from nearest .dekk.toml, if found)
+    from pathlib import Path
+
+    from dekk.environment.spec import find_envspec
+
+    spec_file = find_envspec(Path.cwd())
+    if spec_file is not None:
+        from dekk.cli.output import check_tool_specs
+        from dekk.environment.spec import EnvironmentSpec
+
+        spec = EnvironmentSpec.from_file(spec_file)
+        if spec.tools:
+            print_section(f"Tool Dependencies ({spec.project_name})")
+            check_tool_specs(spec.tools)
+
 
 def run_version(
     app_name: str | None,

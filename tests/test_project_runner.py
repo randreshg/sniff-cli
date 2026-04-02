@@ -150,7 +150,7 @@ def test_missing_command_help_includes_agents_and_worktree(
     run_project_command("demo", [])
 
     out = capsys.readouterr().out
-    assert "Project commands for 'demo'" in out
+    assert "demo" in out
     assert "agents" in out
     assert "worktree" in out
     assert "setup" in out
@@ -167,8 +167,8 @@ def test_explicit_help_alias_prints_project_help(
 
     assert code == 0
     out = capsys.readouterr().out
-    assert "Usage:" in out
-    assert "dekk demo <command> [args...]" in out
+    assert "Usage" in out
+    assert "dekk demo" in out
 
 
 def test_help_flag_prints_project_help(
@@ -181,7 +181,7 @@ def test_help_flag_prints_project_help(
 
     assert code == 0
     out = capsys.readouterr().out
-    assert "Commands:" in out
+    assert "Commands" in out
     assert "hello" in out
 
 
@@ -196,7 +196,7 @@ def test_help_for_single_command_prints_command_help(
     assert code == 0
     out = capsys.readouterr().out
     assert "demo:hello" in out
-    assert "This command is defined in `.dekk.toml`" in out
+    assert "Defined in `.dekk.toml`" in out
 
 
 def test_help_for_builtin_subcommand_prints_command_help(

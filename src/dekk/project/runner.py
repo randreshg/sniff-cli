@@ -14,6 +14,7 @@ from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
 from dekk.environment.spec import EnvironmentSpec, find_envspec
 from dekk.project.subcommands import CLI_NAME, PROJECT_BUILTIN_DESCRIPTIONS
+from dekk.project.subcommands import DOCTOR as PROJECT_DOCTOR_COMMAND
 from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
 from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
 from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
@@ -138,30 +139,21 @@ def _project_commands(spec: EnvironmentSpec) -> list[tuple[str, str]]:
 
 
 def _print_project_help(spec: EnvironmentSpec) -> None:
-    lines = [
-        f"Project commands for '{spec.project_name}'",
-        "",
-        "Usage:",
-        f"  {CLI_NAME} {spec.project_name} <command> [args...]",
-        f"  {CLI_NAME} {spec.project_name} help [command]",
-        "",
-        "Commands:",
-    ]
+    from dekk.cli.styles import Colors, _get_console
+
+    c = _get_console()
+    c.print(f"[{Colors.HEADER}]{spec.project_name}[/]")
+    c.print(f"[dim]{'─' * 40}[/]")
+    c.print(f"[{Colors.STEP}]Usage[/]")
+    c.print(f"  {CLI_NAME} {spec.project_name} [dim]<command> \\[args...][/]")
+    c.print(f"  {CLI_NAME} {spec.project_name} [dim]help \\[command][/]")
+    c.print(f"[{Colors.STEP}]Commands[/]")
     for name, description in _project_commands(spec):
-        lines.append(f"  {name:<12} {description}")
-    lines.extend(
-        [
-            "",
-            "Notes:",
-            f"  - Run `{CLI_NAME} {spec.project_name} <command> --help` for command-specific help.",
-            "  - Built-in project tools: "
-            + ", ".join(
-                n for n in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if n not in spec.commands
-            )
-            + ".",
-        ]
+        c.print(f"  [{Colors.INFO}]{name:<12}[/] {description}")
+    builtin_names = ", ".join(
+        n for n in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if n not in spec.commands
     )
-    print("\n".join(lines))
+    c.print(f"[dim]Built-in: {builtin_names}[/]")
 
 
 def _print_command_help(spec: EnvironmentSpec, command_name: str) -> None:
@@ -176,27 +168,25 @@ def _print_command_help(spec: EnvironmentSpec, command_name: str) -> None:
             hint=f"Available commands: {available}",
         )
 
-    lines = [
-        f"{spec.project_name}:{command_name}",
-        f"  {description}",
-        "",
-        "Usage:",
-        f"  {CLI_NAME} {spec.project_name} {command_name} [args...]",
-        f"  {CLI_NAME} {spec.project_name} {command_name} --help",
-    ]
+    from dekk.cli.styles import Colors, _get_console
 
+    c = _get_console()
+    c.print(f"[{Colors.HEADER}]{spec.project_name}:{command_name}[/]")
+    c.print(f"[dim]{description}[/]")
+    c.print(f"[dim]{'─' * 40}[/]")
+    c.print(f"[{Colors.STEP}]Usage[/]")
+    c.print(f"  {CLI_NAME} {spec.project_name} {command_name} [dim]\\[args...][/]")
+    c.print(f"  {CLI_NAME} {spec.project_name} {command_name} [dim]--help[/]")
     if _is_builtin_project_command(spec, command_name):
-        lines.append("")
-        lines.append("This is a dekk built-in project sub-command.")
+        c.print("[dim]dekk built-in project sub-command.[/]")
     else:
-        lines.append("")
-        lines.append("This command is defined in `.dekk.toml` under `[commands]`.")
-
-    print("\n".join(lines))
+        c.print("[dim]Defined in `.dekk.toml` under \\[commands].[/]")
 
 
 def _is_builtin_project_command(spec: EnvironmentSpec, command_name: str) -> bool:
     if command_name in BUILTIN_PROJECT_SUBCOMMANDS:
+        return True
+    if command_name == PROJECT_DOCTOR_COMMAND and command_name not in spec.commands:
         return True
     if command_name == PROJECT_SETUP_COMMAND and command_name not in spec.commands:
         return True
@@ -217,6 +207,9 @@ def _run_builtin_subcommand(
     resolve correctly, and ``sys.argv`` is adjusted so Typer/Click parses
     the right arguments.
     """
+    if command_name == PROJECT_DOCTOR_COMMAND:
+        return _run_project_doctor(args, project_root)
+
     if command_name == PROJECT_SETUP_COMMAND:
         return _run_project_setup(args, project_root)
 
@@ -242,6 +235,65 @@ def _run_builtin_subcommand(
     finally:
         sys.argv = saved_argv
         os.chdir(saved_cwd)
+
+
+def _run_project_doctor(args: list[str], project_root: Path) -> int:
+    """Run `dekk <app> doctor` — check project tool dependencies."""
+    from dekk.cli.output import check_tool_specs
+    from dekk.cli.styles import print_blank, print_error, print_section, print_success
+
+    spec = EnvironmentSpec.from_file(project_root / ".dekk.toml")
+
+    # Activate environment so env-provided tools are on PATH
+    activated_path: str | None = None
+    if spec.environment:
+        try:
+            activation = EnvironmentActivator(spec, project_root).activate()
+            env = dict(os.environ)
+            for key, value in activation.env_vars.items():
+                if key in PREPEND_ENV_VARS:
+                    current = env.get(key, "")
+                    env[key] = f"{value}{os.pathsep}{current}" if current else value
+                else:
+                    env[key] = value
+            activated_path = env.get("PATH")
+        except Exception:
+            pass  # check tools with current PATH
+
+    has_issues = False
+
+    # Project-wide [tools]
+    if spec.tools:
+        print_section("Project Tools")
+        missing = check_tool_specs(spec.tools, path=activated_path)
+        if missing:
+            has_issues = True
+
+    # Per-component requires
+    if spec.install and spec.install.components:
+        comps_with_requires = [c for c in spec.install.components if c.requires]
+        if comps_with_requires:
+            print_section("Component Requirements")
+            import shutil
+
+            for comp in comps_with_requires:
+                comp_missing = [
+                    r for r in comp.requires
+                    if not shutil.which(r, path=activated_path)
+                ]
+                if comp_missing:
+                    print_error(f"{comp.label}: missing {', '.join(comp_missing)}")
+                    has_issues = True
+                else:
+                    print_success(f"{comp.label}: all requirements met")
+
+    print_blank()
+    if has_issues:
+        print_error("Some tools are missing or need upgrading.")
+        return 1
+    else:
+        print_success("All project dependencies satisfied.")
+        return 0
 
 
 def _run_project_setup(args: list[str], project_root: Path) -> int:

@@ -33,12 +33,14 @@ CLI_NAME: Final = "dekk"
 # ---------------------------------------------------------------------------
 
 AGENTS: Final = "agents"
+DOCTOR: Final = "doctor"
 INSTALL: Final = "install"
 SETUP: Final = "setup"
 UNINSTALL: Final = "uninstall"
 WORKTREE: Final = "worktree"
 PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
     AGENTS: "Manage agent configs for this project",
+    DOCTOR: "Check tool dependencies and environment health for this project",
     INSTALL: "Set up environment, build, and optionally install CLI wrapper",
     SETUP: "Create or refresh the configured runtime environment",
     UNINSTALL: "Remove the runtime environment, wrappers, and dekk state",
@@ -107,6 +109,7 @@ def create_tool_app(name: str, project_root: Path) -> Any:
 __all__ = [
     "AGENTS",
     "CLI_NAME",
+    "DOCTOR",
     "INSTALL",
     "NAMES",
     "PROJECT_BUILTIN_DESCRIPTIONS",

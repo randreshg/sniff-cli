@@ -35,6 +35,7 @@ from dekk.cli.styles import (
 
 if TYPE_CHECKING:
     from dekk.detection.deps import DependencyResult
+    from dekk.environment.spec import ToolSpec
 
 
 class OutputFormat(StrEnum):
@@ -233,3 +234,54 @@ def print_dep_results(
                 print_warning(f"{r.name} -- not found (optional)")
 
     return missing
+
+
+def check_tool_specs(
+    tools: dict[str, ToolSpec],
+    path: str | None = None,
+) -> list[str]:
+    """Check [tools] availability and version, print status, return missing names.
+
+    Bridges ``ToolSpec`` objects from ``.dekk.toml`` to
+    :class:`~dekk.detection.deps.DependencyChecker` and prints results via
+    :func:`print_dep_results`.
+
+    Args:
+        tools: Mapping of tool name → ``ToolSpec`` (from ``spec.tools``).
+        path: Optional PATH string to use for lookups (e.g. activated env PATH).
+
+    Returns:
+        List of missing/broken tool names (empty if all OK).
+    """
+    import shutil
+
+    from dekk.core.version import version_satisfies
+    from dekk.detection.deps import DependencyResult, ToolChecker
+
+    checker = ToolChecker(timeout=5.0)
+    results: list[DependencyResult] = []
+    for name, tool in tools.items():
+        resolved = shutil.which(tool.command, path=path)
+        found = resolved is not None
+
+        version: str | None = None
+        meets_minimum = True
+        if found and resolved:
+            # Use the resolved absolute path so version check works
+            # even when the activated PATH isn't in os.environ yet
+            version = checker.get_version(resolved)
+            if version and tool.version:
+                meets_minimum = version_satisfies(version, tool.version)
+
+        results.append(
+            DependencyResult(
+                name=name,
+                command=tool.command,
+                found=found,
+                version=version,
+                meets_minimum=meets_minimum,
+                required=not tool.optional,
+            )
+        )
+
+    return print_dep_results(results)

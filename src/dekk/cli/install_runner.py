@@ -195,7 +195,7 @@ class InstallRunner:
                             except OSError:
                                 pass  # log capture is best-effort
                         stripped = line.strip()
-                        if stripped:
+                        if stripped and not _is_noise(stripped):
                             # Truncate long lines for the spinner display
                             display = stripped if len(stripped) <= 60 else stripped[:57] + "..."
                             status.update(f"{display}")
@@ -226,6 +226,20 @@ class InstallRunner:
                     except OSError:
                         pass  # log capture is best-effort
                 return False
+
+
+_NOISE_PREFIXES = (
+    "warning: failed to",
+    "database is locked",
+    "Caused by:",
+    "Error code ",
+    "This may prevent cargo",
+)
+
+
+def _is_noise(line: str) -> bool:
+    """Return True for non-actionable diagnostic lines that shouldn't show on the spinner."""
+    return any(line.startswith(p) for p in _NOISE_PREFIXES)
 
 
 def _print_log_tail(log_path: Path, n: int) -> None:

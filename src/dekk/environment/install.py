@@ -62,10 +62,9 @@ def run_install(
     """
     spec = EnvironmentSpec.from_file(project_root / ".dekk.toml")
     log_path = project_root / ".dekk" / "install.log"
+    title = f"{spec.project_name.upper()} Install"
 
-    runner = InstallRunner(f"{spec.project_name.upper()} Install", log_path=log_path)
-
-    # Step 1: Setup environment (if [environment] configured)
+    # ── Phase 1: Setup environment (must complete before tool checks) ──
     if spec.environment:
         from dekk.environment.resolver import resolve_environment
 
@@ -77,15 +76,19 @@ def run_install(
                 from dekk.cli.styles import print_error
 
                 print_error(str(e))
-                return InstallRunnerResult(title=runner.title, log_path=log_path)
+                return InstallRunnerResult(title=title, log_path=log_path)
             if setup_cmd:
-                runner.add("Setting up environment", setup_cmd)
+                env_runner = InstallRunner(title, log_path=log_path)
+                env_runner.add("Setting up environment", setup_cmd)
+                env_result = env_runner.run(cwd=project_root, verbose=verbose)
+                if not env_result.ok:
+                    return env_result
             else:
                 from dekk.cli.styles import print_info
 
                 print_info("Environment already exists (use --force to recreate)")
 
-    # Resolve activated environment for all shell steps
+    # ── Activate environment (now reflects any packages just installed) ──
     activated_env: dict[str, str] | None = None
     if spec.environment:
         from dekk.environment.activation import EnvironmentActivator
@@ -97,11 +100,30 @@ def run_install(
         except Exception:
             activated_env = None  # fall through without custom env
 
-    # Step 2: Build (if install.build configured)
+    # ── Gate 1: Check project-wide [tools] ──
+    if spec.tools:
+        from dekk.cli.output import check_tool_specs
+        from dekk.cli.styles import print_blank, print_error, print_numbered_list, print_section
+
+        print_section("Dependencies")
+        activated_path = activated_env.get("PATH") if activated_env else None
+        missing_tools = check_tool_specs(spec.tools, path=activated_path)
+        if missing_tools:
+            print_blank()
+            print_error("Required tools missing:")
+            print_numbered_list(missing_tools)
+            print_blank()
+            from dekk.cli.styles import print_info
+
+            print_info("Install missing tools and re-run `dekk install`.")
+            return InstallRunnerResult(title=title, log_path=log_path)
+
+    # ── Phase 2: Build + components ──
+    runner = InstallRunner(title, log_path=log_path)
+
     if spec.install and spec.install.build:
         runner.add("Building project", spec.install.build)
 
-    # Step 3: Optional components (interactive selection or --components flag)
     selected: list[str] = []
     if spec.install and spec.install.components:
         selection = select_components(
@@ -110,24 +132,38 @@ def run_install(
             interactive=interactive,
         )
         if selection is None:
-            # User pressed Escape/Ctrl-C — abort installation
             from dekk.cli.styles import print_blank, print_info
 
             print_blank()
             print_info("Installation cancelled.")
-            return InstallRunnerResult(title=runner.title, log_path=log_path)
+            return InstallRunnerResult(title=title, log_path=log_path)
         selected = selection
+
+        # Gate 2: Check ALL selected components' requires upfront
+        comp_missing: list[str] = []
         for comp in spec.install.components:
             if comp.name in selected:
                 missing = _check_requires(comp.requires, activated_env)
                 if missing:
-                    from dekk.cli.styles import print_warning
+                    comp_missing.append(
+                        f"{comp.label}: missing {', '.join(missing)}"
+                    )
+        if comp_missing:
+            from dekk.cli.styles import print_blank, print_error, print_info
 
-                    print_warning(f"Skipping {comp.label}: missing {', '.join(missing)}")
-                    continue
+            print_blank()
+            print_error("Cannot install selected components:")
+            for line in comp_missing:
+                print_error(f"  {line}")
+            print_blank()
+            print_info("Install missing tools and re-run `dekk install`.")
+            return InstallRunnerResult(title=title, log_path=log_path)
+
+        for comp in spec.install.components:
+            if comp.name in selected:
                 runner.add(f"Installing {comp.label}", comp.run)
 
-    # Step 4: Wrap (only if --wrap flag passed AND install.wrap configured)
+    # Step: Wrap (only if --wrap flag passed AND install.wrap configured)
     if wrap and spec.install and spec.install.wrap:
         wrap_spec = spec.install.wrap
 
