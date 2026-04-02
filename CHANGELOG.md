@@ -2,6 +2,19 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.7.0 - 2026-04-02
+
+- Added inline package declarations (`channels`, `packages`, `pip`) to
+  `RuntimeEnvironmentSpec`, making `.dekk.toml` the single source of truth for
+  environment dependencies. Projects no longer need a separate `environment.yaml`.
+- Added `requires` field to `ComponentSpec` for declaring required tools;
+  components with missing tools are skipped with a warning during install.
+- `CondaEnv` now generates conda YAML at install time from inline package specs
+  via `_generate_env_file()`, supporting three modes: external file, inline
+  packages, or bare create.
+- Threaded `channels`, `packages`, and `pip` through `DekkEnv` base class,
+  resolver, and factory — all as plain primitives (project-agnostic).
+
 ## 1.5.1 - 2026-03-31
 
 - Added native project help for `dekk <app>` / `dekk <app> --help` /
