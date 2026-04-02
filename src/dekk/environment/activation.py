@@ -10,11 +10,9 @@ from pathlib import Path
 from dekk.cli.errors import NotFoundError
 from dekk.diagnostics.validation_cache import get_cache
 from dekk.environment.resolver import resolve_environment
-from dekk.environment.spec import EnvironmentSpec, find_envspec
+from dekk.environment.spec import PREPEND_ENV_VARS, EnvironmentSpec, find_envspec
 from dekk.execution.toolchain import EnvVarBuilder
 from dekk.shell import ActivationScriptBuilder, ShellDetector, ShellKind
-
-_PREPEND_VARS = frozenset({"LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"})
 
 
 def _resolve_shell_kind(shell: str | ShellKind) -> ShellKind:
@@ -45,7 +43,12 @@ class EnvironmentActivator:
     ) -> ActivationResult:
         """Activate environment and return result."""
         resolved = resolve_environment(self.spec, project_root=self.project_root)
-        cache_key = str(resolved.prefix) if resolved else "no-environment"
+        # Include spec file mtime in cache key so edits to .dekk.toml invalidate
+        spec_file = self.project_root / ".dekk.toml"
+        spec_mtime = ""
+        if spec_file.exists():
+            spec_mtime = f"_{int(spec_file.stat().st_mtime)}"
+        cache_key = (str(resolved.prefix) if resolved else "no-environment") + spec_mtime
         if use_cache and resolved:
             if cached := get_cache().get(self.project_root, cache_key):
                 activation_script = None
@@ -55,14 +58,13 @@ class EnvironmentActivator:
                     # activation script can be regenerated for the requested shell.
                     script_builder = EnvVarBuilder()
                     for k, v in cached.env_vars.items():
-                        if k == "PATH":
+                        if k.upper() in PREPEND_ENV_VARS:
                             for p in v.split(os.pathsep):
                                 if p:
-                                    script_builder.prepend_path(p)
-                        elif k.upper() in _PREPEND_VARS:
-                            for p in v.split(os.pathsep):
-                                if p:
-                                    script_builder.prepend_var(k, p)
+                                    if k == "PATH":
+                                        script_builder.prepend_path(p)
+                                    else:
+                                        script_builder.prepend_var(k, p)
                         else:
                             script_builder.set_var(k, v)
                     activation_script = ActivationScriptBuilder().build(
@@ -87,12 +89,12 @@ class EnvironmentActivator:
             self.project_root, environment_prefix
         )
         for key, value in placeholders.items():
-            if key.upper() == "PATH":
+            if key.upper() in PREPEND_ENV_VARS:
                 for path in value.split(os.pathsep):
-                    builder.prepend_path(path)
-            elif key.upper() in _PREPEND_VARS:
-                for path in value.split(os.pathsep):
-                    builder.prepend_var(key, path)
+                    if key == "PATH":
+                        builder.prepend_path(path)
+                    else:
+                        builder.prepend_var(key, path)
             else:
                 builder.set_var(key, value)
 

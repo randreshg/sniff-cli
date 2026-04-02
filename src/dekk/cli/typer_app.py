@@ -34,13 +34,6 @@ AUTO_ACTIVATE_SPEC_NAME: Final = ".dekk.toml"
 BUILTIN_DOCTOR_COMMAND: Final = "doctor"
 BUILTIN_VERSION_COMMAND: Final = "version"
 BUILTIN_ENV_COMMAND: Final = "env"
-PREPEND_ENV_VARS: Final = {
-    "PATH",
-    "LD_LIBRARY_PATH",
-    "DYLD_LIBRARY_PATH",
-    "PYTHONPATH",
-    "PKG_CONFIG_PATH",
-}
 
 
 def _get_typer() -> Any:
@@ -223,6 +216,8 @@ class Typer:
                 print_error(error_msg)
 
         if result.env_vars:
+            from dekk.environment.spec import PREPEND_ENV_VARS
+
             for key, value in result.env_vars.items():
                 if key in PREPEND_ENV_VARS:
                     current = os.environ.get(key, "")

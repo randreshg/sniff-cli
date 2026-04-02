@@ -11,17 +11,9 @@ import shutil
 from pathlib import Path
 
 from dekk.cli.install_runner import InstallRunner, InstallRunnerResult, select_components
-from dekk.environment.spec import EnvironmentSpec
+from dekk.environment.spec import PREPEND_ENV_VARS, EnvironmentSpec
 
 __all__ = ["run_install", "run_uninstall"]
-
-PREPEND_ENV_VARS = {
-    "PATH",
-    "LD_LIBRARY_PATH",
-    "DYLD_LIBRARY_PATH",
-    "PYTHONPATH",
-    "PKG_CONFIG_PATH",
-}
 
 
 def _merge_env(activation: object) -> dict[str, str]:
