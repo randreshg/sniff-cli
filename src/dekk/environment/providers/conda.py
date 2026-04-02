@@ -56,6 +56,7 @@ class CondaEnv(DekkEnv):
 
     def _generate_env_file(self, output_path: Path) -> Path:
         """Write conda env YAML from inline packages. Returns the file path."""
+        assert self.packages, "_generate_env_file requires packages"
         lines = [f"name: {self.name or 'dekk-env'}"]
         lines.append("channels:")
         for ch in self.channels:
