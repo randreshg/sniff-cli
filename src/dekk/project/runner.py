@@ -12,7 +12,7 @@ from pathlib import Path
 from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
-from dekk.environment.spec import EnvironmentSpec, find_envspec
+from dekk.environment.spec import PREPEND_ENV_VARS, EnvironmentSpec, find_envspec
 from dekk.project.subcommands import CLI_NAME, PROJECT_BUILTIN_DESCRIPTIONS
 from dekk.project.subcommands import DOCTOR as PROJECT_DOCTOR_COMMAND
 from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
@@ -21,13 +21,6 @@ from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
 from dekk.project.subcommands import UNINSTALL as PROJECT_UNINSTALL_COMMAND
 
 PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
-PREPEND_ENV_VARS = {
-    "PATH",
-    "LD_LIBRARY_PATH",
-    "DYLD_LIBRARY_PATH",
-    "PYTHONPATH",
-    "PKG_CONFIG_PATH",
-}
 
 
 def run_project_command(app_name: str, argv: list[str]) -> int:

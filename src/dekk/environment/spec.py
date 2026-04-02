@@ -5,10 +5,27 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from dekk._compat import tomllib, walk_up
 from dekk.environment.types import EnvironmentKind, normalize_environment_type
+
+# Env vars that should be prepended (not overwritten) during activation.
+PREPEND_ENV_VARS: Final[frozenset[str]] = frozenset({
+    "PATH",
+    "LD_LIBRARY_PATH",
+    "DYLD_LIBRARY_PATH",
+    "PYTHONPATH",
+    "PKG_CONFIG_PATH",
+})
+
+# Maps [paths] shorthand keys to their standard env var names.
+PATHS_KEY_MAP: Final[dict[str, str]] = {
+    "bin": "PATH",
+    "lib": "LD_LIBRARY_PATH",
+    "pkg_config": "PKG_CONFIG_PATH",
+    "python": "PYTHONPATH",
+}
 
 
 @dataclass(frozen=True)
@@ -316,7 +333,13 @@ class EnvironmentSpec:
 
         for key, path_list in self.paths.items():
             expanded = [expand(p) for p in path_list]
-            result[key] = os.pathsep.join(expanded)
+            env_key = PATHS_KEY_MAP.get(key, key)
+            joined = os.pathsep.join(expanded)
+            # Append to existing value if key already set (e.g. from [env])
+            if env_key in result:
+                result[env_key] = f"{result[env_key]}{os.pathsep}{joined}"
+            else:
+                result[env_key] = joined
 
         return result
 
@@ -332,6 +355,8 @@ __all__ = [
     "ComponentSpec",
     "EnvironmentSpec",
     "InstallSpec",
+    "PATHS_KEY_MAP",
+    "PREPEND_ENV_VARS",
     "NpmSpec",
     "PythonSpec",
     "RuntimeEnvironmentSpec",

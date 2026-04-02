@@ -373,14 +373,7 @@ class WrapperGenerator:
         path_prepends: list[str] = []
         prepend_vars: dict[str, str] = {}
 
-        # Variables that should be prepended to existing values, not hard-set.
-        _PREPEND_KEYS = {
-            "PATH",
-            "LD_LIBRARY_PATH",
-            "DYLD_LIBRARY_PATH",
-            "PYTHONPATH",
-            "PKG_CONFIG_PATH",
-        }
+        from dekk.environment.spec import PREPEND_ENV_VARS as _PREPEND_KEYS
 
         # Extract PATH entries from the env dict (the activator merges them
         # into a single colon-separated value under the "PATH" key).
