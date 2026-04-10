@@ -161,16 +161,6 @@ def detect_hooks(
             description="Validate environment on session start",
         ))
 
-    # Block raw build tools
-    blocked = detect_blocked_commands(tools, commands, cli_name)
-    for tool_name in blocked:
-        hooks.append(HookDef(
-            event="PreToolUse",
-            matcher="Bash",
-            command=f'echo "Use {cli_name or "dekk"} instead of {tool_name}" && exit 1',
-            description=f"Block raw {tool_name} usage",
-        ))
-
     return hooks
 
 
@@ -229,6 +219,7 @@ if __name__ == "__main__":
 def generate_mcp_requirements() -> str:
     """Return the contents of a ``requirements.txt`` for the MCP server."""
     return "mcp>=1.0.0\n"
+
 
 
 # -----------------------------------------------------------------------
