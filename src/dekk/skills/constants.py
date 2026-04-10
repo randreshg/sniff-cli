@@ -1,7 +1,7 @@
-"""Constants for the agents module.
+"""Constants for the skills module.
 
 All filenames, directory names, environment variable names, and agent target
-identifiers used throughout ``dekk.agents`` are defined here.  No other
+identifiers used throughout ``dekk.skills`` are defined here.  No other
 module in this package should contain hardcoded path fragments or config keys.
 """
 
@@ -70,12 +70,72 @@ COPILOT_RULE_SUFFIX: Final = ".instructions.md"
 AGENTS_JSON: Final = ".agents.json"
 
 # ---------------------------------------------------------------------------
-# Codex environment
+# Enriched generation — Claude Code
 # ---------------------------------------------------------------------------
 
-CODEX_HOME_ENV: Final = "CODEX_HOME"
-CODEX_HOME_DEFAULT: Final = ".codex"
-CODEX_SKILLS_DIR_NAME: Final = "skills"
+CLAUDE_PLUGIN_MANIFEST_DIR: Final = ".claude-plugin"
+CLAUDE_PLUGIN_MANIFEST: Final = "plugin.json"
+CLAUDE_MCP_JSON: Final = ".mcp.json"
+CLAUDE_HOOKS_DIR: Final = "hooks"
+CLAUDE_HOOKS_JSON: Final = "hooks.json"
+CLAUDE_MCP_DIR: Final = "mcp"
+CLAUDE_SETTINGS_DIR: Final = ".claude"
+CLAUDE_SETTINGS_JSON: Final = "settings.json"
+
+# ---------------------------------------------------------------------------
+# Enriched generation — Cursor
+# ---------------------------------------------------------------------------
+
+CURSOR_DIR: Final = ".cursor"
+CURSOR_MCP_JSON: Final = "mcp.json"
+
+# ---------------------------------------------------------------------------
+# Enriched generation — Codex
+# ---------------------------------------------------------------------------
+
+CODEX_AGENTS_DIR: Final = "agents"
+CODEX_AGENT_YAML: Final = "openai.yaml"
+
+# ---------------------------------------------------------------------------
+# Enriched generation — Copilot
+# ---------------------------------------------------------------------------
+
+COPILOT_EXTENSIONS_DIR: Final = "extensions"
+
+# ---------------------------------------------------------------------------
+# Enriched generation — shared MCP
+# ---------------------------------------------------------------------------
+
+MCP_REQUIREMENTS: Final = "requirements.txt"
+MCP_SERVER_SUFFIX: Final = "_server.py"
+MCP_COMMAND: Final = "python3"
+
+# ---------------------------------------------------------------------------
+# MCP / plugin JSON schema keys (platform-defined, shared across providers)
+# ---------------------------------------------------------------------------
+
+MCP_KEY_SERVERS: Final = "mcpServers"
+MCP_KEY_COMMAND: Final = "command"
+MCP_KEY_ARGS: Final = "args"
+
+PLUGIN_KEY_NAME: Final = "name"
+PLUGIN_KEY_DESCRIPTION: Final = "description"
+PLUGIN_KEY_VERSION: Final = "version"
+PLUGIN_KEY_USER_CONFIG: Final = "userConfig"
+PLUGIN_KEY_DEFAULT: Final = "default"
+PLUGIN_KEY_MCP: Final = "mcp"
+PLUGIN_KEY_TOOLS: Final = "tools"
+PLUGIN_KEY_SERVER: Final = "server"
+
+SETTINGS_KEY_PLUGINS: Final = "plugins"
+SETTINGS_KEY_MCP_SERVERS: Final = "mcpServers"
+SETTINGS_KEY_HOOKS: Final = "hooks"
+
+HOOKS_KEY_HOOKS: Final = "hooks"
+HOOKS_KEY_EVENT: Final = "event"
+HOOKS_KEY_COMMAND: Final = "command"
+HOOKS_KEY_DESCRIPTION: Final = "description"
+HOOKS_KEY_MATCHER: Final = "matcher"
 
 # ---------------------------------------------------------------------------
 # Skills index (routing layer)
@@ -92,6 +152,8 @@ TOML_NAME_KEY: Final = "name"
 TOML_COMMANDS_KEY: Final = "commands"
 TOML_RUN_KEY: Final = "run"
 TOML_DESCRIPTION_KEY: Final = "description"
+TOML_SKILL_KEY: Final = "skill"
+TOML_GROUP_KEY: Final = "group"
 
 # ---------------------------------------------------------------------------
 # Default CLI name (for standalone dekk usage)

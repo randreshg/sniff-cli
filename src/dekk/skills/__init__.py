@@ -5,8 +5,8 @@ Generates configs for Claude Code, Codex, Cursor, Copilot, and machine-readable 
 
 Usage::
 
-    from dekk.agents import create_agents_app, AgentConfigManager
-    from dekk.agents.discovery import discover_skills, discover_rules
+    from dekk.skills import create_agents_app, AgentConfigManager
+    from dekk.skills.discovery import discover_skills, discover_rules
 
     # In a dekk-based CLI:
     agents_app = create_agents_app(source_dir=".carts", parent_app=app)
@@ -19,24 +19,23 @@ Usage::
 
 from __future__ import annotations
 
-from dekk.agents.app import create_agents_app
-from dekk.agents.discovery import (
+from dekk.skills.app import create_agents_app
+from dekk.skills.discovery import (
     RuleDefinition,
     SkillDefinition,
     discover_rules,
     discover_skills,
     parse_frontmatter,
 )
-from dekk.agents.generators import (
+from dekk.skills.generators import (
     AgentConfigManager,
     ClaudeCodeAgent,
     CodexAgent,
     CopilotAgent,
     CursorAgent,
 )
-from dekk.agents.installer import install_codex_skills
-from dekk.agents.providers import DekkAgent
-from dekk.agents.scaffold import scaffold_agents_dir
+from dekk.skills.providers import DekkAgent
+from dekk.skills.scaffold import scaffold_agents_dir
 
 __all__ = [
     "AgentConfigManager",
@@ -50,7 +49,6 @@ __all__ = [
     "create_agents_app",
     "discover_rules",
     "discover_skills",
-    "install_codex_skills",
     "parse_frontmatter",
     "scaffold_agents_dir",
 ]

@@ -1,8 +1,6 @@
 """Project-scoped command routing and execution."""
 
-from .runner import run_project_command
-from .subcommands import AGENTS, CLI_NAME, NAMES, WORKTREE, create_app
-from .worktree import (
+from dekk.tools.worktree.core import (
     WorktreeCreateResult,
     WorktreeInfo,
     create_worktree,
@@ -12,10 +10,13 @@ from .worktree import (
     remove_worktree,
 )
 
+from .runner import run_project_command
+from .subcommands import CLI_NAME, NAMES, SKILLS, WORKTREE, create_app
+
 __all__ = [
-    "AGENTS",
     "CLI_NAME",
     "NAMES",
+    "SKILLS",
     "WORKTREE",
     "WorktreeCreateResult",
     "WorktreeInfo",

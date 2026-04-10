@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from dekk.project.worktree import (
+from dekk.tools.worktree.core import (
     WorktreeCreateResult,
     WorktreeInfo,
     _parse_porcelain,
@@ -311,7 +311,7 @@ class TestPruneWorktrees:
 class TestWorktreeSkillScaffold:
     def test_scaffold_creates_worktree_skill(self, tmp_path: Path) -> None:
         """When a git repo is detected, scaffold_agents_dir should create worktree skill."""
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         (tmp_path / ".git").mkdir()
         result = scaffold_agents_dir(tmp_path)
@@ -323,7 +323,7 @@ class TestWorktreeSkillScaffold:
 
     def test_scaffold_skips_worktree_if_no_git(self, tmp_path: Path) -> None:
         """No .git dir means no worktree skill."""
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         result = scaffold_agents_dir(tmp_path)
         skill_file = result / "skills" / "worktree" / "SKILL.md"
@@ -331,7 +331,7 @@ class TestWorktreeSkillScaffold:
 
     def test_scaffold_does_not_overwrite_worktree_skill(self, tmp_path: Path) -> None:
         """Existing worktree skill should not be overwritten."""
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         (tmp_path / ".git").mkdir()
         # Pre-create a custom worktree skill

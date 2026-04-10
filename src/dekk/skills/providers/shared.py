@@ -6,8 +6,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from dekk.agents.constants import SKILL_FILENAME
-from dekk.agents.discovery import SkillDefinition, iter_skill_files
+from dekk.skills.constants import SKILL_FILENAME
+from dekk.skills.discovery import SkillDefinition, iter_skill_files
 
 
 def install_skills_to_dir(
@@ -21,7 +21,7 @@ def install_skills_to_dir(
     installed: list[str] = []
 
     for skill in skills:
-        dest = target_dir / skill.source_dir.name
+        dest = target_dir / skill.relative_install_path
         if dest.exists() and not force:
             continue
         dest.mkdir(parents=True, exist_ok=True)

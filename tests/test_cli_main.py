@@ -19,16 +19,6 @@ class TestCliMain:
         assert exc.value.code == 0
         run_mock.assert_called_once_with("demo", ["hello"])
 
-    def test_agents_routes_to_project_runner(self, monkeypatch):
-        """``dekk agents`` is no longer a builtin — it routes through the project runner."""
-        monkeypatch.setattr(cli_main, "_app", None)
-        monkeypatch.setattr("sys.argv", ["dekk", "agents", "init"])
-        with patch("dekk.project.runner.run_project_command", return_value=0) as run_mock:
-            with pytest.raises(SystemExit) as exc:
-                cli_main.main()
-        assert exc.value.code == 0
-        run_mock.assert_called_once_with("agents", ["init"])
-
     def test_worktree_routes_to_project_runner(self, monkeypatch):
         """``dekk worktree`` is no longer a builtin — it routes through the project runner."""
         monkeypatch.setattr(cli_main, "_app", None)

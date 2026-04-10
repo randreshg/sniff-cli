@@ -14,7 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from dekk.agents.constants import (
+from dekk.environment.spec import EnvironmentSpec, SkillsSpec
+from dekk.skills.constants import (
     AGENTS_JSON,
     AGENTS_MD,
     ALL_TARGETS,
@@ -32,8 +33,8 @@ from dekk.agents.constants import (
     TARGET_COPILOT,
     TARGET_CURSOR,
 )
-from dekk.agents.discovery import SkillDefinition, discover_rules, discover_skills
-from dekk.agents.providers import (
+from dekk.skills.discovery import SkillDefinition, discover_rules, discover_skills
+from dekk.skills.providers import (
     AgentContext,
     ClaudeCodeAgent,
     CodexAgent,
@@ -43,8 +44,7 @@ from dekk.agents.providers import (
     default_agents,
     render_codex_skill,
 )
-from dekk.agents.providers.shared import remove_file
-from dekk.environment.spec import AgentsSpec
+from dekk.skills.providers.shared import remove_file
 
 _BUILTIN_TARGETS: frozenset[str] = frozenset({TARGET_ALL, *ALL_TARGETS})
 
@@ -147,7 +147,8 @@ class AgentConfigManager:
         project_name: str | None = None,
         cli_name: str | None = None,
         agents: tuple[DekkAgent, ...] | None = None,
-        agents_spec: AgentsSpec | None = None,
+        agents_spec: SkillsSpec | None = None,
+        env_spec: EnvironmentSpec | None = None,
     ) -> None:
         self.project_root = project_root
         self.source_dir_name = source_dir
@@ -155,6 +156,7 @@ class AgentConfigManager:
         self.cli_name = cli_name
         self.project_name = project_name or project_root.name
         self._agents_spec = agents_spec
+        self._env_spec = env_spec
         self._abstractions = {
             agent.target: agent
             for agent in (agents or default_agents())
@@ -194,6 +196,12 @@ class AgentConfigManager:
         rules = discover_rules(self.source_dir)
         result.rule_count = len(rules)
 
+        enrichment = None
+        if self._agents_spec and self._agents_spec.enrich and self._env_spec:
+            from dekk.skills.providers.enrichment import compute_enrichment
+
+            enrichment = compute_enrichment(self._env_spec, self.cli_name)
+
         context = AgentContext(
             project_root=self.project_root,
             source_dir=self.source_dir,
@@ -203,6 +211,9 @@ class AgentConfigManager:
             project_content=project_content,
             skills=skills,
             rules=rules,
+            project_description=self._env_spec.project_description if self._env_spec else "",
+            enrichment=enrichment,
+            skills_spec=self._agents_spec,
         )
 
         if effective_target == TARGET_ALL:

@@ -3,7 +3,7 @@
 Each tool lives in its own package under ``dekk.tools``:
 
 - ``dekk.tools.worktree`` — git worktree management
-- ``dekk.agents``         — agent config generation (standalone package)
+- ``dekk.skills``         — agent config generation (standalone package)
 
 Downstream CLIs (e.g., apxm) can register additional tools by adding
 entries to :data:`REGISTRY` before CLI construction.
@@ -32,14 +32,14 @@ CLI_NAME: Final = "dekk"
 # Tool name constants
 # ---------------------------------------------------------------------------
 
-AGENTS: Final = "agents"
+SKILLS: Final = "skills"
 DOCTOR: Final = "doctor"
 INSTALL: Final = "install"
 SETUP: Final = "setup"
 UNINSTALL: Final = "uninstall"
 WORKTREE: Final = "worktree"
 PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
-    AGENTS: "Manage agent configs for this project",
+    SKILLS: "Manage skills and agent configs for this project",
     DOCTOR: "Check tool dependencies and environment health for this project",
     INSTALL: "Set up environment, build, and optionally install CLI wrapper",
     SETUP: "Create or refresh the configured runtime environment",
@@ -56,8 +56,8 @@ PROJECT_BUILTIN_DESCRIPTIONS: Final[dict[str, str]] = {
 # ---------------------------------------------------------------------------
 
 REGISTRY: Final[dict[str, dict[str, str]]] = {
-    AGENTS: {
-        "module": "dekk.agents.app",
+    SKILLS: {
+        "module": "dekk.skills.app",
         "factory": "create_agents_app",
     },
     WORKTREE: {
@@ -94,8 +94,8 @@ def create_tool_app(name: str, project_root: Path) -> Any:
     mod = importlib.import_module(entry["module"])
     factory = getattr(mod, entry["factory"])
 
-    if name == AGENTS:
-        from dekk.agents.constants import DEFAULT_SOURCE_DIR
+    if name == SKILLS:
+        from dekk.skills.constants import DEFAULT_SOURCE_DIR
 
         return factory(
             source_dir=DEFAULT_SOURCE_DIR,
@@ -107,7 +107,6 @@ def create_tool_app(name: str, project_root: Path) -> Any:
 
 
 __all__ = [
-    "AGENTS",
     "CLI_NAME",
     "DOCTOR",
     "INSTALL",
@@ -115,6 +114,7 @@ __all__ = [
     "PROJECT_BUILTIN_DESCRIPTIONS",
     "REGISTRY",
     "SETUP",
+    "SKILLS",
     "UNINSTALL",
     "WORKTREE",
     "create_tool_app",

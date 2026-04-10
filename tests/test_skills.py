@@ -1,4 +1,4 @@
-"""Tests for dekk.agents — agent config generation."""
+"""Tests for dekk.skills — agent config generation."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from dekk.agents.constants import AGENTS_JSON, AGENTS_MD, CLAUDE_MD, CURSORRULES
+from dekk.skills.constants import AGENTS_JSON, AGENTS_MD, CLAUDE_MD, CURSORRULES
 
 # ============================================================================
 # Fixtures
@@ -71,7 +71,7 @@ def project_root(agents_dir: Path) -> Path:
 
 class TestDiscovery:
     def test_discover_skills(self, agents_dir: Path) -> None:
-        from dekk.agents.discovery import discover_skills
+        from dekk.skills.discovery import discover_skills
 
         skills = discover_skills(agents_dir)
         assert len(skills) == 2
@@ -79,19 +79,19 @@ class TestDiscovery:
         assert names == {"build", "test"}
 
     def test_discover_skills_empty(self, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_skills
+        from dekk.skills.discovery import discover_skills
 
         empty = tmp_path / ".agents"
         empty.mkdir()
         assert discover_skills(empty) == []
 
     def test_discover_skills_no_dir(self, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_skills
+        from dekk.skills.discovery import discover_skills
 
         assert discover_skills(tmp_path / "nonexistent") == []
 
     def test_skill_properties(self, agents_dir: Path) -> None:
-        from dekk.agents.discovery import discover_skills
+        from dekk.skills.discovery import discover_skills
 
         skills = discover_skills(agents_dir)
         build = next(s for s in skills if s.name == "build")
@@ -99,7 +99,7 @@ class TestDiscovery:
         assert "make" in build.body
 
     def test_discover_rules(self, agents_dir: Path) -> None:
-        from dekk.agents.discovery import discover_rules
+        from dekk.skills.discovery import discover_rules
 
         rules = discover_rules(agents_dir)
         assert len(rules) == 1
@@ -109,12 +109,12 @@ class TestDiscovery:
         assert "descriptive" in rules[0].body
 
     def test_discover_rules_empty(self, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_rules
+        from dekk.skills.discovery import discover_rules
 
         assert discover_rules(tmp_path / "nonexistent") == []
 
     def test_parse_frontmatter(self) -> None:
-        from dekk.agents.discovery import parse_frontmatter
+        from dekk.skills.discovery import parse_frontmatter
 
         text = "---\nname: foo\ndescription: bar\n---\n\nBody text.\n"
         meta, body = parse_frontmatter(text)
@@ -123,7 +123,7 @@ class TestDiscovery:
         assert "Body text." in body
 
     def test_parse_frontmatter_missing(self) -> None:
-        from dekk.agents.discovery import parse_frontmatter
+        from dekk.skills.discovery import parse_frontmatter
 
         text = "# Just a heading\n\nNo frontmatter here.\n"
         meta, body = parse_frontmatter(text)
@@ -131,7 +131,7 @@ class TestDiscovery:
         assert body == text
 
     def test_skill_missing_required_field(self, tmp_path: Path) -> None:
-        from dekk.agents.discovery import _parse_skill
+        from dekk.skills.discovery import _parse_skill
 
         skill_dir = tmp_path / "skills" / "bad"
         skill_dir.mkdir(parents=True)
@@ -142,7 +142,7 @@ class TestDiscovery:
             _parse_skill(skill_file)
 
     def test_skill_missing_frontmatter(self, tmp_path: Path) -> None:
-        from dekk.agents.discovery import _parse_skill
+        from dekk.skills.discovery import _parse_skill
 
         skill_dir = tmp_path / "skills" / "nofm"
         skill_dir.mkdir(parents=True)
@@ -153,7 +153,7 @@ class TestDiscovery:
             _parse_skill(skill_file)
 
     def test_iter_skill_files(self, agents_dir: Path) -> None:
-        from dekk.agents.discovery import discover_skills, iter_skill_files
+        from dekk.skills.discovery import discover_skills, iter_skill_files
 
         skills = discover_skills(agents_dir)
         build = next(s for s in skills if s.name == "build")
@@ -169,7 +169,7 @@ class TestDiscovery:
 
 class TestGenerators:
     def test_generate_all(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         result = manager.generate("all")
@@ -184,7 +184,7 @@ class TestGenerators:
         assert len(result.generated) >= 5
 
     def test_generate_claude_only(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         result = manager.generate("claude")
@@ -194,7 +194,7 @@ class TestGenerators:
         assert any("CLAUDE.md" in g for g in result.generated)
 
     def test_claude_md_content(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("claude")
@@ -203,7 +203,7 @@ class TestGenerators:
         assert "Test Project" in content
 
     def test_claude_skills_synced(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("claude")
@@ -213,7 +213,7 @@ class TestGenerators:
         assert (claude_skills / "test" / "SKILL.md").is_file()
 
     def test_claude_rules_synced(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("claude")
@@ -226,7 +226,7 @@ class TestGenerators:
         assert "paths:" in content
 
     def test_copilot_per_directory(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("copilot")
@@ -239,7 +239,7 @@ class TestGenerators:
     def test_agents_json(self, project_root: Path) -> None:
         import json
 
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("all")
@@ -251,7 +251,7 @@ class TestGenerators:
         assert names == {"build", "test"}
 
     def test_agents_reference_md(self, project_root: Path, agents_dir: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         # Create agents-reference.md
         (agents_dir / "agents-reference.md").write_text(
@@ -266,7 +266,7 @@ class TestGenerators:
         assert "Detailed Reference" in agents_md.read_text()
 
     def test_custom_agent_abstraction(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager, AgentContext, DekkAgent
+        from dekk.skills.generators import AgentConfigManager, AgentContext, DekkAgent
 
         class StubAgent(DekkAgent):
             target = "stub"
@@ -284,7 +284,7 @@ class TestGenerators:
         assert (project_root / "STUB.md").is_file()
 
     def test_clean_all_removes_generated_outputs(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("all")
@@ -302,7 +302,7 @@ class TestGenerators:
         assert not (project_root / ".claude").exists()
 
     def test_clean_specific_target_only_removes_that_target(self, project_root: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         manager = AgentConfigManager(project_root)
         manager.generate("all")
@@ -315,7 +315,7 @@ class TestGenerators:
         assert (project_root / CURSORRULES).exists()
 
     def test_generate_no_project_md(self, tmp_path: Path) -> None:
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.generators import AgentConfigManager
 
         empty = tmp_path / ".agents"
         empty.mkdir()
@@ -325,8 +325,8 @@ class TestGenerators:
             manager.generate()
 
     def test_render_codex_skill(self, agents_dir: Path) -> None:
-        from dekk.agents.discovery import discover_skills
-        from dekk.agents.generators import render_codex_skill
+        from dekk.skills.discovery import discover_skills
+        from dekk.skills.generators import render_codex_skill
 
         skills = discover_skills(agents_dir)
         build = next(s for s in skills if s.name == "build")
@@ -346,70 +346,44 @@ class TestGenerators:
 
 
 class TestInstaller:
-    def test_install_codex_skills(self, agents_dir: Path, tmp_path: Path) -> None:
-        from dekk.agents.installer import install_codex_skills
-
-        codex_dir = tmp_path / "codex_skills"
-        installed = install_codex_skills(agents_dir, codex_dir=codex_dir)
-        assert len(installed) == 2
-        assert (codex_dir / "build" / "SKILL.md").is_file()
-        assert (codex_dir / "test" / "SKILL.md").is_file()
-
-        # Verify codex rendering (simplified frontmatter)
-        content = (codex_dir / "build" / "SKILL.md").read_text()
-        assert "name: build" in content
-        assert "user-invocable" not in content
-
     def test_check_skill_state_missing(self, agents_dir: Path, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_skills
-        from dekk.agents.installer import check_skill_state
+        from dekk.skills.discovery import discover_skills
+        from dekk.skills.installer import check_skill_state
 
         skills = discover_skills(agents_dir)
         state = check_skill_state(skills[0], tmp_path / "empty")
         assert state == "missing"
 
     def test_check_skill_state_ok(self, agents_dir: Path, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_skills
-        from dekk.agents.installer import check_skill_state, install_codex_skills
+        from dekk.skills.discovery import discover_skills
+        from dekk.skills.installer import check_skill_state
+        from dekk.skills.providers.shared import install_skills_to_dir
 
-        install_codex_skills(agents_dir, codex_dir=tmp_path)
+        install_skills_to_dir(
+            discover_skills(agents_dir), tmp_path, force=True
+        )
 
         skills = discover_skills(agents_dir)
         build = next(s for s in skills if s.name == "build")
-
-        from dekk.agents.generators import render_codex_skill
-
-        state = check_skill_state(build, tmp_path, renderer=render_codex_skill)
+        state = check_skill_state(build, tmp_path)
         assert state == "ok"
 
     def test_check_skill_state_stale(self, agents_dir: Path, tmp_path: Path) -> None:
-        from dekk.agents.discovery import discover_skills
-        from dekk.agents.generators import render_codex_skill
-        from dekk.agents.installer import check_skill_state, install_codex_skills
+        from dekk.skills.discovery import discover_skills
+        from dekk.skills.installer import check_skill_state
+        from dekk.skills.providers.shared import install_skills_to_dir
 
-        install_codex_skills(agents_dir, codex_dir=tmp_path)
+        install_skills_to_dir(
+            discover_skills(agents_dir), tmp_path, force=True
+        )
 
         # Modify the installed skill
         (tmp_path / "build" / "SKILL.md").write_text("stale content")
 
         skills = discover_skills(agents_dir)
         build = next(s for s in skills if s.name == "build")
-        state = check_skill_state(build, tmp_path, renderer=render_codex_skill)
+        state = check_skill_state(build, tmp_path)
         assert state == "stale"
-
-    def test_no_force_skip(self, agents_dir: Path, tmp_path: Path) -> None:
-        from dekk.agents.installer import install_codex_skills
-
-        codex_dir = tmp_path / "codex_skills"
-
-        # First install
-        installed_1 = install_codex_skills(agents_dir, codex_dir=codex_dir, force=True)
-        assert len(installed_1) == 2
-
-        # Second install without force — still installs because dir exists
-        # but with force=False, existing dirs are skipped
-        installed_2 = install_codex_skills(agents_dir, codex_dir=codex_dir, force=False)
-        assert len(installed_2) == 0
 
 
 # ============================================================================
@@ -419,7 +393,7 @@ class TestInstaller:
 
 class TestScaffold:
     def test_scaffold_from_toml(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         # Create a .dekk.toml with commands
         (tmp_path / ".dekk.toml").write_text(
@@ -441,8 +415,42 @@ class TestScaffold:
         assert "name: build" in build_skill
         assert "make" in build_skill
 
+    def test_scaffold_skill_opt_in_only_creates_skill_commands(self, tmp_path: Path) -> None:
+        """When skill=true is present, only those commands get scaffolded."""
+        from dekk.skills.scaffold import scaffold_agents_dir
+
+        (tmp_path / ".dekk.toml").write_text(
+            '[project]\nname = "test"\n\n'
+            "[commands]\n"
+            'build = { run = "make", description = "Build", skill = true }\n'
+            'clean = { run = "rm -rf build", description = "Clean" }\n'
+            'test = { run = "pytest", description = "Test", skill = true }\n',
+            encoding="utf-8",
+        )
+
+        result = scaffold_agents_dir(tmp_path)
+        assert (result / "skills" / "build" / "SKILL.md").is_file()
+        assert (result / "skills" / "test" / "SKILL.md").is_file()
+        assert not (result / "skills" / "clean" / "SKILL.md").exists()
+
+    def test_scaffold_no_skill_key_scaffolds_all(self, tmp_path: Path) -> None:
+        """When no commands have skill=true, all commands are scaffolded (backward compat)."""
+        from dekk.skills.scaffold import scaffold_agents_dir
+
+        (tmp_path / ".dekk.toml").write_text(
+            '[project]\nname = "test"\n\n'
+            "[commands]\n"
+            'build = { run = "make", description = "Build" }\n'
+            'clean = { run = "rm -rf build", description = "Clean" }\n',
+            encoding="utf-8",
+        )
+
+        result = scaffold_agents_dir(tmp_path)
+        assert (result / "skills" / "build" / "SKILL.md").is_file()
+        assert (result / "skills" / "clean" / "SKILL.md").is_file()
+
     def test_scaffold_project_detection_cargo(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import _detect_project_info
+        from dekk.skills.scaffold import _detect_project_info
 
         (tmp_path / "Cargo.toml").write_text("[package]\nname = 'test'\n")
         info = _detect_project_info(tmp_path)
@@ -450,7 +458,7 @@ class TestScaffold:
         assert "cargo" in info["build"]
 
     def test_scaffold_project_detection_cmake(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import _detect_project_info
+        from dekk.skills.scaffold import _detect_project_info
 
         (tmp_path / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.14)\n")
         info = _detect_project_info(tmp_path)
@@ -458,21 +466,21 @@ class TestScaffold:
         assert "cmake" in info["build"]
 
     def test_scaffold_project_detection_npm(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import _detect_project_info
+        from dekk.skills.scaffold import _detect_project_info
 
         (tmp_path / "package.json").write_text('{"name": "test"}\n')
         info = _detect_project_info(tmp_path)
         assert info["language"] == "TypeScript/JavaScript"
 
     def test_scaffold_project_detection_python(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import _detect_project_info
+        from dekk.skills.scaffold import _detect_project_info
 
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
         info = _detect_project_info(tmp_path)
         assert info["language"] == "Python"
 
     def test_scaffold_no_overwrite(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         (tmp_path / ".dekk.toml").write_text(
             '[project]\nname = "test"\n'
@@ -491,7 +499,7 @@ class TestScaffold:
         assert (tmp_path / ".agents" / "project.md").read_text() == "Custom content"
 
     def test_scaffold_force_overwrite(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         (tmp_path / ".dekk.toml").write_text(
             '[project]\nname = "test"\n'
@@ -507,14 +515,14 @@ class TestScaffold:
         assert content != "Custom content"
 
     def test_scaffold_custom_source_dir(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         result = scaffold_agents_dir(tmp_path, source_dir=".carts")
         assert result == tmp_path / ".carts"
         assert (result / "project.md").is_file()
 
     def test_commands_to_skills_no_overwrite(self, tmp_path: Path) -> None:
-        from dekk.agents.scaffold import DiscoveredCommand, commands_to_skills
+        from dekk.skills.scaffold import DiscoveredCommand, commands_to_skills
 
         skills_dir = tmp_path / "skills"
 
@@ -530,6 +538,43 @@ class TestScaffold:
         created_2 = commands_to_skills(cmds, skills_dir)
         assert len(created_2) == 0
         assert (skills_dir / "build" / "SKILL.md").read_text() == "Custom content"
+
+
+# ============================================================================
+# Hierarchical Discovery Tests
+# ============================================================================
+
+
+class TestHierarchicalDiscovery:
+    def test_nested_skill_discovery(self, tmp_path: Path) -> None:
+        """discover_skills finds nested SKILL.md files (e.g., llm/add/SKILL.md)."""
+        from dekk.skills.discovery import discover_skills
+
+        source = tmp_path / ".agents"
+        skills = source / "skills"
+        (skills / "build").mkdir(parents=True)
+        (skills / "build" / "SKILL.md").write_text(
+            "---\nname: build\ndescription: Build\n---\n"
+        )
+        (skills / "llm" / "add").mkdir(parents=True)
+        (skills / "llm" / "add" / "SKILL.md").write_text(
+            "---\nname: add\ndescription: Add credential\n---\n"
+        )
+        found = discover_skills(source)
+        names = {s.name for s in found}
+        assert "build" in names
+        assert "add" in names
+        assert len(found) == 2
+
+    def test_hierarchical_scaffold(self, tmp_path: Path) -> None:
+        """Scaffolding creates nested dirs for hierarchical commands."""
+        from dekk.skills.scaffold import DiscoveredCommand, commands_to_skills
+
+        skills_dir = tmp_path / "skills"
+        cmds = [DiscoveredCommand(name="llm/add", description="Add", run="app llm add")]
+        created = commands_to_skills(cmds, skills_dir)
+        assert len(created) == 1
+        assert (skills_dir / "llm" / "add" / "SKILL.md").is_file()
 
 
 # ============================================================================
@@ -557,31 +602,50 @@ class TestEnvspecExtensions:
         assert "clean" in spec.commands
         assert spec.commands["clean"].run == "rm -rf build"
 
-    def test_agents_spec_parsing(self, tmp_path: Path) -> None:
+    def test_command_spec_skill_field(self, tmp_path: Path) -> None:
+        """CommandSpec.skill is parsed from TOML."""
         from dekk.environment.spec import EnvironmentSpec
 
         toml_path = tmp_path / ".dekk.toml"
         toml_path.write_text(
             '[project]\nname = "test"\n\n'
-            "[agents]\n"
+            "[commands]\n"
+            'build = { run = "make", description = "Build", skill = true }\n'
+            'clean = { run = "rm -rf build", description = "Clean" }\n'
+            'lint = "ruff check"\n',
+            encoding="utf-8",
+        )
+
+        spec = EnvironmentSpec.from_file(toml_path)
+        assert spec.commands["build"].skill is True
+        assert spec.commands["clean"].skill is False
+        assert spec.commands["lint"].skill is False
+
+    def test_skills_spec_parsing(self, tmp_path: Path) -> None:
+        from dekk.environment.spec import EnvironmentSpec
+
+        toml_path = tmp_path / ".dekk.toml"
+        toml_path.write_text(
+            '[project]\nname = "test"\n\n'
+            "[skills]\n"
             'source = ".carts"\n'
             'targets = ["claude", "codex"]\n',
             encoding="utf-8",
         )
 
         spec = EnvironmentSpec.from_file(toml_path)
-        assert spec.agents is not None
-        assert spec.agents.source == ".carts"
-        assert spec.agents.targets == ("claude", "codex")
+        assert spec.skills is not None
+        assert spec.skills.source == ".carts"
+        assert spec.skills.targets == ("claude", "codex")
 
-    def test_agents_spec_defaults(self, tmp_path: Path) -> None:
+    def test_skills_spec_defaults(self, tmp_path: Path) -> None:
         from dekk.environment.spec import EnvironmentSpec
 
         toml_path = tmp_path / ".dekk.toml"
         toml_path.write_text('[project]\nname = "test"\n', encoding="utf-8")
 
         spec = EnvironmentSpec.from_file(toml_path)
-        assert spec.agents is None
+        assert spec.skills is None
         assert spec.commands == {}
 
 
@@ -608,8 +672,8 @@ class TestTyperIntegration:
         assert getattr(clean, "_dekk_agent_skill", False) is False
 
     def test_discover_commands_from_typer(self) -> None:
-        from dekk.agents.scaffold import discover_commands_from_typer
         from dekk.cli.typer_app import Typer
+        from dekk.skills.scaffold import discover_commands_from_typer
 
         app = Typer(name="test")
 
@@ -632,8 +696,8 @@ class TestTyperIntegration:
         assert "clean" not in names
 
     def test_discover_commands_run_format(self) -> None:
-        from dekk.agents.scaffold import discover_commands_from_typer
         from dekk.cli.typer_app import Typer
+        from dekk.skills.scaffold import discover_commands_from_typer
 
         app = Typer(name="myapp")
 
@@ -643,6 +707,123 @@ class TestTyperIntegration:
 
         commands = discover_commands_from_typer(app, "myapp")
         assert commands[0].run == "myapp build"
+
+    def test_discover_commands_from_toml_skill_filter(self) -> None:
+        """discover_commands_from_toml respects skill opt-in."""
+        from dekk.environment.spec import CommandSpec
+        from dekk.skills.scaffold import discover_commands_from_toml
+
+        class FakeSpec:
+            commands = {
+                "build": CommandSpec(run="make", description="Build", skill=True),
+                "clean": CommandSpec(run="rm -rf", description="Clean"),
+                "test": CommandSpec(run="pytest", description="Test", skill=True),
+            }
+
+        commands = discover_commands_from_toml(FakeSpec())
+        names = {c.name for c in commands}
+        assert names == {"build", "test"}
+
+    def test_discover_commands_from_toml_no_skill_returns_all(self) -> None:
+        """When no commands have skill=True, all commands are returned."""
+        from dekk.environment.spec import CommandSpec
+        from dekk.skills.scaffold import discover_commands_from_toml
+
+        class FakeSpec:
+            commands = {
+                "build": CommandSpec(run="make", description="Build"),
+                "clean": CommandSpec(run="rm -rf", description="Clean"),
+            }
+
+        commands = discover_commands_from_toml(FakeSpec())
+        names = {c.name for c in commands}
+        assert names == {"build", "clean"}
+
+
+# ============================================================================
+# View / Sync Command Tests
+# ============================================================================
+
+
+class TestViewSyncCommands:
+    def test_view_project_md(self, project_root: Path) -> None:
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.skills.app import create_agents_app
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            result = runner.invoke(app, ["view"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0
+        assert "Test Project" in result.output
+
+    def test_view_skill(self, project_root: Path) -> None:
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.skills.app import create_agents_app
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            result = runner.invoke(app, ["view", "build"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0
+        assert "Build" in result.output
+
+    def test_view_missing_skill(self, project_root: Path) -> None:
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.skills.app import create_agents_app
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            result = runner.invoke(app, ["view", "nonexistent"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 1
+
+    def test_sync_delegates_to_generate(self, project_root: Path) -> None:
+        import os
+
+        from typer.testing import CliRunner
+
+        from dekk.skills.app import create_agents_app
+
+        runner = CliRunner()
+        app = create_agents_app()
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(project_root)
+            result = runner.invoke(app, ["sync", "--target", "claude"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0
+        assert (project_root / "CLAUDE.md").is_file()
 
 
 # ============================================================================
@@ -655,14 +836,14 @@ class TestProjectRootResolution:
         """_find_project_root walks up from subdir to find .agents/."""
         from unittest.mock import patch
 
-        from dekk.agents.app import _find_project_root
+        from dekk.skills.app import _find_project_root
 
         # Create project with .agents/ at root
         (tmp_path / ".agents").mkdir()
         subdir = tmp_path / "src" / "deep"
         subdir.mkdir(parents=True)
 
-        with patch("dekk.agents.app.Path") as mock_path:
+        with patch("dekk.skills.app.Path") as mock_path:
             mock_path.cwd.return_value = subdir
             # walk_up needs real Path, so only mock cwd
         # Use the real function with monkeypatched cwd
@@ -677,7 +858,7 @@ class TestProjectRootResolution:
 
     def test_walk_up_finds_dekk_toml(self, tmp_path: Path) -> None:
         """_find_project_root walks up from subdir to find .dekk.toml."""
-        from dekk.agents.app import _find_project_root
+        from dekk.skills.app import _find_project_root
 
         (tmp_path / ".dekk.toml").write_text('[project]\nname = "test"\n')
         subdir = tmp_path / "src"
@@ -696,7 +877,7 @@ class TestProjectRootResolution:
         """_find_project_root falls back to cwd when nothing is found."""
         import os
 
-        from dekk.agents.app import _find_project_root
+        from dekk.skills.app import _find_project_root
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -707,7 +888,7 @@ class TestProjectRootResolution:
 
     def test_explicit_get_project_root_callback(self, tmp_path: Path) -> None:
         """get_project_root callback overrides walk-up."""
-        from dekk.agents.app import create_agents_app
+        from dekk.skills.app import create_agents_app
 
         custom_root = tmp_path / "my-repo"
         custom_root.mkdir()
@@ -722,8 +903,8 @@ class TestProjectRootResolution:
 
     def test_generate_writes_to_project_root_not_cwd(self, tmp_path: Path) -> None:
         """Generate writes to project_root, not cwd, even when called from elsewhere."""
-        from dekk.agents.generators import AgentConfigManager
-        from dekk.agents.scaffold import scaffold_agents_dir
+        from dekk.skills.generators import AgentConfigManager
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         project_root = tmp_path / "my-project"
         project_root.mkdir()
@@ -757,12 +938,12 @@ class TestProjectRootResolution:
             os.chdir(original_cwd)
 
     def test_agents_init_auto_creates_dekk_toml(self, tmp_path: Path) -> None:
-        """`agents init` should seed `.dekk.toml` before scaffolding `.agents/`."""
+        """`skills init` should seed `.dekk.toml` before scaffolding `.agents/`."""
         import os
 
         from typer.testing import CliRunner
 
-        from dekk.agents.app import create_agents_app
+        from dekk.skills.app import create_agents_app
 
         (tmp_path / "pyproject.toml").write_text(
             "[project]\n"
@@ -792,8 +973,8 @@ class TestProjectRootResolution:
 
         from typer.testing import CliRunner
 
-        from dekk.agents.app import create_agents_app
-        from dekk.agents.generators import AgentConfigManager
+        from dekk.skills.app import create_agents_app
+        from dekk.skills.generators import AgentConfigManager
 
         AgentConfigManager(project_root).generate("all")
 
@@ -821,7 +1002,7 @@ class TestInitConfirmation:
 
         from typer.testing import CliRunner
 
-        from dekk.agents.app import create_agents_app
+        from dekk.skills.app import create_agents_app
 
         runner = CliRunner()
         app = create_agents_app()
@@ -842,7 +1023,7 @@ class TestInitConfirmation:
 
         from typer.testing import CliRunner
 
-        from dekk.agents.app import create_agents_app
+        from dekk.skills.app import create_agents_app
 
         runner = CliRunner()
         app = create_agents_app()
@@ -863,7 +1044,7 @@ class TestInitConfirmation:
 
         from typer.testing import CliRunner
 
-        from dekk.agents.app import create_agents_app
+        from dekk.skills.app import create_agents_app
 
         runner = CliRunner()
         app = create_agents_app()
@@ -882,10 +1063,9 @@ class TestInitConfirmation:
 
 class TestEndToEnd:
     def test_full_pipeline(self, tmp_path: Path) -> None:
-        """Test the full init -> generate -> install pipeline."""
-        from dekk.agents.generators import AgentConfigManager
-        from dekk.agents.installer import install_codex_skills
-        from dekk.agents.scaffold import scaffold_agents_dir
+        """Test the full init -> generate pipeline."""
+        from dekk.skills.generators import AgentConfigManager
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         # Create project with .dekk.toml
         (tmp_path / ".dekk.toml").write_text(
@@ -908,14 +1088,6 @@ class TestEndToEnd:
         assert (tmp_path / ".cursorrules").is_file()
         assert (tmp_path / ".agents.json").is_file()
         assert result.skill_count == 2
-
-        # Step 3: Install to codex
-        codex_target = tmp_path / "codex_skills"
-        installed = install_codex_skills(
-            tmp_path / ".agents", codex_dir=codex_target
-        )
-        assert len(installed) == 2
-        assert (codex_target / "build" / "SKILL.md").is_file()
 
         # Verify CLAUDE.md content
         claude_content = (tmp_path / "CLAUDE.md").read_text()

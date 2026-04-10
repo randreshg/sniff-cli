@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from dekk.agents.constants import (
+from dekk.skills.constants import (
     REQUIRED_SKILL_FIELDS,
     RULES_DIR_NAME,
     RULES_GLOB,
@@ -81,6 +81,11 @@ class SkillDefinition:
     def description(self) -> str:
         return self.metadata[REQUIRED_SKILL_FIELDS[1]]
 
+    @property
+    def relative_install_path(self) -> Path:
+        """Relative path from the skills parent dir, for hierarchical install."""
+        return self.source_dir.relative_to(self.source_dir.parent)
+
 
 @dataclass(frozen=True)
 class RuleDefinition:
@@ -121,7 +126,7 @@ def discover_skills(source_dir: Path) -> list[SkillDefinition]:
         return []
 
     skills: list[SkillDefinition] = []
-    for skill_file in sorted(skills_dir.glob(f"*/{SKILL_FILENAME}")):
+    for skill_file in sorted(skills_dir.glob(f"**/{SKILL_FILENAME}")):
         skills.append(_parse_skill(skill_file))
     return skills
 

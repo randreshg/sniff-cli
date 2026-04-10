@@ -7,12 +7,18 @@ import os
 import shlex
 import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.environment.activation import EnvironmentActivator
 from dekk.environment.resolver import resolve_environment
-from dekk.environment.spec import PREPEND_ENV_VARS, EnvironmentSpec, find_envspec
+from dekk.environment.spec import (
+    PREPEND_ENV_VARS,
+    CommandSpec,
+    EnvironmentSpec,
+    find_envspec,
+)
 from dekk.project.subcommands import CLI_NAME, PROJECT_BUILTIN_DESCRIPTIONS
 from dekk.project.subcommands import DOCTOR as PROJECT_DOCTOR_COMMAND
 from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
@@ -23,15 +29,54 @@ from dekk.project.subcommands import UNINSTALL as PROJECT_UNINSTALL_COMMAND
 PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
 
 
+# ---------------------------------------------------------------------------
+# Command tree resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_command(
+    spec: EnvironmentSpec, argv: list[str]
+) -> tuple[CommandSpec | None, list[str], list[str]]:
+    """Walk the command tree consuming argv tokens that match child names.
+
+    Returns:
+        (resolved_command_spec, remaining_argv, command_path)
+
+    ``command_path`` is the list of names consumed (e.g., ["llm", "add"]).
+    Returns ``(None, argv, [])`` when the first token doesn't match.
+    """
+    commands = spec.commands
+    path: list[str] = []
+
+    if not argv or argv[0] not in commands:
+        return None, argv, path
+
+    node = commands[argv[0]]
+    path.append(argv[0])
+    rest = argv[1:]
+
+    while rest and node.is_group and rest[0] in node.commands:
+        node = node.commands[rest[0]]
+        path.append(rest[0])
+        rest = rest[1:]
+
+    return node, rest, path
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
+
 def run_project_command(app_name: str, argv: list[str]) -> int:
     """Run a command from `[commands]` or a built-in sub-command in the nearest project spec.
 
-    Built-in project sub-commands (``agents``, ``worktree``) are routed
+    Built-in project sub-commands (``skills``, ``worktree``) are routed
     directly without environment activation.  User-defined ``[commands]``
     entries are run via ``subprocess`` with the activated environment.
     """
     # Catch attempts to use sub-commands directly without an app name
-    # e.g., `dekk agents init` instead of `dekk myapp agents init`
+    # e.g., `dekk skills init` instead of `dekk myapp skills init`
     if app_name in BUILTIN_PROJECT_SUBCOMMANDS:
         spec_file = find_envspec(Path.cwd())
         project_name = "<appname>"
@@ -68,26 +113,53 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
 
     if command_name in PROJECT_HELP_COMMANDS:
         if command_args:
-            _print_command_help(spec, command_args[0])
+            _print_command_help(spec, command_args)
         else:
             _print_project_help(spec)
         return 0
 
-    # Built-in project sub-commands (agents, worktree)
+    # Built-in project sub-commands (skills, worktree)
     if _is_builtin_project_command(spec, command_name):
         return _run_builtin_subcommand(command_name, command_args, project_root)
 
-    if command_name not in spec.commands:
+    # Resolve through the command tree
+    resolved, remaining_args, cmd_path = _resolve_command(spec, argv)
+    if resolved is None:
         available = _available_commands(spec)
         raise NotFoundError(
             f"Unknown command '{command_name}' for project '{app_name}'",
             hint=f"Available commands: {available}",
         )
 
-    resolved = resolve_environment(spec, project_root=project_root)
-    if resolved is not None and not resolved.exists():
+    # If resolved node is a group with no run and no further match, show group help
+    if resolved.is_group and not resolved.run and not remaining_args:
+        _print_group_help(spec, resolved, cmd_path)
+        return 0
+
+    # If they asked for help on a group subcommand
+    if remaining_args and remaining_args[0] in PROJECT_HELP_COMMANDS:
+        if resolved.is_group:
+            _print_group_help(spec, resolved, cmd_path)
+        else:
+            _print_leaf_help(spec, resolved, cmd_path)
+        return 0
+
+    # Leaf command must have a run field
+    if not resolved.run:
+        if resolved.is_group:
+            _print_group_help(spec, resolved, cmd_path)
+            return 0
+        qualified = " ".join(cmd_path)
+        raise ValidationError(
+            f"Command '{qualified}' has no 'run' field",
+            hint=f"Add 'run = \"...\"' to [commands.{'.'.join(cmd_path)}] in .dekk.toml",
+        )
+
+    # Activate environment and run
+    resolved_env = resolve_environment(spec, project_root=project_root)
+    if resolved_env is not None and not resolved_env.exists():
         raise NotFoundError(
-            f"Environment prefix not found: {resolved.prefix}",
+            f"Environment prefix not found: {resolved_env.prefix}",
             hint=(
                 f"Run `{CLI_NAME} {spec.project_name} {PROJECT_SETUP_COMMAND}` "
                 "to create the runtime environment"
@@ -103,10 +175,41 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
         else:
             env[key] = value
 
-    base = spec.commands[command_name].run
-    full_cmd = f"{base} {shlex.join(command_args)}" if command_args else base
+    base = resolved.run
+    full_cmd = f"{base} {shlex.join(remaining_args)}" if remaining_args else base
     result = subprocess.run(full_cmd, shell=True, cwd=project_root, env=env, check=False)
+
+    qualified_name = " ".join(cmd_path)
+
+    if result.returncode == 127:
+        raise NotFoundError(
+            f"Command '{qualified_name}' failed: '{base}' not found",
+            hint=(
+                f"Check the 'run' field in .dekk.toml or ensure the binary is on PATH. "
+                f"Run `{CLI_NAME} {spec.project_name} doctor` to check dependencies."
+            ),
+        )
+
+    if result.returncode == 0:
+        # Show skill hint for the leaf command name
+        leaf_name = cmd_path[-1] if cmd_path else command_name
+        skill_path = "/".join(cmd_path) if len(cmd_path) > 1 else leaf_name
+        skill_file = project_root / ".agents" / "skills" / skill_path / "SKILL.md"
+        if skill_file.exists():
+            from rich.text import Text
+
+            from dekk.cli.styles import _get_console
+
+            _get_console().print(
+                Text(f"skill: .agents/skills/{skill_path}/SKILL.md", style="dim")
+            )
+
     return int(result.returncode)
+
+
+# ---------------------------------------------------------------------------
+# Available commands (for error hints)
+# ---------------------------------------------------------------------------
 
 
 def _available_commands(spec: EnvironmentSpec) -> str:
@@ -118,82 +221,203 @@ def _available_commands(spec: EnvironmentSpec) -> str:
     return ", ".join(cmds) or "<none>"
 
 
-def _project_commands(spec: EnvironmentSpec) -> list[tuple[str, str]]:
-    commands = [
-        (name, PROJECT_BUILTIN_DESCRIPTIONS[name])
-        for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS)
-        if name not in spec.commands
-    ]
-    commands.extend(
-        (name, spec.commands[name].description or f"Run {name}")
-        for name in sorted(spec.commands)
-    )
-    return commands
+# ---------------------------------------------------------------------------
+# Help: grouped project help
+# ---------------------------------------------------------------------------
 
 
-def _print_project_help(spec: EnvironmentSpec) -> None:
+def _collect_grouped_commands(
+    spec: EnvironmentSpec,
+) -> list[tuple[str, list[tuple[str, str, bool, bool]]]]:
+    """Collect commands organized by group.
+
+    Returns list of (group_name, [(name, description, is_skill, is_group), ...]).
+    Empty group name means ungrouped.
+    """
+    groups: dict[str, list[tuple[str, str, bool, bool]]] = defaultdict(list)
+
+    for name in sorted(spec.commands):
+        cmd = spec.commands[name]
+        group_key = cmd.group or ""
+        groups[group_key].append((name, cmd.description or f"Run {name}", cmd.skill, cmd.is_group))
+
+    # Built-in commands go in their own "Built-in" group
+    builtin_entries: list[tuple[str, str, bool, bool]] = []
+    for name in sorted(PROJECT_BUILTIN_DESCRIPTIONS):
+        if name not in spec.commands:
+            builtin_entries.append((name, PROJECT_BUILTIN_DESCRIPTIONS[name], False, False))
+
+    # Build ordered output: ungrouped first, then named groups alphabetically, then built-in
+    result: list[tuple[str, list[tuple[str, str, bool, bool]]]] = []
+    if "" in groups:
+        result.append(("", groups.pop("")))
+    for group_name in sorted(groups):
+        result.append((group_name, groups[group_name]))
+    if builtin_entries:
+        result.append(("Built-in", builtin_entries))
+
+    return result
+
+
+def _print_help_header(title: str, description: str = "") -> None:
+    """Print a standard help header with title, optional description, and separator."""
+    from dekk.cli.styles import print_header
+
+    print_header(title, subtitle=description or None)
+
+
+def _format_command_entry(
+    name: str, description: str, is_skill: bool, is_group: bool
+) -> object:
+    """Format a single command entry line for help output."""
+    from rich.text import Text
+
+    from dekk.cli.styles import Colors
+
+    line = Text("  ")
+    line.append(f"{name:<14}", style=Colors.INFO)
+    line.append(f" {description}")
+    if is_group:
+        line.append(" \u2192")
+    if is_skill:
+        line.append(" [skill]", style="dim")
+    return line
+
+
+def _print_usage(prefix: str, patterns: list[str]) -> None:
+    """Print a polished Usage: block with aligned continuation lines."""
+    from rich.text import Text
+
     from dekk.cli.styles import Colors, _get_console
 
     c = _get_console()
-    c.print(f"[{Colors.HEADER}]{spec.project_name}[/]")
-    c.print(f"[dim]{'─' * 40}[/]")
-    c.print(f"[{Colors.STEP}]Usage[/]")
-    c.print(f"  {CLI_NAME} {spec.project_name} [dim]<command> \\[args...][/]")
-    c.print(f"  {CLI_NAME} {spec.project_name} [dim]help \\[command][/]")
-    c.print(f"[{Colors.STEP}]Commands[/]")
-    for name, description in _project_commands(spec):
-        c.print(f"  [{Colors.INFO}]{name:<12}[/] {description}")
-    builtin_names = ", ".join(
-        n for n in sorted(PROJECT_BUILTIN_DESCRIPTIONS) if n not in spec.commands
-    )
-    c.print(f"[dim]Built-in: {builtin_names}[/]")
+    for i, pat in enumerate(patterns):
+        line = Text()
+        if i == 0:
+            line.append("Usage: ", style=Colors.STEP)
+        else:
+            line.append(" " * 7)  # align with first pattern
+        line.append(f"{prefix} ")
+        line.append(pat, style="dim")
+        c.print(line)
 
 
-def _print_command_help(spec: EnvironmentSpec, command_name: str) -> None:
+def _print_project_help(spec: EnvironmentSpec) -> None:
+    from rich.text import Text
+
+    from dekk.cli.styles import Colors, _get_console
+
+    c = _get_console()
+    _print_help_header(spec.project_name)
+    _print_usage(f"{CLI_NAME} {spec.project_name}", ["<COMMAND> [ARGS]...", "help [COMMAND]"])
+
+    grouped = _collect_grouped_commands(spec)
+    for group_name, entries in grouped:
+        c.print()
+        c.print(Text(group_name or "Commands", style=Colors.STEP))
+
+        for name, description, is_skill, is_group in entries:
+            c.print(_format_command_entry(name, description, is_skill, is_group))
+
+
+def _print_group_help(
+    spec: EnvironmentSpec,
+    group: CommandSpec,
+    cmd_path: list[str],
+) -> None:
+    """Print help for a command group (e.g., ``dekk app llm``)."""
+    from rich.text import Text
+
+    from dekk.cli.styles import Colors, _get_console
+
+    c = _get_console()
+    breadcrumb = " > ".join(cmd_path)
+    _print_help_header(f"{spec.project_name} > {breadcrumb}", group.description)
+    path_str = " ".join(cmd_path)
+    _print_usage(f"{CLI_NAME} {spec.project_name} {path_str}", ["<COMMAND> [ARGS]..."])
+    c.print()
+    c.print(Text("Commands", style=Colors.STEP))
+
+    for name in sorted(group.commands):
+        child = group.commands[name]
+        desc = child.description or f"Run {name}"
+        c.print(_format_command_entry(name, desc, child.skill, child.is_group))
+
+
+def _print_leaf_help(
+    spec: EnvironmentSpec,
+    cmd: CommandSpec,
+    cmd_path: list[str],
+) -> None:
+    """Print help for a leaf command."""
+    from rich.text import Text
+
+    from dekk.cli.styles import _get_console
+
+    qualified = ":".join(cmd_path)
+    desc = cmd.description or f"Run {cmd_path[-1]}"
+    _print_help_header(f"{spec.project_name}:{qualified}", desc)
+    path_str = " ".join(cmd_path)
+    _print_usage(f"{CLI_NAME} {spec.project_name} {path_str}", ["[ARGS]...", "--help"])
+    _get_console().print(Text("Defined in `.dekk.toml` under [commands].", style="dim"))
+
+
+def _print_command_help(spec: EnvironmentSpec, args: list[str]) -> None:
+    """Print help for a command, supporting dotted paths (e.g., ``help llm add``)."""
+    command_name = args[0]
+
     if _is_builtin_project_command(spec, command_name):
+        from rich.text import Text
+
+        from dekk.cli.styles import _get_console
+
         description = PROJECT_BUILTIN_DESCRIPTIONS[command_name]
-    elif command_name in spec.commands:
-        description = spec.commands[command_name].description or f"Run {command_name}"
-    else:
+        _print_help_header(f"{spec.project_name}:{command_name}", description)
+        _print_usage(
+            f"{CLI_NAME} {spec.project_name} {command_name}",
+            ["[ARGS]...", "--help"],
+        )
+        _get_console().print(Text("dekk built-in project sub-command.", style="dim"))
+        return
+
+    # Walk the command tree with the help args
+    resolved, _, cmd_path = _resolve_command(spec, args)
+    if resolved is None:
         available = _available_commands(spec)
         raise NotFoundError(
             f"Unknown command '{command_name}' for project '{spec.project_name}'",
             hint=f"Available commands: {available}",
         )
 
-    from dekk.cli.styles import Colors, _get_console
-
-    c = _get_console()
-    c.print(f"[{Colors.HEADER}]{spec.project_name}:{command_name}[/]")
-    c.print(f"[dim]{description}[/]")
-    c.print(f"[dim]{'─' * 40}[/]")
-    c.print(f"[{Colors.STEP}]Usage[/]")
-    c.print(f"  {CLI_NAME} {spec.project_name} {command_name} [dim]\\[args...][/]")
-    c.print(f"  {CLI_NAME} {spec.project_name} {command_name} [dim]--help[/]")
-    if _is_builtin_project_command(spec, command_name):
-        c.print("[dim]dekk built-in project sub-command.[/]")
+    if resolved.is_group:
+        _print_group_help(spec, resolved, cmd_path)
     else:
-        c.print("[dim]Defined in `.dekk.toml` under \\[commands].[/]")
+        _print_leaf_help(spec, resolved, cmd_path)
+
+
+# ---------------------------------------------------------------------------
+# Built-in command routing
+# ---------------------------------------------------------------------------
+
+
+_OVERRIDABLE_BUILTINS = frozenset({
+    PROJECT_DOCTOR_COMMAND,
+    PROJECT_SETUP_COMMAND,
+    PROJECT_INSTALL_COMMAND,
+    PROJECT_UNINSTALL_COMMAND,
+})
 
 
 def _is_builtin_project_command(spec: EnvironmentSpec, command_name: str) -> bool:
     if command_name in BUILTIN_PROJECT_SUBCOMMANDS:
         return True
-    if command_name == PROJECT_DOCTOR_COMMAND and command_name not in spec.commands:
-        return True
-    if command_name == PROJECT_SETUP_COMMAND and command_name not in spec.commands:
-        return True
-    if command_name == PROJECT_INSTALL_COMMAND and command_name not in spec.commands:
-        return True
-    if command_name == PROJECT_UNINSTALL_COMMAND and command_name not in spec.commands:
-        return True
-    return False
+    return command_name in _OVERRIDABLE_BUILTINS and command_name not in spec.commands
 
 
 def _run_builtin_subcommand(
     command_name: str, args: list[str], project_root: Path
 ) -> int:
-    """Invoke a built-in project sub-command (agents or worktree).
+    """Invoke a built-in project sub-command (skills or worktree).
 
     These sub-commands are Typer apps that run in-process.  ``cwd`` is
     temporarily changed to *project_root* so that path-walking helpers

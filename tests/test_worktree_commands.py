@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from dekk.project.worktree import WorktreeCreateResult
 from dekk.tools.worktree.commands import create_worktree_app
+from dekk.tools.worktree.core import WorktreeCreateResult
 
 runner = CliRunner()
 

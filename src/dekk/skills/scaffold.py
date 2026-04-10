@@ -14,7 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dekk.agents.constants import (
+from dekk.detection.build import BuildSystem, BuildSystemDetector
+from dekk.detection.scaffold import ProjectLanguage, ProjectTypeDetector
+from dekk.environment.spec import RESERVED_COMMAND_KEYS
+from dekk.skills.constants import (
     DEFAULT_SOURCE_DIR,
     DEKK_TOML,
     PROJECT_MD,
@@ -26,10 +29,9 @@ from dekk.agents.constants import (
     TOML_NAME_KEY,
     TOML_PROJECT_KEY,
     TOML_RUN_KEY,
+    TOML_SKILL_KEY,
     WORKTREE_SKILL_NAME,
 )
-from dekk.detection.build import BuildSystem, BuildSystemDetector
-from dekk.detection.scaffold import ProjectLanguage, ProjectTypeDetector
 
 BUILD_COMMAND_NAME = "build"
 TEST_COMMAND_NAME = "test"
@@ -146,6 +148,7 @@ class DiscoveredCommand:
     name: str
     description: str
     run: str
+    skill: bool = False
 
 
 def discover_commands_from_typer(parent_app: Any, cli_name: str) -> list[DiscoveredCommand]:
@@ -182,27 +185,67 @@ def discover_commands_from_typer(parent_app: Any, cli_name: str) -> list[Discove
 
 
 def discover_commands_from_toml(spec: Any) -> list[DiscoveredCommand]:
-    """Read commands from a parsed EnvironmentSpec's ``commands`` dict."""
+    """Read commands from a parsed EnvironmentSpec's ``commands`` dict.
+
+    If any command has ``skill=True``, only skill commands are returned.
+    If none do, all commands are returned (backward compat).
+
+    Recursively walks command groups, emitting qualified names like ``llm/add``.
+    """
     commands_dict = getattr(spec, TOML_COMMANDS_KEY, {})
     if not commands_dict:
         return []
 
     result: list[DiscoveredCommand] = []
-    for name, cmd_spec in commands_dict.items():
-        if isinstance(cmd_spec, dict):
-            run_cmd = cmd_spec.get(TOML_RUN_KEY, name)
-            desc = cmd_spec.get(TOML_DESCRIPTION_KEY, "")
-        else:
-            run_cmd = str(cmd_spec)
-            desc = ""
+    _collect_commands_recursive(commands_dict, "", result)
 
-        result.append(DiscoveredCommand(
-            name=name,
-            description=desc or name,
-            run=run_cmd,
-        ))
+    # Filter to skill-only commands when at least one has skill=True.
+    has_explicit_skills = any(cmd.skill for cmd in result)
+    if has_explicit_skills:
+        result = [cmd for cmd in result if cmd.skill]
 
     return result
+
+
+def _collect_commands_recursive(
+    commands_dict: dict[str, Any],
+    prefix: str,
+    result: list[DiscoveredCommand],
+) -> None:
+    """Walk a commands dict recursively, collecting DiscoveredCommand entries."""
+    for name, cmd_spec in commands_dict.items():
+        qualified = f"{prefix}/{name}" if prefix else name
+        if hasattr(cmd_spec, "run"):
+            # CommandSpec object (from EnvironmentSpec)
+            run_cmd = cmd_spec.run
+            desc = cmd_spec.description or name
+            is_skill = cmd_spec.skill
+            children = getattr(cmd_spec, "commands", {})
+        elif isinstance(cmd_spec, dict):
+            run_cmd = cmd_spec.get(TOML_RUN_KEY, name)
+            desc = cmd_spec.get(TOML_DESCRIPTION_KEY, "") or name
+            is_skill = cmd_spec.get(TOML_SKILL_KEY, False)
+            children = {
+                k: v for k, v in cmd_spec.items()
+                if k not in RESERVED_COMMAND_KEYS
+                and isinstance(v, (str, dict))
+            }
+        else:
+            run_cmd = str(cmd_spec)
+            desc = name
+            is_skill = False
+            children = {}
+
+        if run_cmd:
+            result.append(DiscoveredCommand(
+                name=qualified,
+                description=desc,
+                run=run_cmd,
+                skill=is_skill,
+            ))
+
+        if children:
+            _collect_commands_recursive(children, qualified, result)
 
 
 def _detect_project_info(project_root: Path) -> dict[str, str]:
@@ -285,6 +328,7 @@ def _render_project_md(
 def commands_to_skills(commands: list[DiscoveredCommand], skills_dir: Path) -> list[Path]:
     """Convert discovered commands into ``skills/<name>/SKILL.md`` template files.
 
+    Handles hierarchical names like ``llm/add`` by creating nested directories.
     Only creates files that don't already exist (won't overwrite user customizations).
 
     Returns:
@@ -292,6 +336,7 @@ def commands_to_skills(commands: list[DiscoveredCommand], skills_dir: Path) -> l
     """
     created: list[Path] = []
     for cmd in commands:
+        # Support hierarchical names: "llm/add" -> skills/llm/add/SKILL.md
         skill_dir = skills_dir / cmd.name
         skill_file = skill_dir / SKILL_FILENAME
         if skill_file.exists():
@@ -377,20 +422,17 @@ def scaffold_agents_dir(
             data = tomllib.load(f)
         toml_project_name = data.get(TOML_PROJECT_KEY, {}).get(TOML_NAME_KEY)
         toml_commands = data.get(TOML_COMMANDS_KEY, {})
-        for name, spec in toml_commands.items():
-            if name not in seen_names:
-                if isinstance(spec, dict):
-                    run_cmd = spec.get(TOML_RUN_KEY, name)
-                    desc = spec.get(TOML_DESCRIPTION_KEY, "")
-                else:
-                    run_cmd = str(spec)
-                    desc = ""
-                all_commands.append(DiscoveredCommand(
-                    name=name,
-                    description=desc or name,
-                    run=run_cmd,
-                ))
-                seen_names.add(name)
+        # Use recursive discovery (handles hierarchical commands)
+        toml_discovered: list[DiscoveredCommand] = []
+        _collect_commands_recursive(toml_commands, "", toml_discovered)
+        # Filter to skill-only when at least one has skill=True
+        has_explicit_skills = any(cmd.skill for cmd in toml_discovered)
+        for cmd in toml_discovered:
+            if has_explicit_skills and not cmd.skill:
+                continue
+            if cmd.name not in seen_names:
+                all_commands.append(cmd)
+                seen_names.add(cmd.name)
 
     # Detect project info
     project_info = _detect_project_info(project_root)

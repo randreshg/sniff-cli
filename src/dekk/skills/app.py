@@ -1,8 +1,8 @@
-"""Factory for creating reusable ``agents`` Typer sub-apps.
+"""Factory for creating reusable ``skills`` Typer sub-apps.
 
-``create_agents_app()`` returns a Typer sub-app with init, generate, clean,
-install, status, and list commands. It can be used standalone (``dekk agents``) or
-embedded in a dekk-based CLI (``carts agents``).
+``create_agents_app()`` returns a Typer sub-app with init, generate, sync,
+view, clean, status, and list commands. It can be used standalone
+(``dekk skills``) or embedded in a dekk-based CLI (``carts skills``).
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from dekk.agents.constants import (
+from dekk.skills.constants import (
     AGENTS_JSON,
     AGENTS_MD,
     CLAUDE_MD,
@@ -45,13 +45,13 @@ def _handle_dekk_error(exc: Exception) -> None:
 def _find_project_root(source_dir: str) -> Path:
     """Walk up from cwd to find the project root.
 
-    Looks for the source directory (e.g., ``.agents/``) or ``.dekk.toml``
+    Looks for the source directory (e.g., ``.skills/``) or ``.dekk.toml``
     by walking up from the current working directory. Falls back to cwd
     if neither is found (``init`` will create the source dir there).
     """
     from dekk._compat import walk_up
 
-    # Try to find the source directory itself (e.g., .agents/)
+    # Try to find the source directory itself (e.g., .skills/)
     found = walk_up(Path.cwd(), source_dir)
     if found and found.is_dir():
         return found.parent
@@ -69,18 +69,18 @@ def create_agents_app(
     parent_app: Any | None = None,
     get_project_root: Callable[[], Path] | None = None,
 ) -> Any:
-    """Create a reusable Typer sub-app for agent config management.
+    """Create a reusable Typer sub-app for skill / agent config management.
 
     Args:
-        source_dir: Path to the SSOT directory (default ".agents", CARTS uses ".carts").
+        source_dir: Path to the SSOT directory (default ".skills", CARTS uses ".carts").
         parent_app: If provided, ``init`` introspects this app's registered commands.
         get_project_root: Callback that returns the project root directory.
             For dekk-based CLIs (e.g., CARTS), this should return the repo root
             (e.g., ``lambda: get_config().carts_dir``). If None, walks up from
-            cwd to find ``.agents/`` or ``.dekk.toml``.
+            cwd to find ``.skills/`` or ``.dekk.toml``.
 
     Returns:
-        Typer sub-app with: init, generate, clean, install, status, list commands.
+        Typer sub-app with: init, generate, sync, view, clean, status, list commands.
     """
     import typer
 
@@ -90,7 +90,7 @@ def create_agents_app(
         return _find_project_root(source_dir)
 
     agents_app = typer.Typer(
-        help="Manage agent configs (Claude Code, Codex, Cursor, Copilot).",
+        help="Manage skills and agent configs (Claude Code, Codex, Cursor, Copilot).",
         no_args_is_help=True,
     )
 
@@ -99,16 +99,16 @@ def create_agents_app(
         force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
     ) -> None:
         """Scaffold the source-of-truth directory from project detection + commands."""
-        from dekk.agents.scaffold import scaffold_agents_dir
         from dekk.cli.styles import print_info, print_success, print_warning
         from dekk.environment.bootstrap import ensure_envspec
+        from dekk.skills.scaffold import scaffold_agents_dir
 
         project_root = _resolve_root()
         cli_name = None
         if parent_app is not None:
             cli_name = getattr(parent_app, "_name", None)
 
-        # Guard against accidentally re-scaffolding a curated .agents/ directory.
+        # Guard against accidentally re-scaffolding a curated .skills/ directory.
         existing_source = project_root / source_dir
         if (
             existing_source.is_dir()
@@ -148,9 +148,9 @@ def create_agents_app(
         ),
     ) -> None:
         """Generate agent configs from the source-of-truth directory."""
-        from dekk.agents.generators import AgentConfigManager
         from dekk.cli.styles import print_error, print_info, print_success
-        from dekk.environment.spec import AgentsSpec, EnvironmentSpec, find_envspec
+        from dekk.environment.spec import EnvironmentSpec, SkillsSpec, find_envspec
+        from dekk.skills.generators import AgentConfigManager
 
         project_root = _resolve_root()
         cli_name = None
@@ -158,11 +158,13 @@ def create_agents_app(
             cli_name = getattr(parent_app, "_name", None)
 
         # Load [agents] spec from .dekk.toml if available.
-        agents_spec: AgentsSpec | None = None
+        agents_spec: SkillsSpec | None = None
+        env_spec: EnvironmentSpec | None = None
         envspec_path = find_envspec(project_root)
         if envspec_path:
             try:
-                agents_spec = EnvironmentSpec.from_file(envspec_path).agents
+                env_spec = EnvironmentSpec.from_file(envspec_path)
+                agents_spec = env_spec.skills
             except Exception:
                 pass  # Fall back to defaults when the spec is unparseable.
 
@@ -171,6 +173,7 @@ def create_agents_app(
             source_dir=source_dir,
             cli_name=cli_name,
             agents_spec=agents_spec,
+            env_spec=env_spec,
         )
 
         try:
@@ -179,7 +182,7 @@ def create_agents_app(
             print_error(str(exc))
             cmd_prefix = cli_name or f"{DEFAULT_CLI_NAME} <appname>"
             hint = (
-                f"Run `{cmd_prefix} agents init` "
+                f"Run `{cmd_prefix} skills init` "
                 f"to scaffold the source directory"
             )
             print_info(f"Hint: {hint}")
@@ -190,31 +193,37 @@ def create_agents_app(
         for item in result.generated:
             print_success(f"Generated {item}")
 
-    @agents_app.command("install")
-    def install(
-        codex_dir: str | None = typer.Option(
-            None,
-            "--codex-dir",
-            help="Codex skills directory (default: $CODEX_HOME/skills or ~/.codex/skills)",
-        ),
-        force: bool = typer.Option(
-            True,
-            "--force/--no-force",
-            help="Replace existing skills in destination",
+    @agents_app.command("sync")
+    def sync(
+        target: str = typer.Option(
+            "all",
+            "--target",
+            "-t",
+            help="Target: claude, codex, copilot, cursor, all",
         ),
     ) -> None:
-        """Install skills into ~/.codex/skills/ for Codex agent."""
-        from dekk.agents.installer import install_codex_skills
-        from dekk.cli.styles import print_info, print_success
+        """Sync skills to agent configs (alias for generate)."""
+        generate(target=target)
+
+    @agents_app.command("view")
+    def view(
+        skill_name: str = typer.Argument(None, help="Skill name (omit for project.md)"),
+    ) -> None:
+        """Show skill or project.md content."""
+        from dekk.cli.styles import _get_console, print_error
 
         project_root = _resolve_root()
-        effective_dir = Path(codex_dir).expanduser() if codex_dir else None
         source = project_root / source_dir
+        if skill_name:
+            path = source / SKILLS_DIR_NAME / skill_name / "SKILL.md"
+        else:
+            path = source / PROJECT_MD
+        if not path.is_file():
+            print_error(f"Not found: {path}")
+            raise typer.Exit(1)
+        from rich.markdown import Markdown
 
-        installed = install_codex_skills(source, codex_dir=effective_dir, force=force)
-        for name in installed:
-            print_success(f"  codex: {name}")
-        print_info(f"Installed {len(installed)} Codex skill(s)")
+        _get_console().print(Markdown(path.read_text(encoding="utf-8")))
 
     @agents_app.command("clean")
     def clean(
@@ -226,8 +235,8 @@ def create_agents_app(
         ),
     ) -> None:
         """Remove generated agent config files while keeping the source directory."""
-        from dekk.agents.generators import AgentConfigManager
         from dekk.cli.styles import print_info, print_success
+        from dekk.skills.generators import AgentConfigManager
 
         project_root = _resolve_root()
         cli_name = None
@@ -251,38 +260,39 @@ def create_agents_app(
             print_success(f"Removed {item}")
 
     @agents_app.command("status")
-    def status(
-        codex_dir: str | None = typer.Option(
-            None,
-            "--codex-dir",
-            help="Codex skills directory (default: $CODEX_HOME/skills or ~/.codex/skills)",
-        ),
-    ) -> None:
-        """Show agent config and skill installation status."""
-        from dekk.agents.discovery import discover_skills
-        from dekk.agents.generators import render_codex_skill
-        from dekk.agents.installer import check_skill_state, codex_skills_dir
+    def status() -> None:
+        """Show agent config and skill status."""
+        from rich.text import Text
+
         from dekk.cli.styles import Colors, console
+        from dekk.skills.discovery import discover_skills
+        from dekk.skills.installer import check_skill_state
 
         project_root = _resolve_root()
         source = project_root / source_dir
         claude_dir = project_root / CLAUDE_SKILLS_DIR
-        effective_codex_dir = Path(codex_dir).expanduser() if codex_dir else codex_skills_dir()
 
         skills = discover_skills(source)
 
         # Source status
         project_md = source / PROJECT_MD
-        console.print(f"[{Colors.INFO}]Source of truth:[/{Colors.INFO}] {source_dir}/")
+        label = Text()
+        label.append("Source of truth:", style=Colors.INFO)
+        label.append(f" {source_dir}/")
+        console.print(label)
         pm_ok = project_md.is_file()
-        pm_color = Colors.SUCCESS if pm_ok else Colors.WARNING
-        pm_state = "present" if pm_ok else "missing"
-        console.print(f"  {PROJECT_MD}: [{pm_color}]{pm_state}[/{pm_color}]")
-        skill_count = len(skills)
-        console.print(
-            f"  {SKILLS_DIR_NAME}/: [{Colors.SUCCESS}]"
-            f"{skill_count} skill(s)[/{Colors.SUCCESS}]"
+        pm_state = Text()
+        pm_state.append(f"  {PROJECT_MD}: ")
+        pm_state.append(
+            "present" if pm_ok else "missing",
+            style=Colors.SUCCESS if pm_ok else Colors.WARNING,
         )
+        console.print(pm_state)
+        skill_count = len(skills)
+        sk_line = Text()
+        sk_line.append(f"  {SKILLS_DIR_NAME}/: ")
+        sk_line.append(f"{skill_count} skill(s)", style=Colors.SUCCESS)
+        console.print(sk_line)
         console.print()
 
         # Generated config files
@@ -296,33 +306,36 @@ def create_agents_app(
             ),
             (AGENTS_JSON, project_root / AGENTS_JSON),
         ]
-        console.print(f"[{Colors.INFO}]Agent config files:[/{Colors.INFO}]")
-        for label, path in config_files:
+        console.print(Text("Agent config files:", style=Colors.INFO))
+        for cfg_label, path in config_files:
             exists = path.is_file()
-            color = Colors.SUCCESS if exists else Colors.WARNING
-            state = "present" if exists else "missing"
-            console.print(f"  {label}: [{color}]{state}[/{color}]")
+            line = Text(f"  {cfg_label}: ")
+            line.append(
+                "present" if exists else "missing",
+                style=Colors.SUCCESS if exists else Colors.WARNING,
+            )
+            console.print(line)
 
         console.print()
-        console.print(f"[{Colors.INFO}]Skills:[/{Colors.INFO}]")
+        console.print(Text("Skills:", style=Colors.INFO))
         for skill in skills:
             claude_state = check_skill_state(skill, claude_dir)
-            codex_state = check_skill_state(skill, effective_codex_dir, renderer=render_codex_skill)
-
-            def _color(s: str) -> str:
-                return Colors.SUCCESS if s == "ok" else Colors.WARNING
-
-            console.print(
-                f"  [{Colors.INFO}]{skill.name}[/{Colors.INFO}]  "
-                f"claude=[{_color(claude_state)}]{claude_state}[/{_color(claude_state)}]  "
-                f"codex=[{_color(codex_state)}]{codex_state}[/{_color(codex_state)}]"
+            line = Text("  ")
+            line.append(skill.name, style=Colors.INFO)
+            line.append("  claude=")
+            line.append(
+                claude_state,
+                style=Colors.SUCCESS if claude_state == "ok" else Colors.WARNING,
             )
+            console.print(line)
 
     @agents_app.command("list")
     def list_skills() -> None:
         """List available skills from the source-of-truth directory."""
-        from dekk.agents.discovery import discover_skills
+        from rich.text import Text
+
         from dekk.cli.styles import Colors, console, print_warning
+        from dekk.skills.discovery import discover_skills
 
         project_root = _resolve_root()
         source = project_root / source_dir
@@ -331,10 +344,13 @@ def create_agents_app(
             print_warning("No skills found")
             return
 
-        console.print(f"[{Colors.INFO}]Source:[/{Colors.INFO}] {source}")
+        src_line = Text()
+        src_line.append("Source:", style=Colors.INFO)
+        src_line.append(f" {source}")
+        console.print(src_line)
         console.print()
         for skill in skills:
-            console.print(f"[{Colors.INFO}]{skill.name}[/{Colors.INFO}]")
+            console.print(Text(skill.name, style=Colors.INFO))
             console.print(f"  {skill.description}")
 
     return agents_app

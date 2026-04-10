@@ -32,7 +32,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "ToolSpec",
         "CommandSpec",
         "NpmSpec",
-        "AgentsSpec",
+        "SkillsSpec",
         "PythonSpec",
         "RuntimeEnvironmentSpec",
         "WrapSpec",
@@ -51,7 +51,7 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "select_components",
     ],
     # -- Agent Config Management --
-    "dekk.agents": [
+    "dekk.skills": [
         "DekkAgent",
         "AgentConfigManager",
         "RuleDefinition",
@@ -59,7 +59,6 @@ _MODULE_ATTRS: dict[str, list[str]] = {
         "create_agents_app",
         "discover_rules",
         "discover_skills",
-        "install_codex_skills",
         "parse_frontmatter",
         "scaffold_agents_dir",
     ],

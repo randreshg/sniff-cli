@@ -5,8 +5,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from dekk.agents.discovery import RuleDefinition, SkillDefinition
+from dekk.skills.discovery import RuleDefinition, SkillDefinition
+
+if TYPE_CHECKING:
+    from dekk.environment.spec import SkillsSpec
+    from dekk.skills.providers.enrichment import EnrichmentData
 
 
 @dataclass(frozen=True)
@@ -21,6 +26,9 @@ class AgentContext:
     project_content: str
     skills: list[SkillDefinition]
     rules: list[RuleDefinition]
+    project_description: str = ""
+    enrichment: EnrichmentData | None = None
+    skills_spec: SkillsSpec | None = None
 
 
 class DekkAgent(ABC):

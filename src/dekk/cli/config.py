@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Final
 
-from dekk._compat import deep_merge, load_toml, tomllib
+from dekk._compat import deep_merge, load_toml
 from dekk.core.paths import find_project_config_file, project_config_file, user_config_file
 
 # TOML writing: prefer tomli_w when available, fall back to a small writer.
@@ -212,17 +212,6 @@ def _deep_copy(d: dict[str, Any]) -> dict[str, Any]:
         else:
             result[key] = value
     return result
-
-
-def _load_toml(path: Path) -> dict[str, Any]:
-    """Load a TOML file, returning an empty dict on error.
-
-    Thin wrapper kept for backward compatibility; delegates to
-    :func:`dekk._compat.load_toml`.
-    """
-    if tomllib is None:
-        return {}
-    return load_toml(path) or {}
 
 
 def _dump_toml(data: dict[str, Any]) -> str:

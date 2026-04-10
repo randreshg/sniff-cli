@@ -70,12 +70,29 @@ class PythonSpec:
     script: str | None = None
 
 
+RESERVED_COMMAND_KEYS: Final[frozenset[str]] = frozenset({
+    "run", "description", "skill", "group",
+})
+
+
 @dataclass(frozen=True)
 class CommandSpec:
-    """A project command that can be auto-converted to an agent skill."""
+    """A project command or command group.
 
-    run: str
+    Leaf commands have a non-empty ``run`` field.  Group commands have
+    children in ``commands`` and may optionally have a ``run`` for the
+    bare group invocation (e.g., ``dekk app llm`` shows help).
+    """
+
+    run: str = ""
     description: str = ""
+    skill: bool = False
+    group: str = ""
+    commands: dict[str, CommandSpec] = field(default_factory=dict)
+
+    @property
+    def is_group(self) -> bool:
+        return bool(self.commands)
 
 
 @dataclass(frozen=True)
@@ -108,11 +125,63 @@ class InstallSpec:
 
 
 @dataclass(frozen=True)
-class AgentsSpec:
-    """Configuration for agent config generation."""
+class SkillsSpec:
+    """Configuration for skill / agent config generation."""
 
     source: str = ".agents"
     targets: tuple[str, ...] = ("claude", "codex", "copilot", "cursor")
+    enrich: bool = False
+    version: str = "0.1.0"
+
+
+def _parse_command(name: str, data: Any) -> CommandSpec:
+    """Parse a single command entry from TOML.
+
+    Handles three forms:
+      - String shorthand: ``build = "make"``
+      - Dict with metadata: ``build = { run = "make", description = "..." }``
+      - Group with children: ``[commands.llm]`` containing sub-tables
+    """
+    if isinstance(data, str):
+        return CommandSpec(run=data)
+
+    if not isinstance(data, dict):
+        from dekk.cli.errors import ValidationError
+
+        raise ValidationError(
+            f"Command '{name}' must be a string or table, got {type(data).__name__}"
+        )
+
+    run = data.get("run", "")
+    description = data.get("description", "")
+    skill = data.get("skill", False)
+    group = data.get("group", "")
+
+    # Discover child commands: any key that is not a reserved metadata key
+    # and whose value is a string or dict (i.e., a sub-command).
+    children: dict[str, CommandSpec] = {}
+    for key, value in data.items():
+        if key in RESERVED_COMMAND_KEYS:
+            continue
+        if isinstance(value, (str, dict)):
+            children[key] = _parse_command(key, value)
+
+    # Validation: leaf command (no children) must have a run field.
+    if not children and not run:
+        from dekk.cli.errors import ValidationError
+
+        raise ValidationError(
+            f"Command '{name}' has no 'run' field and no subcommands",
+            hint=f"Add 'run = \"...\"' to [commands.{name}] in .dekk.toml",
+        )
+
+    return CommandSpec(
+        run=run,
+        description=description,
+        skill=skill,
+        group=group,
+        commands=children,
+    )
 
 
 @dataclass
@@ -120,6 +189,7 @@ class EnvironmentSpec:
     """Environment specification from .dekk.toml."""
 
     project_name: str
+    project_description: str = ""
     environment: RuntimeEnvironmentSpec | None = None
     tools: dict[str, ToolSpec] = field(default_factory=dict)
     env_vars: dict[str, str] = field(default_factory=dict)
@@ -127,7 +197,7 @@ class EnvironmentSpec:
     python: PythonSpec | None = None
     npm: NpmSpec | None = None
     commands: dict[str, CommandSpec] = field(default_factory=dict)
-    agents: AgentsSpec | None = None
+    skills: SkillsSpec | None = None
     install: InstallSpec | None = None
 
     @classmethod
@@ -258,20 +328,16 @@ class EnvironmentSpec:
 
         commands = {}
         for cmd_name, cmd_spec in data.get("commands", {}).items():
-            if isinstance(cmd_spec, dict):
-                commands[cmd_name] = CommandSpec(
-                    run=cmd_spec.get("run", cmd_name),
-                    description=cmd_spec.get("description", ""),
-                )
-            elif isinstance(cmd_spec, str):
-                commands[cmd_name] = CommandSpec(run=cmd_spec)
+            commands[cmd_name] = _parse_command(cmd_name, cmd_spec)
 
-        agents = None
-        if agents_data := data.get("agents"):
-            targets = agents_data.get("targets", ["claude", "codex", "copilot", "cursor"])
-            agents = AgentsSpec(
-                source=agents_data.get("source", ".agents"),
+        skills = None
+        if skills_data := (data.get("agents") or data.get("skills")):
+            targets = skills_data.get("targets", ["claude", "codex", "copilot", "cursor"])
+            skills = SkillsSpec(
+                source=skills_data.get("source", ".agents"),
                 targets=tuple(targets),
+                enrich=skills_data.get("enrich", False),
+                version=str(skills_data.get("version", "0.1.0")),
             )
 
         install = None
@@ -299,6 +365,7 @@ class EnvironmentSpec:
 
         return cls(
             project_name=project["name"],
+            project_description=project.get("description", ""),
             environment=environment,
             tools=tools,
             env_vars=env_vars or {},
@@ -306,7 +373,7 @@ class EnvironmentSpec:
             python=python,
             npm=npm,
             commands=commands,
-            agents=agents,
+            skills=skills,
             install=install,
         )
 
@@ -350,7 +417,6 @@ def find_envspec(start_dir: Path | None = None) -> Path | None:
 
 
 __all__ = [
-    "AgentsSpec",
     "CommandSpec",
     "ComponentSpec",
     "EnvironmentSpec",
@@ -359,7 +425,9 @@ __all__ = [
     "PREPEND_ENV_VARS",
     "NpmSpec",
     "PythonSpec",
+    "RESERVED_COMMAND_KEYS",
     "RuntimeEnvironmentSpec",
+    "SkillsSpec",
     "ToolSpec",
     "WrapSpec",
     "find_envspec",

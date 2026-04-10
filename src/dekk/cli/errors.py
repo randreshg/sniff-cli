@@ -176,9 +176,3 @@ class DekkRuntimeError(DekkError):
     """
 
     exit_code = ExitCodes.RUNTIME_ERROR
-
-
-# Backward-compatible aliases (deprecated; use the Dekk-prefixed names).
-TimeoutError = DekkTimeoutError  # noqa: A001
-PermissionError = DekkPermissionError  # noqa: A001
-RuntimeError = DekkRuntimeError  # noqa: A001

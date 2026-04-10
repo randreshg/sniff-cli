@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dekk.agents.providers.base import AgentContext, DekkAgent
-from dekk.agents.providers.claude import ClaudeCodeAgent
-from dekk.agents.providers.codex import CodexAgent, render_codex_skill
-from dekk.agents.providers.copilot import CopilotAgent
-from dekk.agents.providers.cursor import CursorAgent
+from dekk.skills.providers.base import AgentContext, DekkAgent
+from dekk.skills.providers.claude import ClaudeCodeAgent
+from dekk.skills.providers.codex import CodexAgent, render_codex_skill
+from dekk.skills.providers.copilot import CopilotAgent
+from dekk.skills.providers.cursor import CursorAgent
 
 
 def default_agents() -> tuple[DekkAgent, ...]:

@@ -5,12 +5,12 @@ from .providers import CondaEnv, DekkEnv, DekkEnvSetupResult
 from .resolver import resolve_environment
 from .setup import SetupResult, run_setup
 from .spec import (
-    AgentsSpec,
     CommandSpec,
     EnvironmentSpec,
     NpmSpec,
     PythonSpec,
     RuntimeEnvironmentSpec,
+    SkillsSpec,
     ToolSpec,
     find_envspec,
 )
@@ -18,7 +18,7 @@ from .types import EnvironmentKind, normalize_environment_type
 
 __all__ = [
     "ActivationResult",
-    "AgentsSpec",
+    "SkillsSpec",
     "CommandSpec",
     "CondaEnv",
     "DekkEnv",
