@@ -136,6 +136,11 @@ HOOKS_KEY_EVENT: Final = "event"
 HOOKS_KEY_COMMAND: Final = "command"
 HOOKS_KEY_DESCRIPTION: Final = "description"
 HOOKS_KEY_MATCHER: Final = "matcher"
+HOOKS_KEY_TYPE: Final = "type"
+HOOKS_KEY_TYPE_COMMAND: Final = "command"
+HOOKS_KEY_TOOL_NAME: Final = "tool_name"
+HOOKS_KEY_FILE_PATTERN: Final = "file_pattern"
+HOOKS_KEY_COMMAND_PATTERN: Final = "command_pattern"
 
 # ---------------------------------------------------------------------------
 # Skills index (routing layer)

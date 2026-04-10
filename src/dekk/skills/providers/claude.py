@@ -19,10 +19,13 @@ from dekk.skills.constants import (
     CLAUDE_SETTINGS_JSON,
     CLAUDE_SKILLS_DIR,
     HOOKS_KEY_COMMAND,
-    HOOKS_KEY_DESCRIPTION,
-    HOOKS_KEY_EVENT,
+    HOOKS_KEY_COMMAND_PATTERN,
+    HOOKS_KEY_FILE_PATTERN,
     HOOKS_KEY_HOOKS,
     HOOKS_KEY_MATCHER,
+    HOOKS_KEY_TOOL_NAME,
+    HOOKS_KEY_TYPE,
+    HOOKS_KEY_TYPE_COMMAND,
     MCP_COMMAND,
     MCP_KEY_ARGS,
     MCP_KEY_COMMAND,
@@ -152,22 +155,13 @@ class ClaudeCodeAgent(DekkAgent):
             )
             results.append(f"{context.source_dir_name}/{CLAUDE_MCP_JSON}")
 
-        # 3. hooks/hooks.json
+        # 3. hooks/hooks.json (new Claude Code format: record keyed by event)
         if enrichment.hooks:
             hooks_dir = source / CLAUDE_HOOKS_DIR
             hooks_dir.mkdir(parents=True, exist_ok=True)
-            hooks_data: list[dict[str, object]] = []
-            for hook in enrichment.hooks:
-                entry: dict[str, object] = {
-                    HOOKS_KEY_EVENT: hook.event,
-                    HOOKS_KEY_COMMAND: hook.command,
-                    HOOKS_KEY_DESCRIPTION: hook.description,
-                }
-                if hook.matcher:
-                    entry[HOOKS_KEY_MATCHER] = hook.matcher
-                hooks_data.append(entry)
+            hooks_record = self._build_hooks_record(enrichment.hooks)
             (hooks_dir / CLAUDE_HOOKS_JSON).write_text(
-                json.dumps({HOOKS_KEY_HOOKS: hooks_data}, indent=2) + "\n",
+                json.dumps(hooks_record, indent=2) + "\n",
                 encoding="utf-8",
             )
             results.append(
@@ -223,12 +217,11 @@ class ClaudeCodeAgent(DekkAgent):
                 MCP_KEY_ARGS: [server_script],
             }
 
-        # Register hooks
+        # Register hooks (inline as record, not a file path)
         if enrichment.hooks:
-            hooks_ref = (
-                f"{context.source_dir_name}/{CLAUDE_HOOKS_DIR}/{CLAUDE_HOOKS_JSON}"
+            settings[SETTINGS_KEY_HOOKS] = self._build_hooks_record(
+                enrichment.hooks
             )
-            settings[SETTINGS_KEY_HOOKS] = hooks_ref
 
         settings_path.write_text(
             json.dumps(settings, indent=2) + "\n", encoding="utf-8"
@@ -236,6 +229,44 @@ class ClaudeCodeAgent(DekkAgent):
         results.append(f"{CLAUDE_SETTINGS_DIR}/{CLAUDE_SETTINGS_JSON}")
 
         return results
+
+    @staticmethod
+    def _build_hooks_record(
+        hooks: list[Any],
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Build the new Claude Code hooks record format.
+
+        Groups hooks by event name, each with matcher + hooks array::
+
+            {"PostToolUse": [{"matcher": {...}, "hooks": [{"type": "command", "command": "..."}]}]}
+        """
+        from collections import defaultdict
+
+        from dekk.skills.providers.enrichment import HookDef
+
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for hook in hooks:
+            assert isinstance(hook, HookDef)
+            hook_entry: dict[str, Any] = {
+                HOOKS_KEY_HOOKS: [
+                    {
+                        HOOKS_KEY_TYPE: HOOKS_KEY_TYPE_COMMAND,
+                        HOOKS_KEY_COMMAND: hook.command,
+                    }
+                ],
+            }
+            if hook.matcher:
+                matcher: dict[str, str] = {}
+                if HOOKS_KEY_TOOL_NAME in hook.matcher:
+                    matcher[HOOKS_KEY_TOOL_NAME] = hook.matcher[HOOKS_KEY_TOOL_NAME]
+                if HOOKS_KEY_FILE_PATTERN in hook.matcher:
+                    matcher[HOOKS_KEY_FILE_PATTERN] = hook.matcher[HOOKS_KEY_FILE_PATTERN]
+                if HOOKS_KEY_COMMAND_PATTERN in hook.matcher:
+                    matcher[HOOKS_KEY_COMMAND_PATTERN] = hook.matcher[HOOKS_KEY_COMMAND_PATTERN]
+                if matcher:
+                    hook_entry[HOOKS_KEY_MATCHER] = matcher
+            grouped[hook.event].append(hook_entry)
+        return dict(grouped)
 
     def clean(self, context: AgentContext) -> list[str]:
         removed: list[str] = []
@@ -327,9 +358,8 @@ class ClaudeCodeAgent(DekkAgent):
             del mcp_servers[context.project_name]
             changed = True
 
-        # Remove hooks reference
-        hooks_ref = settings.get(SETTINGS_KEY_HOOKS, "")
-        if isinstance(hooks_ref, str) and context.source_dir_name in hooks_ref:
+        # Remove hooks
+        if SETTINGS_KEY_HOOKS in settings:
             del settings[SETTINGS_KEY_HOOKS]
             changed = True
 
