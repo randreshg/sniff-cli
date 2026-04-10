@@ -110,11 +110,17 @@ class CopilotAgent(DekkAgent):
                 f"{COPILOT_DIR}/{COPILOT_PER_DIR}/",
             )
         )
+        # Remove only our project's extension file, not the whole extensions/ dir.
+        ext_file = f"{context.project_name}.json"
+        ext_label = f"{COPILOT_DIR}/{COPILOT_EXTENSIONS_DIR}/{ext_file}"
         removed.extend(
-            remove_tree(
-                context.project_root / COPILOT_DIR / COPILOT_EXTENSIONS_DIR,
-                f"{COPILOT_DIR}/{COPILOT_EXTENSIONS_DIR}/",
+            remove_file(
+                context.project_root / COPILOT_DIR / COPILOT_EXTENSIONS_DIR / ext_file,
+                ext_label,
             )
+        )
+        remove_dir_if_empty(
+            context.project_root / COPILOT_DIR / COPILOT_EXTENSIONS_DIR
         )
         remove_dir_if_empty(context.project_root / COPILOT_DIR)
         return removed

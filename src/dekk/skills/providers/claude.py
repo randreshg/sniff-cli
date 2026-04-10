@@ -200,10 +200,15 @@ class ClaudeCodeAgent(DekkAgent):
             except (json.JSONDecodeError, OSError):
                 settings = {}
 
-        # Register plugin
+        # Register plugin (check both string and dict forms to avoid duplicates)
         settings.setdefault(SETTINGS_KEY_PLUGINS, [])
         plugin_ref = f"{context.source_dir_name}/"
-        if plugin_ref not in settings[SETTINGS_KEY_PLUGINS]:
+        already_registered = any(
+            (isinstance(p, str) and p.rstrip("/") == context.source_dir_name)
+            or (isinstance(p, dict) and p.get("path", "").rstrip("/") == context.source_dir_name)
+            for p in settings[SETTINGS_KEY_PLUGINS]
+        )
+        if not already_registered:
             settings[SETTINGS_KEY_PLUGINS].append(plugin_ref)
 
         # Register MCP server
@@ -240,7 +245,8 @@ class ClaudeCodeAgent(DekkAgent):
         )
         removed.extend(remove_tree(context.project_root / CLAUDE_RULES_DIR, f"{CLAUDE_RULES_DIR}/"))
 
-        # Enriched artifacts (inside source dir)
+        # Enriched artifacts (inside source dir) — remove only generated files,
+        # not entire dirs that may contain hand-crafted content.
         if context.source_dir.is_dir():
             removed.extend(
                 remove_tree(
@@ -254,21 +260,83 @@ class ClaudeCodeAgent(DekkAgent):
                     f"{context.source_dir_name}/{CLAUDE_MCP_JSON}",
                 )
             )
+            # hooks.json and MCP server stub — remove specific generated files only
             removed.extend(
-                remove_tree(
-                    context.source_dir / CLAUDE_HOOKS_DIR,
-                    f"{context.source_dir_name}/{CLAUDE_HOOKS_DIR}/",
+                remove_file(
+                    context.source_dir / CLAUDE_HOOKS_DIR / CLAUDE_HOOKS_JSON,
+                    f"{context.source_dir_name}/{CLAUDE_HOOKS_DIR}/{CLAUDE_HOOKS_JSON}",
+                )
+            )
+            remove_dir_if_empty(context.source_dir / CLAUDE_HOOKS_DIR)
+
+            # Remove generated MCP server + requirements, preserve other files
+            project_name = context.project_name
+            server_file = f"{project_name}{MCP_SERVER_SUFFIX}"
+            removed.extend(
+                remove_file(
+                    context.source_dir / CLAUDE_MCP_DIR / server_file,
+                    f"{context.source_dir_name}/{CLAUDE_MCP_DIR}/{server_file}",
                 )
             )
             removed.extend(
-                remove_tree(
-                    context.source_dir / CLAUDE_MCP_DIR,
-                    f"{context.source_dir_name}/{CLAUDE_MCP_DIR}/",
+                remove_file(
+                    context.source_dir / CLAUDE_MCP_DIR / MCP_REQUIREMENTS,
+                    f"{context.source_dir_name}/{CLAUDE_MCP_DIR}/{MCP_REQUIREMENTS}",
                 )
             )
+            remove_dir_if_empty(context.source_dir / CLAUDE_MCP_DIR)
+
+        # Clean up settings.json entries added by enrichment
+        settings_path = context.project_root / CLAUDE_SETTINGS_DIR / CLAUDE_SETTINGS_JSON
+        if settings_path.is_file():
+            self._clean_settings(settings_path, context)
 
         remove_dir_if_empty(context.project_root / Path(CLAUDE_SKILLS_DIR).parts[0])
         return removed
+
+    def _clean_settings(self, settings_path: Path, context: AgentContext) -> None:
+        """Remove enrichment entries from .claude/settings.json."""
+        try:
+            settings: dict[str, Any] = json.loads(
+                settings_path.read_text(encoding="utf-8")
+            )
+        except (json.JSONDecodeError, OSError):
+            return
+
+        changed = False
+
+        # Remove plugin reference
+        plugins = settings.get(SETTINGS_KEY_PLUGINS, [])
+        new_plugins = [
+            p for p in plugins
+            if not (
+                (isinstance(p, str) and p.rstrip("/") == context.source_dir_name)
+                or (
+                    isinstance(p, dict)
+                    and p.get("path", "").rstrip("/") == context.source_dir_name
+                )
+            )
+        ]
+        if len(new_plugins) != len(plugins):
+            settings[SETTINGS_KEY_PLUGINS] = new_plugins
+            changed = True
+
+        # Remove MCP server entry
+        mcp_servers = settings.get(SETTINGS_KEY_MCP_SERVERS, {})
+        if context.project_name in mcp_servers:
+            del mcp_servers[context.project_name]
+            changed = True
+
+        # Remove hooks reference
+        hooks_ref = settings.get(SETTINGS_KEY_HOOKS, "")
+        if isinstance(hooks_ref, str) and context.source_dir_name in hooks_ref:
+            del settings[SETTINGS_KEY_HOOKS]
+            changed = True
+
+        if changed:
+            settings_path.write_text(
+                json.dumps(settings, indent=2) + "\n", encoding="utf-8"
+            )
 
 
 __all__ = ["ClaudeCodeAgent", "generate_claude_rules"]

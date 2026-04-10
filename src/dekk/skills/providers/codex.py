@@ -9,6 +9,7 @@ from dekk.skills.constants import (
     CODEX_AGENT_YAML,
     CODEX_AGENTS_DIR,
     MCP_COMMAND,
+    MCP_KEY_COMMAND,
     MCP_SERVER_SUFFIX,
     PLUGIN_KEY_DESCRIPTION,
     PLUGIN_KEY_MCP,
@@ -20,7 +21,7 @@ from dekk.skills.constants import (
 )
 from dekk.skills.discovery import SkillDefinition
 from dekk.skills.providers.base import AgentContext, DekkAgent
-from dekk.skills.providers.shared import remove_file, remove_tree
+from dekk.skills.providers.shared import remove_dir_if_empty, remove_file
 
 
 def render_codex_skill(skill: SkillDefinition) -> str:
@@ -82,7 +83,7 @@ class CodexAgent(DekkAgent):
             f"{PLUGIN_KEY_VERSION}: {enrichment.version}\n"
             f"{PLUGIN_KEY_MCP}:\n"
             f"  {PLUGIN_KEY_SERVER}: {server_script}\n"
-            f"  command: {MCP_COMMAND}\n"
+            f"  {MCP_KEY_COMMAND}: {MCP_COMMAND}\n"
             f"  {PLUGIN_KEY_TOOLS}:\n"
             f"{tools_section}\n"
         )
@@ -93,12 +94,14 @@ class CodexAgent(DekkAgent):
 
     def clean(self, context: AgentContext) -> list[str]:
         removed = remove_file(context.project_root / AGENTS_MD, AGENTS_MD)
+        # Remove only the generated openai.yaml, not the whole agents/ dir.
         removed.extend(
-            remove_tree(
-                context.project_root / CODEX_AGENTS_DIR,
-                f"{CODEX_AGENTS_DIR}/",
+            remove_file(
+                context.project_root / CODEX_AGENTS_DIR / CODEX_AGENT_YAML,
+                f"{CODEX_AGENTS_DIR}/{CODEX_AGENT_YAML}",
             )
         )
+        remove_dir_if_empty(context.project_root / CODEX_AGENTS_DIR)
         return removed
 
 

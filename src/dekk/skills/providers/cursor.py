@@ -75,12 +75,30 @@ class CursorAgent(DekkAgent):
 
     def clean(self, context: AgentContext) -> list[str]:
         removed = remove_file(context.project_root / CURSORRULES, CURSORRULES)
-        removed.extend(
-            remove_file(
-                context.project_root / CURSOR_DIR / CURSOR_MCP_JSON,
-                f"{CURSOR_DIR}/{CURSOR_MCP_JSON}",
-            )
-        )
+
+        # Remove only our project's MCP entry, preserving other servers.
+        mcp_path = context.project_root / CURSOR_DIR / CURSOR_MCP_JSON
+        if mcp_path.is_file():
+            try:
+                config = json.loads(mcp_path.read_text(encoding="utf-8"))
+                servers = config.get(MCP_KEY_SERVERS, {})
+                if context.project_name in servers:
+                    del servers[context.project_name]
+                    if servers:
+                        # Other entries remain — rewrite the file.
+                        mcp_path.write_text(
+                            json.dumps(config, indent=2) + "\n", encoding="utf-8"
+                        )
+                    else:
+                        # No entries left — remove the file.
+                        removed.extend(
+                            remove_file(mcp_path, f"{CURSOR_DIR}/{CURSOR_MCP_JSON}")
+                        )
+            except (json.JSONDecodeError, OSError):
+                removed.extend(
+                    remove_file(mcp_path, f"{CURSOR_DIR}/{CURSOR_MCP_JSON}")
+                )
+
         remove_dir_if_empty(context.project_root / CURSOR_DIR)
         return removed
 

@@ -168,9 +168,15 @@ def create_agents_app(
             except Exception:
                 pass  # Fall back to defaults when the spec is unparseable.
 
+        # Use [agents].source from .dekk.toml if available, otherwise
+        # fall back to the static source_dir parameter.
+        effective_source = (
+            agents_spec.source if agents_spec and agents_spec.source else source_dir
+        )
+
         manager = AgentConfigManager(
             project_root=project_root,
-            source_dir=source_dir,
+            source_dir=effective_source,
             cli_name=cli_name,
             agents_spec=agents_spec,
             env_spec=env_spec,

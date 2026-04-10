@@ -138,16 +138,15 @@ def detect_hooks(
     """Auto-detect hooks from tools and commands analysis."""
     hooks: list[HookDef] = []
 
-    # Formatter hook: auto-format on file write/edit
+    # Formatter hook: auto-format on file write/edit (single hook with joined patterns)
     fmt_name, fmt_extensions = detect_formatter(tools)
     if fmt_name:
-        for pattern in fmt_extensions.split("|"):
-            hooks.append(HookDef(
-                event="PostToolUse",
-                matcher={"tool_name": "Write|Edit", "file_pattern": pattern},
-                command=f"{fmt_name} -i $FILE_PATH",
-                description=f"Auto-format with {fmt_name}",
-            ))
+        hooks.append(HookDef(
+            event="PostToolUse",
+            matcher={"tool_name": "Write|Edit", "file_pattern": fmt_extensions},
+            command=f"{fmt_name} -i $FILE_PATH",
+            description=f"Auto-format with {fmt_name}",
+        ))
 
     # Doctor hook: validate environment on session start
     if "doctor" in commands:
@@ -190,9 +189,9 @@ def generate_mcp_server_stub(project_name: str, mcp_tools: list[McpToolDef]) -> 
     @server.tool()
     async def {tool.name}(args: str = "") -> str:
         \"\"\"{tool.description}\"\"\"
-        cmd = f"{tool.run} {{args}}"
-        proc = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        cmd = shlex.split("{tool.run}") + shlex.split(args)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate()
         return json.dumps({{
@@ -216,6 +215,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shlex
 
 from mcp.server.fastmcp import FastMCP
 
