@@ -24,6 +24,18 @@ RULES_GLOB: Final = "*.md"
 # Built-in skill names for auto-discovery
 WORKTREE_SKILL_NAME: Final = "worktree"
 
+# ---------------------------------------------------------------------------
+# Skills CLI command names
+# ---------------------------------------------------------------------------
+
+SKILLS_COMMAND_INIT: Final = "init"
+SKILLS_COMMAND_GENERATE: Final = "generate"
+SKILLS_COMMAND_SYNC: Final = "sync"
+SKILLS_COMMAND_VIEW: Final = "view"
+SKILLS_COMMAND_CLEAN: Final = "clean"
+SKILLS_COMMAND_STATUS: Final = "status"
+SKILLS_COMMAND_LIST: Final = "list"
+
 # Frontmatter required fields
 REQUIRED_SKILL_FIELDS: Final = ("name", "description")
 

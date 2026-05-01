@@ -25,7 +25,15 @@ from dekk.project.subcommands import DOCTOR as PROJECT_DOCTOR_COMMAND
 from dekk.project.subcommands import INSTALL as PROJECT_INSTALL_COMMAND
 from dekk.project.subcommands import NAMES as BUILTIN_PROJECT_SUBCOMMANDS
 from dekk.project.subcommands import SETUP as PROJECT_SETUP_COMMAND
+from dekk.project.subcommands import SKILLS as PROJECT_SKILLS_COMMAND
 from dekk.project.subcommands import UNINSTALL as PROJECT_UNINSTALL_COMMAND
+from dekk.skills.constants import (
+    DEFAULT_SOURCE_DIR,
+    DEKK_TOML,
+    SKILL_FILENAME,
+    SKILLS_COMMAND_STATUS,
+    SKILLS_DIR_NAME,
+)
 
 PROJECT_HELP_COMMANDS = {"help", "--help", "-h"}
 
@@ -227,14 +235,24 @@ def run_project_command(app_name: str, argv: list[str]) -> int:
         # Show skill hint for the leaf command name
         leaf_name = cmd_path[-1] if cmd_path else command_name
         skill_path = "/".join(cmd_path) if len(cmd_path) > 1 else leaf_name
-        skill_file = project_root / ".agents" / "skills" / skill_path / "SKILL.md"
+        agents_source = (
+            spec.skills.source
+            if spec.skills and spec.skills.source
+            else DEFAULT_SOURCE_DIR
+        )
+        skill_file = (
+            project_root / agents_source / SKILLS_DIR_NAME / skill_path / SKILL_FILENAME
+        )
         if skill_file.exists():
             from rich.text import Text
 
             from dekk.cli.styles import _get_console
 
             _get_console().print(
-                Text(f"skill: .agents/skills/{skill_path}/SKILL.md", style="dim")
+                Text(
+                    f"skill: {agents_source}/{SKILLS_DIR_NAME}/{skill_path}/{SKILL_FILENAME}",
+                    style="dim",
+                )
             )
 
     return int(result.returncode)
@@ -471,11 +489,15 @@ def _run_builtin_subcommand(
 
     from dekk.project.subcommands import create_app
 
+    spec = EnvironmentSpec.from_file(project_root / DEKK_TOML)
     sub = create_app(command_name, project_root)
+    effective_args = list(args)
+    if command_name == PROJECT_SKILLS_COMMAND and not effective_args:
+        effective_args = [SKILLS_COMMAND_STATUS]
 
     saved_argv = sys.argv
     saved_cwd = Path.cwd()
-    sys.argv = [f"{CLI_NAME} {command_name}"] + args
+    sys.argv = [f"{CLI_NAME} {spec.project_name} {command_name}"] + effective_args
     try:
         os.chdir(project_root)
         sub()

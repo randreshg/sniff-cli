@@ -8,6 +8,12 @@ import pytest
 
 from dekk.cli.errors import NotFoundError, ValidationError
 from dekk.project.runner import run_project_command
+from dekk.skills.constants import (
+    DEFAULT_SOURCE_DIR,
+    PROJECT_MD,
+    SKILL_FILENAME,
+    SKILLS_DIR_NAME,
+)
 
 
 def _write_spec(root: Path, *, project: str = "demo") -> Path:
@@ -268,14 +274,63 @@ def test_project_setup_is_hidden_when_project_defines_setup(
 def test_skills_subcommand_routing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """``dekk demo skills list`` routes to the skills sub-app."""
     _write_spec(tmp_path, project="demo")
-    # Create the .agents/ dir so skills list doesn't error
-    agents_dir = tmp_path / ".agents"
+    # Create the default source dir so skills list doesn't error
+    agents_dir = tmp_path / DEFAULT_SOURCE_DIR
     agents_dir.mkdir()
     monkeypatch.chdir(tmp_path)
 
     # skills list with no skills should complete without error
     code = run_project_command("demo", ["skills", "list"])
     assert code == 0
+
+
+def test_skills_without_subcommand_defaults_to_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``dekk demo skills`` should be useful and exit successfully."""
+    _write_spec(tmp_path, project="demo")
+    agents_dir = tmp_path / DEFAULT_SOURCE_DIR
+    (agents_dir / SKILLS_DIR_NAME).mkdir(parents=True)
+    (agents_dir / PROJECT_MD).write_text("# Demo\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["skills"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert f"Source of truth: {DEFAULT_SOURCE_DIR}/" in out
+    assert f"{SKILLS_DIR_NAME}/: 0 skill(s)" in out
+
+
+def test_skills_subcommand_uses_configured_agents_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``dekk demo skills list`` should honor [agents].source."""
+    spec = tmp_path / ".dekk.toml"
+    spec.write_text(
+        "[project]\n"
+        'name = "demo"\n\n'
+        "[agents]\n"
+        'source = "carts-plugin"\n\n',
+        encoding="utf-8",
+    )
+    source = tmp_path / "carts-plugin"
+    skill_dir = source / SKILLS_DIR_NAME / "build"
+    skill_dir.mkdir(parents=True)
+    (source / PROJECT_MD).write_text("# Demo\n", encoding="utf-8")
+    (skill_dir / SKILL_FILENAME).write_text(
+        "---\nname: build\ndescription: Build the project\n---\n\n# Build\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = run_project_command("demo", ["skills", "list"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Source: " in out
+    assert "carts-plugin" in out
+    assert "build" in out
 
 
 def test_skill_tag_in_help_output(
@@ -314,9 +369,9 @@ def test_skill_hint_after_command(
     (env_prefix / "conda-meta").mkdir()
 
     # Create a skill file
-    skill_dir = tmp_path / ".agents" / "skills" / "hello"
+    skill_dir = tmp_path / DEFAULT_SOURCE_DIR / SKILLS_DIR_NAME / "hello"
     skill_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text("---\nname: hello\ndescription: test\n---\n")
+    (skill_dir / SKILL_FILENAME).write_text("---\nname: hello\ndescription: test\n---\n")
 
     monkeypatch.chdir(tmp_path)
 
@@ -327,7 +382,46 @@ def test_skill_hint_after_command(
             run_project_command("demo", ["hello"])
 
     out = capsys.readouterr().out
-    assert ".agents/skills/hello/SKILL.md" in out
+    assert f"{DEFAULT_SOURCE_DIR}/{SKILLS_DIR_NAME}/hello/{SKILL_FILENAME}" in out
+
+
+def test_skill_hint_uses_configured_agents_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Skill hints should point at [agents].source, not only .agents."""
+    spec = tmp_path / ".dekk.toml"
+    spec.write_text(
+        "[project]\n"
+        'name = "demo"\n\n'
+        "[environment]\n"
+        'type = "conda"\n'
+        'path = "{project}/.dekk/env"\n'
+        'file = "environment.yaml"\n\n'
+        "[agents]\n"
+        'source = "carts-plugin"\n\n'
+        "[commands]\n"
+        'hello = { run = "echo hi", description = "test" }\n',
+        encoding="utf-8",
+    )
+    env_prefix = tmp_path / ".dekk" / "env"
+    env_prefix.mkdir(parents=True)
+    (env_prefix / "conda-meta").mkdir()
+    skill_dir = tmp_path / "carts-plugin" / SKILLS_DIR_NAME / "hello"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / SKILL_FILENAME).write_text(
+        "---\nname: hello\ndescription: test\n---\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    with patch("subprocess.run") as run_mock:
+        run_mock.return_value.returncode = 0
+        with patch("dekk.project.runner.EnvironmentActivator.activate") as activate_mock:
+            activate_mock.return_value.env_vars = {"PATH": str(env_prefix / "bin")}
+            run_project_command("demo", ["hello"])
+
+    out = capsys.readouterr().out
+    assert f"carts-plugin/{SKILLS_DIR_NAME}/hello/{SKILL_FILENAME}" in out
 
 
 # -- Hierarchical commands + groups -----------------------------------------

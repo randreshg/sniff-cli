@@ -2,6 +2,18 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.10.8 - 2026-05-01
+
+- Fixed embedded project `skills` commands to honor the configured
+  `[agents].source` / `[skills].source` path for `generate`, `view`, `clean`,
+  `status`, and `list` instead of assuming `.agents/`.
+- Made `dekk <project> skills` default to `status`, so project skill discovery
+  works as a useful no-argument command.
+- Updated successful command skill hints to point at the configured source
+  directory and shared skill path constants.
+- Updated embedded skills help so usage displays as
+  `dekk <project> skills ...`.
+
 ## 1.10.7 - 2026-04-17
 
 - Fixed Claude Code hook commands to survive launch-from-subdirectory.
