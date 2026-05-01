@@ -1259,6 +1259,15 @@ class TestClaudeHookGeneration:
                         ('cd "$CLAUDE_PROJECT_DIR" && ', "$CLAUDE_PROJECT_DIR/")
                     ), f"unanchored hook command: {cmd}"
 
+    def test_mcp_stub_regenerate_hint_uses_skills_command(self) -> None:
+        """Generated MCP servers should point at the current skills command."""
+        from dekk.skills.providers.enrichment import generate_mcp_server_stub
+
+        stub = generate_mcp_server_stub("demo", [])
+
+        assert "Regenerate with: dekk demo skills generate" in stub
+        assert "agents generate" not in stub
+
 
 class TestEndToEnd:
     def test_full_pipeline(self, tmp_path: Path) -> None:

@@ -2,6 +2,12 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.10.9 - 2026-05-01
+
+- Fixed generated MCP server stubs to point regeneration instructions at
+  `dekk <project> skills generate` instead of the removed `agents generate`
+  command path.
+
 ## 1.10.8 - 2026-05-01
 
 - Fixed embedded project `skills` commands to honor the configured
