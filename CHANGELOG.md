@@ -2,6 +2,18 @@
 
 All notable changes to `dekk` will be documented in this file.
 
+## 1.10.10 - 2026-05-18
+
+- Added `docs/real-world-examples.md`: an annotated, section-by-section
+  walkthrough of two in-production `.dekk.toml` configs (CARTS, APXM) plus
+  copy-ready snapshots in `examples/real-world/`. Cross-linked from the README,
+  docs index, spec, getting-started, and examples-by-language.
+- Documented previously-undocumented `.dekk.toml` fields in `docs/spec.md`:
+  `[environment].channels`, inline `[environment.packages]` (and its mutual
+  exclusivity with `environment.file`), per-command `group`/`skill`, nested
+  `[commands.<group>]` sub-command trees, `[[install.components]].requires`,
+  and non-`bin` `[paths]` keys.
+
 ## 1.10.9 - 2026-05-01
 
 - Fixed generated MCP server stubs to point regeneration instructions at

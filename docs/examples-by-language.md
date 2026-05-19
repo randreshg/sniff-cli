@@ -3,6 +3,9 @@
 Ready-to-use `.dekk.toml` configurations for common project types, each
 with a wrapper generation example. Use `dekk` in the examples below.
 
+> These are deliberately minimal. For complete, in-production configs that
+> combine every section, see [Real-World Examples](real-world-examples.md).
+
 ---
 
 ## Python (pip / conda)
@@ -315,5 +318,6 @@ All three wrappers share the same environment from `.dekk.toml`.
 ## See Also
 
 - [.dekk.toml Specification](spec.md) -- full field reference
+- [Real-World Examples](real-world-examples.md) -- annotated in-production configs (CARTS, APXM)
 - [Wrapper Generation](wrapper.md) -- how wrappers work
 - [Quick Reference](cheatsheet.md) -- one-page cheat sheet

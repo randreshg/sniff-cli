@@ -380,4 +380,5 @@ See `src/dekk/remediate.py` for the full Protocol definition.
 
 - **[Architecture](architecture.md)** — Module organization and extension points
 - **[Examples by Language](examples-by-language.md)** — Configs for Python, Rust, C++, Node, Go, Java
+- **[Real-World Examples](real-world-examples.md)** — Annotated in-production configs (CARTS, APXM)
 - **README** — CLI framework usage (`dekk.Typer`, `dekk.cli.styles`, errors, progress)

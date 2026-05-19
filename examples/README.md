@@ -13,6 +13,14 @@ The built-in examples are the fastest way to get started with `dekk`.
 
 If `dekk` is not on `PATH` yet, use `python -m dekk --help` first.
 
+## Real-World Configs
+
+Once the basics work, the fastest way to structure a non-trivial project is to
+copy a proven config. [`real-world/`](real-world/) holds two complete,
+in-production `.dekk.toml` files ([carts](https://github.com/randreshg/carts),
+[apxm](https://github.com/randreshg/apxm)) with a section-by-section walkthrough
+in [`docs/real-world-examples.md`](../docs/real-world-examples.md).
+
 ## Built-in Templates
 
 - `.dekk.toml.quickstart` is the best default for most projects.

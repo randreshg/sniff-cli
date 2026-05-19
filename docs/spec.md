@@ -4,6 +4,10 @@
 
 Canonical reference for `.dekk.toml`, the declarative environment configuration file read by `dekk`. One file describes your entire project environment -- runtime environment, tools, paths, variables -- and dekk handles detection, activation, and wrapper generation.
 
+> Want to see every section working together in a real project? See
+> [Real-World Examples](real-world-examples.md) — two annotated, in-production
+> configs (CARTS, APXM).
+
 ---
 
 ## Design Principles
@@ -78,17 +82,40 @@ Declares the runtime environment to resolve and activate.
 |-------|------|----------|-------------|
 | `type` | string | **yes** | Environment provider type (currently: `conda`). |
 | `path` | string | **yes** | Environment prefix path (recommended: project-local). |
-| `file` | string | no | Path to `environment.yaml` for creation (conda). |
+| `file` | string | no | Path to an `environment.yml`/`environment.yaml` used to create the env (conda). |
 | `name` | string | no | Display name (optional). |
+| `channels` | list[string] | no | Conda channels. Default: `["conda-forge"]`. |
 
 ```toml
 [environment]
 type = "conda"
 path = "{project}/.dekk/env"
-file = "environment.yaml"
+file = "environment.yml"
 ```
 
 When present, `dekk activate` and `dekk wrap` use this `path` deterministically (no named-env lookup).
+
+#### Inline packages: `[environment.packages]`
+
+Instead of `file`, you can declare conda packages directly in `.dekk.toml`.
+Each key is a package name; the value is a version (empty string = unpinned).
+
+```toml
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
+channels = ["conda-forge"]
+
+[environment.packages]
+python = "3.11"
+cmake  = ""        # unpinned (latest)
+mlir   = "22"
+```
+
+`environment.file` and `[environment.packages]` are **mutually exclusive** —
+setting both raises a config error. Use `file` for a large or externally
+shared dependency set; use inline packages to keep the whole environment in one
+reviewable file.
 
 **Implementation:** `dekk.environment.resolver.resolve_environment`
 
@@ -160,7 +187,16 @@ Lists of directories to prepend to `PATH` during activation and in wrappers.
 bin = ["{project}/bin", "{project}/target/release", "{environment}/bin"]
 ```
 
-Each key maps to a list of directories. The `bin` key is treated specially: its entries are prepended to `PATH`. Other keys are available for custom use by downstream tools.
+Each key maps to a list of directories. The `bin` key is treated specially: its entries are prepended to `PATH`. Other keys (e.g. `lib`) are exposed for downstream consumers but are not auto-applied — pair them with an explicit `[env]` variable when needed:
+
+```toml
+[paths]
+bin = ["{project}/target/release", "{home}/.cargo/bin"]
+lib = ["{project}/target/release/lib", "{environment}/lib"]
+
+[env]
+LD_LIBRARY_PATH = "{project}/target/release/lib:{environment}/lib"
+```
 
 **Implementation:** `dekk.environment.activation.EnvironmentActivator`
 
@@ -175,6 +211,32 @@ Defines project commands used by `dekk <app_name> <command> [args...]`.
 server = { run = "python -m clic.api", description = "Start API server" }
 test = { run = "pytest -q", description = "Run tests" }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `run` | string | yes¹ | Shell command to execute. |
+| `description` | string | no | Help text shown in `dekk <app> --help`. |
+| `group` | string | no | Heading to bucket this command under in help output. |
+| `skill` | bool | no | If `true`, this command becomes an agent skill on `dekk <app> skills init`/`generate`. Default: `false`. |
+
+¹ Required for leaf commands. A group table (see below) may omit `run`.
+
+#### Command groups (nested sub-commands)
+
+A `[commands.<name>]` table defines a sub-command tree. `run`, `description`,
+`group`, and `skill` are reserved metadata keys; every other key is parsed as a
+child command (recursively).
+
+```toml
+[commands.backend]
+description = "Manage inference backends"
+group = "Configuration"
+add  = { run = "myapp backend add",  description = "Add backend", skill = true }
+list = { run = "myapp backend list", description = "List backends" }
+```
+
+Invoked as `dekk <app> backend add`. `dekk <app> backend` with no sub-command
+prints group help.
 
 Rules:
 
@@ -211,6 +273,7 @@ Configures the one-command install pipeline invoked by `dekk <app> install`.
 | `description` | string | no | One-line description shown in selection prompt. |
 | `run` | string | **yes** | Shell command to execute for this component. |
 | `default` | bool | no | Pre-selected in interactive mode. Default: `true`. |
+| `requires` | list[string] | no | Commands that must be on `PATH` for this component. If any is missing, dekk flags it before building instead of failing mid-install. |
 
 ```toml
 [install]
@@ -423,6 +486,7 @@ bin = ["{environment}/bin", "{project}/bin", "{project}/target/release"]
 
 ## See Also
 
+- [Real-World Examples](real-world-examples.md) -- two annotated in-production configs (CARTS, APXM)
 - [Wrapper Generation](wrapper.md) -- how wrappers bake this config into executables
 - [Quick Reference](cheatsheet.md) -- one-page cheat sheet
 - [Examples by Language](examples-by-language.md) -- language-specific configs with wrapper patterns

@@ -1,0 +1,220 @@
+# ---------------------------------------------------------------------------
+# REAL-WORLD SNAPSHOT — copy/adapt, do not run as-is.
+#
+# Source:  https://github.com/randreshg/apxm/blob/main/.dekk.toml
+# Project: APXM — MLIR compiler and runtime for agent graphs (Rust + Python)
+# Shows:   inline [environment.packages] (conda pins, no environment.yml),
+#          deeply nested [commands.<group>] sub-command tables, multi-step
+#          [[install.components]] with `requires`, layered bin/lib paths.
+#
+# Annotated walkthrough: ../../docs/real-world-examples.md
+#
+# NOTE: `LLM_GATEWAY_KEY = "env:LLM_GATEWAY_KEY"` is an APXM-internal value
+# convention, NOT a dekk feature — dekk stores it as the literal string.
+# ---------------------------------------------------------------------------
+
+# APXM — dekk apxm install
+
+[project]
+name = "apxm"
+description = "MLIR compiler and runtime for agent graphs"
+
+[environment]
+type = "conda"
+path = "{project}/.dekk/env"
+name = "apxm"
+channels = ["conda-forge"]
+
+[environment.packages]
+mlir = "22"
+libclang13 = "22"
+clang = "22"
+python = "3.11"
+pytest = ""
+pytest-asyncio = ""
+cmake = ""
+ninja = ""
+uv = ""
+nodejs = "22"
+
+[tools]
+cmake = { command = "cmake", version = ">=3.20" }
+ninja = { command = "ninja" }
+cargo = { command = "cargo", version = ">=1.70" }
+python = { command = "python", version = ">=3.10" }
+uv = { command = "uv" }
+
+[env]
+LLM_GATEWAY_KEY = "env:LLM_GATEWAY_KEY"
+
+MLIR_DIR = "{environment}/lib/cmake/mlir"
+LLVM_DIR = "{environment}/lib/cmake/llvm"
+MLIR_PREFIX = "{environment}"
+LLVM_PREFIX = "{environment}"
+APXM_HOME = "{project}"
+PYTHONPATH = "{project}/tools"
+LD_LIBRARY_PATH = "{project}/target/release/lib:{project}/target/release:{environment}/lib"
+
+[paths]
+bin = ["{project}/bin", "{project}/target/release", "{home}/.cargo/bin"]
+lib = ["{project}/target/release/lib", "{environment}/lib"]
+
+[commands]
+build = { run = "python tools/scripts/cargo.py build -p apxm-cli --features driver,metrics --release", description = "Build APXM", skill = true, group = "Build & Test" }
+build-gui = { run = "python tools/scripts/cargo.py build -p apxm-gui --release", description = "Build GUI dashboard server", group = "Build & Test" }
+build-dialect = { run = "python tools/scripts/cargo.py build-dialect", description = "Rebuild MLIR dialect (TableGen + C++ + Rust) after editing .td or .cpp files", skill = true, group = "Build & Test" }
+test = { run = "python tools/scripts/cargo.py test --workspace --exclude apxm-compiler --exclude apxm-cli", description = "Run tests", skill = true, group = "Build & Test" }
+test-all = { run = "python tools/scripts/cargo.py test --workspace", description = "All tests (requires MLIR)", group = "Build & Test" }
+test-cli = { run = "python tools/scripts/cargo.py test -p apxm-cli --features driver,metrics --release", description = "Run CLI tests with driver (preserves MLIR-linked binary)", group = "Build & Test" }
+test-python-frontend = { run = "python -m pytest crates/compiler/apxm-frontend/python/tests -q", description = "Run Python frontend tests", group = "Build & Test" }
+test-quality-eval = { run = "python -m pytest tools/quality_eval/tests -q", description = "Run offline quality-eval harness tests", group = "Build & Test" }
+clean = { run = "python tools/scripts/cargo.py clean", description = "Clean", group = "Build & Test" }
+scrub-rustc-cache = { run = "python tools/scripts/cargo.py scrub-sigbus-cache", description = "Remove stale rustc SIGBUS diagnostics from Cargo caches", group = "Build & Test" }
+stop = { run = "apxm process stop", description = "Stop APXM compile/run/execute/workflow jobs", group = "Configuration" }
+clean-processes = { run = "apxm process stop", description = "Stop APXM job processes without cleaning build outputs", group = "Configuration" }
+
+codegen = { run = "apxm codegen", description = "Regenerate frontend bindings from Core definitions", skill = true, group = "Build & Test" }
+quality-eval = { run = "apxm quality-eval", description = "Run tier-3 quality-eval harness (rubric + budget + judge)", skill = true, group = "Build & Test" }
+tokenize = { run = "apxm tokenize", description = "Count text with APXM's compiler-side tokenizer", skill = true, group = "Discovery" }
+
+compile = { run = "apxm compile", description = "Compile graph to .apxmobj artifact", skill = true, group = "Compilation" }
+execute = { run = "apxm execute", description = "Compile and execute a graph", skill = true, group = "Compilation" }
+run = { run = "apxm run", description = "Run a pre-compiled .apxmobj artifact", skill = true, group = "Compilation" }
+decompile = { run = "apxm decompile", description = "Reverse-map artifact back to AIR", group = "Compilation" }
+doctor = { run = "apxm doctor", description = "Diagnose the real APXM compiler/runtime environment", group = "Configuration" }
+server = { run = "apxm-server", description = "Launch the APXM HTTP server", group = "Configuration" }
+
+gui = { run = "apxm gui", description = "Launch the web-based GUI dashboard", skill = true, group = "Authoring" }
+validate = { run = "apxm validate", description = "Validate graph against AIS contract", skill = true, group = "Authoring" }
+analyze = { run = "apxm analyze", description = "Analyze parallelism and critical path", group = "Authoring" }
+explain = { run = "apxm explain", description = "Human-readable summary of a graph", group = "Authoring" }
+
+[commands.backend]
+description = "Manage inference backends (cloud/onprem/local)"
+group = "Configuration"
+add = { run = "apxm backend add", description = "Add backend", skill = true }
+list = { run = "apxm backend list", description = "List backends" }
+remove = { run = "apxm backend remove", description = "Remove backend" }
+test = { run = "apxm backend test", description = "Test connectivity" }
+migrate = { run = "apxm backend migrate", description = "Migrate from credentials.toml" }
+start = { run = "apxm backend start", description = "Start local backend" }
+stop = { run = "apxm backend stop", description = "Stop local backend" }
+status = { run = "apxm backend status", description = "Show backend status" }
+logs = { run = "apxm backend logs", description = "Show backend logs" }
+restart = { run = "apxm backend restart", description = "Restart local backend" }
+add-model = { run = "apxm backend add-model", description = "Add model to backend" }
+
+[commands.vllm]
+description = "Operate APXM-vLLM through Dekk-controlled Slurm services and Docker image primitives"
+group = "Configuration"
+help = { run = "python tools/scripts/vllm.py help", description = "Show detailed vLLM controller help" }
+doctor = { run = "python tools/scripts/vllm.py doctor", description = "Verify APXM-vLLM Docker, fork source, GPU, Slurm, and port readiness" }
+probe = { run = "python tools/scripts/vllm.py probe", description = "Probe OpenAI models and APXM graph endpoints" }
+enable = { run = "python tools/scripts/vllm.py enable", description = "Register a probed APXM-vLLM HTTP endpoint as an APXM backend" }
+cache-warm = { run = "python tools/scripts/vllm.py cache-warm", description = "Download a model to the shared HF cache without GPU allocation (resumes partial)" }
+docker-build = { run = "python tools/scripts/vllm.py docker-build", description = "Build the APXM-vLLM runtime Docker image" }
+docker-save = { run = "python tools/scripts/vllm.py docker-save", description = "Save APXM-vLLM image to shared APXM image store" }
+docker-load = { run = "python tools/scripts/vllm.py docker-load", description = "Load APXM-vLLM image from shared APXM image store" }
+docker-start = { run = "python tools/scripts/vllm.py docker-start", description = "Start Docker vLLM inside an owned allocation" }
+docker-stop = { run = "python tools/scripts/vllm.py docker-stop", description = "Stop allocation-local Docker vLLM" }
+docker-status = { run = "python tools/scripts/vllm.py docker-status", description = "Show allocation-local Docker vLLM status" }
+docker-logs = { run = "python tools/scripts/vllm.py docker-logs", description = "Show allocation-local Docker vLLM logs" }
+service-start = { run = "python tools/scripts/vllm.py service-start", description = "Removed by the model-zoo migration; prints migration message" }
+service-list = { run = "python tools/scripts/vllm.py service-list", description = "List every recorded APXM-vLLM service and its Slurm state" }
+service-status = { run = "python tools/scripts/vllm.py service-status", description = "Show persistent APXM-vLLM service status" }
+service-exec = { run = "python tools/scripts/vllm.py service-exec", description = "Run a command inside a persistent APXM-vLLM service allocation" }
+service-stop = { run = "python tools/scripts/vllm.py service-stop", description = "Cancel a persistent APXM-vLLM service job" }
+zoo-apply = { run = "python tools/scripts/vllm.py zoo-apply", description = "Reconcile zoo manifest against currently-recorded services" }
+zoo-status = { run = "python tools/scripts/vllm.py zoo-status", description = "Probe every service in the zoo manifest" }
+zoo-scale = { run = "python tools/scripts/vllm.py zoo-scale", description = "Scale a zoo-managed service's replica count" }
+zoo-cache-warm = { run = "python tools/scripts/vllm.py zoo-cache-warm", description = "Warm the HF cache for every model in the manifest" }
+zoo-logs = { run = "python tools/scripts/vllm.py zoo-logs", description = "Tail container logs for a zoo-managed service" }
+check-no-legacy = { run = "python tools/scripts/check_no_legacy_vllm.py", description = "Lint for legacy CLI / fallback patterns removed by the model-zoo migration" }
+verify-cross-shard-pins = { run = "python tools/scripts/verify_cross_shard_pins.py", description = "Cross-shard pin broadcast verification for multi-node Ray vLLM services" }
+
+[commands.mcp]
+description = "Install the APXM MCP server into supported coding-agent configs"
+group = "Configuration"
+install = { run = "python tools/scripts/apxm_mcp_install.py install", description = "Install apxm-mcp-server into detected agent configs" }
+list = { run = "python tools/scripts/apxm_mcp_install.py list", description = "List detected MCP-capable agent configs and APXM install status" }
+uninstall = { run = "python tools/scripts/apxm_mcp_install.py uninstall", description = "Remove APXM MCP registration from agent configs" }
+
+[commands.ops]
+description = "Browse AIS operations"
+group = "Discovery"
+list = { run = "apxm ops list", description = "List all operations" }
+show = { run = "apxm ops show", description = "Show operation details" }
+
+[commands.template]
+description = "Browse graph templates"
+group = "Discovery"
+list = { run = "apxm template list", description = "List templates" }
+show = { run = "apxm template show", description = "Show template" }
+
+[commands.tool]
+description = "Manage external tool registrations"
+group = "Configuration"
+add = { run = "apxm tool add", description = "Register tool" }
+list = { run = "apxm tool list", description = "List tools" }
+remove = { run = "apxm tool remove", description = "Remove tool" }
+
+[commands.agent]
+description = "Manage ACP agent profiles"
+group = "Configuration"
+list = { run = "apxm agent list", description = "List registered agents" }
+add = { run = "apxm agent add", description = "Register agent profile" }
+remove = { run = "apxm agent remove", description = "Remove agent" }
+test = { run = "apxm agent test", description = "Test agent" }
+templates = { run = "apxm agent templates", description = "List built-in templates" }
+
+[commands.cache]
+description = "Manage the MemoCache (response memoization)"
+group = "Configuration"
+stats = { run = "apxm cache stats", description = "Show cache statistics" }
+clear = { run = "apxm cache clear", description = "Clear all cached entries" }
+export = { run = "apxm cache export", description = "Export cache to JSON" }
+
+[commands.process]
+description = "Inspect and stop APXM job processes"
+group = "Configuration"
+list = { run = "apxm process list", description = "List APXM compile/run/execute/workflow jobs" }
+stop = { run = "apxm process stop", description = "Stop APXM compile/run/execute/workflow jobs" }
+
+[install]
+wrap = { name = "apxm", target = "target/release/apxm" }
+
+[[install.components]]
+name = "compiler-runtime"
+label = "Compiler + Runtime"
+description = "APXM compiler and dataflow runtime"
+run = "python tools/scripts/cargo.py build -p apxm-cli --features driver,metrics --release"
+default = true
+
+[[install.components]]
+name = "mcp-server"
+label = "MCP Server"
+description = "HTTP API + MCP protocol server for IDE integration"
+run = "python tools/scripts/cargo.py build -p apxm-server --release"
+default = true
+
+[[install.components]]
+name = "gui"
+label = "GUI Dashboard"
+description = "Web dashboard with multi-model agent chat (requires >=1 backend)"
+run = "python tools/scripts/cargo.py build -p apxm-gui --release"
+default = false
+
+[[install.components]]
+name = "vllm"
+label = "APXM-vLLM Docker readiness"
+description = "Verifies the APXM-vLLM fork, Docker, Slurm tools, and port readiness"
+run = "python tools/scripts/vllm.py doctor"
+default = false
+
+[[install.components]]
+name = "dspy"
+label = "DSPy Prompt Optimizer"
+description = "Automatic prompt optimization via DSPy (Stanford NLP)"
+run = "pip install dspy-ai>=2.6.0"
+default = false
+requires = ["pip"]

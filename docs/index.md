@@ -35,6 +35,7 @@ python -m dekk --help
 - **[Wrapper Generation](wrapper.md)** -- How `dekk wrap` creates zero-activation executables
 - **[Quick Reference](cheatsheet.md)** -- One-page cheat sheet for `.dekk.toml` and CLI commands
 - **[Examples by Language](examples-by-language.md)** -- Configs for Python, Rust, C++, Node, Go, Java, and multi-language projects
+- **[Real-World Examples](real-world-examples.md)** -- Two annotated, in-production configs (CARTS, APXM) new projects can copy
 - **[Architecture](architecture.md)** -- Module organization, tiers, extension points
 - **[Contributing](contributing.md)** -- How to contribute
 

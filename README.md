@@ -133,5 +133,6 @@ app = Typer(
 
 - [Getting Started](docs/getting-started.md)
 - [.dekk.toml Specification](docs/spec.md)
+- [Real-World Examples](docs/real-world-examples.md) — annotated configs from [carts](https://github.com/randreshg/carts) and [apxm](https://github.com/randreshg/apxm)
 - [Agent Workflows](docs/agents.md)
 - [Worktree Management](docs/worktree.md)
